@@ -1,0 +1,44 @@
+[project]
+requires-python = ">=3.9"
+
+[tool.poetry]
+name = "matrix_admin_bot"
+version = "0.1"
+description = "Admin bot"
+authors = ["Tchap Team <tech@tchap.beta.gouv.fr>"]
+license = "MIT"
+packages = [
+    { include = "matrix_admin_bot" },
+]
+
+[tool.poetry.scripts]
+matrix-admin-bot = "matrix_admin_bot.adminbot:main"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+#tchap-bot = { path = "../tchapbot/", develop = true }
+tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", branch = "tchapadmin-changes" }
+pydantic = "^2.6.3"
+pydantic-settings = "^2.2.1"
+pyotp = "^2.9.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4.6"
+basedpyright = "^1.12.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pyright]
+pythonVersion = "3.9"
+
+typeCheckingMode = "all"
+
+reportAny = false
+reportUnknownMemberType = false
+reportMissingTypeStubs = false
+reportUnusedCallResult = false
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP"]
