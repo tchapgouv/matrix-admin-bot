@@ -1,5 +1,3 @@
-import re
-from abc import ABC, abstractmethod
 from typing import Optional
 
 import cachetools
@@ -7,62 +5,33 @@ from matrix_bot.bot import MatrixBot
 from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import EventNotConcerned
 from nio import MatrixRoom, RoomMessage, RoomMessageText
-from pyotp import TOTP
 
-REMOVE_REPLY_REGEX = re.compile("<mx-reply>.*</mx-reply>(.*)", re.MULTILINE | re.DOTALL)
-
-
-class Command(ABC):
-    def __init__(
-        self, room: MatrixRoom, message: RoomMessage, matrix_client: MatrixClient
-    ) -> None:
-        self.room = room
-        self.message = message
-        self.matrix_client = matrix_client
-        self.current_status_reaction = None
-
-    async def set_status_reaction(self, key: Optional[str]) -> None:
-        if self.current_status_reaction:
-            await self.matrix_client.room_redact(
-                self.room.room_id, self.current_status_reaction
-            )
-        if key:
-            self.current_status_reaction = await self.matrix_client.send_reaction(
-                self.room.room_id, self.message, key
-            )
-
-    async def send_result(self) -> None:
-        pass
-
-    @abstractmethod
-    async def execute(self) -> bool: ...
+from matrix_admin_bot.command import Command, CommandToValidate
+from matrix_admin_bot.validator import Validator
 
 
-class CommandToValidate(Command):
-    TOTP_PROMPT = (
-        "Please reply to this message with an authentication code"
-        " to validate the action."
-    )
-
-    async def send_validation_message(self) -> None:
-        pass
-
-
-class TOTPBot(MatrixBot):
+class ValidateBot(MatrixBot):
     def __init__(
         self,
         homeserver: str,
         username: str,
         password: str,
         commands: list[type[Command]],
-        totps: dict[str, str],
+        secure_validator: Optional[Validator],
         coordinator: Optional[str],
     ):
+        needs_secure_validator = False
+        for command_type in commands:
+            if issubclass(command_type, CommandToValidate):
+                if command_type.needs_secure_validation():
+                    needs_secure_validator = True
+                    break
+        if needs_secure_validator and not secure_validator:
+            raise Exception()  # TODO
         super().__init__(homeserver, username, password)
         self.commands = commands
+        self.secure_validator = secure_validator
         self.coordinator = coordinator
-
-        self.totps = {user_id: TOTP(totp_seed) for user_id, totp_seed in totps.items()}
 
         self.recent_events_cache: cachetools.TTLCache[str, RoomMessage] = (
             cachetools.TTLCache(maxsize=5120, ttl=24 * 60 * 60)
@@ -72,7 +41,7 @@ class TOTPBot(MatrixBot):
         )
 
         self.callbacks.register_on_message_event(self.store_event_in_cache)
-        self.callbacks.register_on_message_event(self.validate_totp_and_execute)
+        self.callbacks.register_on_message_event(self.validate_and_execute)
         self.callbacks.register_on_message_event(self.handle_commands)
 
     async def store_event_in_cache(
@@ -82,51 +51,6 @@ class TOTPBot(MatrixBot):
         matrix_client: MatrixClient,
     ):
         self.recent_events_cache[message.event_id] = message
-
-    @staticmethod
-    def extract_totp_code(message: RoomMessageText) -> Optional[str]:
-        body = message.body
-        if message.formatted_body:
-            m = REMOVE_REPLY_REGEX.match(message.formatted_body)
-            if m:
-                body = m.group(1)
-
-        body = body.strip().replace(" ", "")
-
-        if not (len(body) == 6 and body.isdigit()):
-            return None
-
-        return body
-
-    async def validate_totp(
-        self,
-        room: MatrixRoom,
-        message: RoomMessageText,
-        command_message_id: str,
-    ):
-        error_msg = None
-
-        totp_code = self.extract_totp_code(message)
-        if totp_code:
-            totp_checker = self.totps.get(message.sender)
-            if not totp_checker:
-                error_msg = "You are not allowed to execute admin commands, sorry."
-            elif not totp_checker.verify(totp_code):
-                error_msg = "Wrong authentication code."
-        else:
-            error_msg = (
-                "Couldnt parse the authentication code, it should be a 6 digits code."
-            )
-        if error_msg is not None:
-            await self.matrix_client.send_text_message(
-                room.room_id,
-                error_msg,
-                reply_to=message.event_id,
-                thread_root=command_message_id,
-            )
-            return False
-
-        return True
 
     def get_replied_event(self, message: RoomMessage):
         return self.recent_events_cache.get(
@@ -164,7 +88,7 @@ class TOTPBot(MatrixBot):
 
         return None
 
-    async def validate_totp_and_execute(
+    async def validate_and_execute(
         self,
         room: MatrixRoom,
         message: RoomMessage,
@@ -185,14 +109,16 @@ class TOTPBot(MatrixBot):
         if not command_to_validate:
             return
 
-        # the validation code should come from the sender of the command
+        # the validation should come from the sender of the command
         if command_to_validate.message.sender != message.sender:
             return
 
-        if await self.validate_totp(
-            room, message, command_to_validate.message.event_id
-        ):
-            await self.execute_command(command_to_validate)
+        if command_to_validate.needs_secure_validation():
+            assert self.secure_validator is not None
+            if await self.secure_validator.validate(
+                room, message, command_to_validate, matrix_client
+            ):
+                await self.execute_command(command_to_validate)
 
     async def execute_command(self, command: Command):
         await command.set_status_reaction("🚀")

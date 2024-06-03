@@ -10,11 +10,16 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_admin_bot.totpbot import CommandToValidate
+from matrix_admin_bot.command import CommandToValidate
 
 
 class ResetPasswordCommand(CommandToValidate):
     KEYWORD = "reset_password"
+
+    @staticmethod
+    @override
+    def needs_secure_validation():
+        return True
 
     def __init__(
         self, room: MatrixRoom, message: RoomMessage, matrix_client: MatrixClient
@@ -82,14 +87,13 @@ class ResetPasswordCommand(CommandToValidate):
 
     @override
     async def send_validation_message(self) -> None:
+        # TODO validation prompt, get_validation_message ?
         lines = [
             "You are about to reset password of the following users:",
             "",
             *[f"- {user_id}" for user_id in self.user_ids],
             "",
             "⚠⚠ This will also log-out all of their devices!",
-            "",
-            f"{self.TOTP_PROMPT}",
         ]
 
         await self.matrix_client.send_markdown_message(
