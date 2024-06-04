@@ -8,6 +8,7 @@ from nio import MatrixRoom, RoomMessage, RoomMessageText
 
 from matrix_admin_bot.command import Command, CommandToValidate
 from matrix_admin_bot.validator import Validator
+from matrix_admin_bot.validators.confirm import CONFIRM_VALIDATOR
 
 
 class ValidateBot(MatrixBot):
@@ -113,12 +114,13 @@ class ValidateBot(MatrixBot):
         if command_to_validate.message.sender != message.sender:
             return
 
+        validator: Validator = CONFIRM_VALIDATOR
         if command_to_validate.needs_secure_validation():
             assert self.secure_validator is not None
-            if await self.secure_validator.validate(
-                room, message, command_to_validate, matrix_client
-            ):
-                await self.execute_command(command_to_validate)
+            validator = self.secure_validator
+
+        if await validator.validate(room, message, command_to_validate, matrix_client):
+            await self.execute_command(command_to_validate)
 
     async def execute_command(self, command: Command):
         await command.set_status_reaction("🚀")
@@ -147,12 +149,28 @@ class ValidateBot(MatrixBot):
                 command = command_type(room, message, matrix_client)
                 if isinstance(command, CommandToValidate):
                     self.commands_cache[message.event_id] = command
-                    if (
-                        not self.coordinator
-                        or matrix_client.user_id == self.coordinator
-                    ):
-                        await command.send_validation_message()
-                        await command.set_status_reaction("🔢")
+                    if self.coordinator and matrix_client.user_id != self.coordinator:
+                        continue  # TODO or return ?
+
+                    validator: Validator = CONFIRM_VALIDATOR
+                    if command.needs_secure_validation():
+                        assert self.secure_validator is not None
+                        validator = self.secure_validator
+
+                    validation_message = command.validation_message()
+                    if validation_message:
+                        validation_message += "\n\n"
+                    else:
+                        validation_message = ""
+                    validation_message += validator.validation_prompt()
+
+                    await self.matrix_client.send_markdown_message(
+                        room.room_id,
+                        validation_message,
+                        reply_to=message.event_id,
+                        thread_root=message.event_id,
+                    )
+                    await command.set_status_reaction("🔢")
                 else:
                     await self.execute_command(command)
                 # TODO break or not ?

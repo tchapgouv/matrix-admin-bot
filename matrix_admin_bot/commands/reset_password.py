@@ -2,7 +2,7 @@ import json
 import random
 import string
 import time
-from typing import Any
+from typing import Any, Optional
 
 import aiofiles
 from matrix_bot.bot import MatrixClient
@@ -86,21 +86,15 @@ class ResetPasswordCommand(CommandToValidate):
         return True
 
     @override
-    async def send_validation_message(self) -> None:
-        # TODO validation prompt, get_validation_message ?
-        lines = [
-            "You are about to reset password of the following users:",
-            "",
-            *[f"- {user_id}" for user_id in self.user_ids],
-            "",
-            "⚠⚠ This will also log-out all of their devices!",
-        ]
-
-        await self.matrix_client.send_markdown_message(
-            self.room.room_id,
-            "\n".join(lines),
-            reply_to=self.message.event_id,
-            thread_root=self.message.event_id,
+    def validation_message(self) -> Optional[str]:
+        return "\n".join(
+            [
+                "You are about to reset password of the following users:",
+                "",
+                *[f"- {user_id}" for user_id in self.user_ids],
+                "",
+                "⚠⚠ This will also log-out all of their devices!",
+            ]
         )
 
     @override

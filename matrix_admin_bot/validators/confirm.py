@@ -36,3 +36,6 @@ class ConfirmValidator(Validator):
         if body.strip().strip(".") in self.CONFIRM_KEYWORDS:
             return True
         return False
+
+
+CONFIRM_VALIDATOR = ConfirmValidator()

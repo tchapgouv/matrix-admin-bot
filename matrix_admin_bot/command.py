@@ -35,8 +35,8 @@ class Command(ABC):
 
 
 class CommandToValidate(Command):
-    async def send_validation_message(self) -> None:
-        pass
+    def validation_message(self) -> Optional[str]:
+        return None
 
     @staticmethod
     @abstractmethod
