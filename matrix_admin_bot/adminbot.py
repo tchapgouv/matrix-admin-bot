@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -23,7 +21,7 @@ class AdminBotConfig(BaseSettings):
     bot_username: str = ""
     bot_password: str = ""
     totps: dict[str, str] = {}
-    coordinator: Optional[str] = None
+    coordinator: str | None = None
 
     @classmethod
     @override

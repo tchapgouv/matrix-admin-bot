@@ -1,5 +1,3 @@
-from typing import Optional
-
 import cachetools
 from matrix_bot.bot import MatrixBot
 from matrix_bot.client import MatrixClient
@@ -18,8 +16,8 @@ class ValidateBot(MatrixBot):
         username: str,
         password: str,
         commands: list[type[Command]],
-        secure_validator: Optional[Validator],
-        coordinator: Optional[str],
+        secure_validator: Validator | None,
+        coordinator: str | None,
     ):
         needs_secure_validator = False
         for command_type in commands:
@@ -63,13 +61,13 @@ class ValidateBot(MatrixBot):
 
     async def get_related_command_to_validate(
         self, message: RoomMessage
-    ) -> Optional[CommandToValidate]:
+    ) -> CommandToValidate | None:
         content = message.source.get("content", {})
         if not content:
             return None
 
         # let's check if we have a thread root message and if it is a command
-        command_to_validate: Optional[CommandToValidate] = None
+        command_to_validate: CommandToValidate | None = None
         if content.get("m.relates_to", {}).get("rel_type") == "m.thread":
             command = self.commands_cache.get(
                 content.get("m.relates_to", {}).get("event_id")
@@ -103,9 +101,9 @@ class ValidateBot(MatrixBot):
             return
 
         # let's check if we have a thread root message and if it is a command
-        command_to_validate: Optional[
-            CommandToValidate
-        ] = await self.get_related_command_to_validate(message)
+        command_to_validate: (
+            CommandToValidate | None
+        ) = await self.get_related_command_to_validate(message)
 
         if not command_to_validate:
             return

@@ -2,7 +2,7 @@ import json
 import random
 import string
 import time
-from typing import Any, Optional
+from typing import Any
 
 import aiofiles
 from matrix_bot.bot import MatrixClient
@@ -93,7 +93,7 @@ class ResetPasswordCommand(CommandToValidate):
         return True
 
     @override
-    def validation_message(self) -> Optional[str]:
+    def validation_message(self) -> str | None:
         return "\n".join(
             [
                 "You are about to reset password of the following users:",

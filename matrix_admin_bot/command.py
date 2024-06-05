@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
@@ -17,7 +16,7 @@ class Command(ABC):
         self.matrix_client = matrix_client
         self.current_status_reaction = None
 
-    async def set_status_reaction(self, key: Optional[str]) -> None:
+    async def set_status_reaction(self, key: str | None) -> None:
         if self.current_status_reaction:
             await self.matrix_client.room_redact(
                 self.room.room_id, self.current_status_reaction
@@ -36,7 +35,7 @@ class Command(ABC):
 
 class CommandToValidate(Command):
     # TODO property or not ?
-    def validation_message(self) -> Optional[str]:
+    def validation_message(self) -> str | None:
         return None
 
     @staticmethod

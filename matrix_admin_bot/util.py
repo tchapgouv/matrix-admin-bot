@@ -1,5 +1,3 @@
-from typing import Optional
-
 from nio import RoomMessageText
 
 
@@ -23,7 +21,7 @@ def get_fallback_stripped_body(reply: RoomMessageText) -> str:
     return "\n".join(stripped_body_lines)
 
 
-def get_server_name(user_or_room_id: str) -> Optional[str]:
+def get_server_name(user_or_room_id: str) -> str | None:
     parts = user_or_room_id.split(":")
     if len(parts) < 2:
         return None
