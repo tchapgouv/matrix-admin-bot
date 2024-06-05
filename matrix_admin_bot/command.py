@@ -35,6 +35,7 @@ class Command(ABC):
 
 
 class CommandToValidate(Command):
+    # TODO property or not ?
     def validation_message(self) -> Optional[str]:
         return None
 

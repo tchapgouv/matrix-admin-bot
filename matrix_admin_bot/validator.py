@@ -7,6 +7,7 @@ from matrix_admin_bot.command import Command
 
 
 class Validator(ABC):
+    # TODO property or not ?
     @abstractmethod
     def validation_prompt(self) -> str: ...
 

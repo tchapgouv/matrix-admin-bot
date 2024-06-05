@@ -11,6 +11,7 @@ from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
 from matrix_admin_bot.command import CommandToValidate
+from matrix_admin_bot.util import get_server_name
 
 
 class ResetPasswordCommand(CommandToValidate):
@@ -36,9 +37,15 @@ class ResetPasswordCommand(CommandToValidate):
 
         self.json_report: dict[str, Any] = {"command": self.KEYWORD}
 
+        self.server_name = get_server_name(self.matrix_client.user_id)
+
     async def reset_password(
         self, user_id: str, password: str, logout_devices: bool = True
     ):
+        # TODO check coordinator config
+        if get_server_name(user_id) != self.server_name:
+            return True
+
         resp = await self.matrix_client.send(
             "GET",
             f"/_synapse/admin/v2/users/{user_id}/devices",
@@ -114,14 +121,16 @@ class ResetPasswordCommand(CommandToValidate):
             )
 
         if self.failed_user_ids:
-            lines = [
-                "Couldn't reset the password of the following users:",
-                "",
-                *[f"- {user_id}" for user_id in self.failed_user_ids],
-            ]
+            text = "\n".join(
+                [
+                    "Couldn't reset the password of the following users:",
+                    "",
+                    *[f"- {user_id}" for user_id in self.failed_user_ids],
+                ]
+            )
             await self.matrix_client.send_markdown_message(
                 self.room.room_id,
-                "\n".join(lines),
+                text,
                 reply_to=self.message.event_id,
                 thread_root=self.message.event_id,
             )

@@ -1,5 +1,5 @@
 [project]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 
 [tool.poetry]
 name = "matrix_admin_bot"
@@ -15,9 +15,9 @@ packages = [
 matrix-admin-bot = "matrix_admin_bot.adminbot:main"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.11"
 #tchap-bot = { path = "../tchapbot/", develop = true }
-tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", branch = "tchapadmin-changes" }
+tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", branch = "tchapadmin" }
 pydantic = "^2.6.3"
 pydantic-settings = "^2.2.1"
 pyotp = "^2.9.0"
@@ -31,7 +31,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pyright]
-pythonVersion = "3.9"
+pythonVersion = "3.11"
 
 typeCheckingMode = "all"
 
