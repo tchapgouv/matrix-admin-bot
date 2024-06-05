@@ -40,5 +40,21 @@ reportUnknownMemberType = false
 reportMissingTypeStubs = false
 reportUnusedCallResult = false
 
+[tool.ruff]
+preview = true
+
 [tool.ruff.lint]
-select = ["E", "W", "F", "I", "UP"]
+select = [
+    "E",     # pycodestyle
+    "F",     # Pyflakes
+    "I",     # isort
+    "UP",    # pyupgrade
+    "ASYNC", # flake8-async
+    "C4",    # flake8-comprehensions
+    "T10",   # flake8-debugger
+    "FA",    # flake8-future-annotations
+    "PT",    # flake8-pytest-style
+    "RSE",   # flake8-raise
+    "PERF",  # Perflint
+    "FURB",  # refurb
+]

@@ -26,7 +26,7 @@ class ValidateBot(MatrixBot):
                     needs_secure_validator = True
                     break
         if needs_secure_validator and not secure_validator:
-            raise Exception()  # TODO
+            raise Exception  # TODO
         super().__init__(homeserver, username, password)
         self.commands = commands
         self.secure_validator = secure_validator
