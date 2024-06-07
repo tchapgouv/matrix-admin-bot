@@ -1,3 +1,5 @@
+from typing import Final
+
 from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessageText
 from typing_extensions import override
@@ -8,7 +10,7 @@ from matrix_admin_bot.validator import Validator
 
 
 class ConfirmValidator(Validator):
-    CONFIRM_KEYWORDS = [
+    CONFIRM_KEYWORDS: Final = [
         "yes",
         "ok",
         "confirm",
@@ -33,9 +35,7 @@ class ConfirmValidator(Validator):
         matrix_client: MatrixClient,
     ) -> bool:
         body = get_fallback_stripped_body(user_response)
-        if body.strip().strip(".") in self.CONFIRM_KEYWORDS:
-            return True
-        return False
+        return body.strip().strip(".") in self.CONFIRM_KEYWORDS
 
 
 CONFIRM_VALIDATOR = ConfirmValidator()

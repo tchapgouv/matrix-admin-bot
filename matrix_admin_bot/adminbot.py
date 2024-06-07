@@ -39,11 +39,11 @@ class AdminBotConfig(BaseSettings):
 def main():
     config = AdminBotConfig()
     bot = ValidateBot(
-        config.homeserver,
-        config.bot_username,
-        config.bot_password,
-        COMMANDS,
-        TOTPValidator(config.totps),
-        config.coordinator,
+        homeserver=config.homeserver,
+        username=config.bot_username,
+        password=config.bot_password,
+        commands=COMMANDS,
+        secure_validator=TOTPValidator(config.totps),
+        coordinator=config.coordinator,
     )
     bot.run()

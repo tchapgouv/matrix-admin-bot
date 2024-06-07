@@ -12,6 +12,7 @@ from matrix_admin_bot.validators.confirm import CONFIRM_VALIDATOR
 class ValidateBot(MatrixBot):
     def __init__(
         self,
+        *,
         homeserver: str,
         username: str,
         password: str,
@@ -21,10 +22,12 @@ class ValidateBot(MatrixBot):
     ):
         needs_secure_validator = False
         for command_type in commands:
-            if issubclass(command_type, CommandToValidate):
-                if command_type.needs_secure_validation():
-                    needs_secure_validator = True
-                    break
+            if (
+                issubclass(command_type, CommandToValidate)
+                and command_type.needs_secure_validation()
+            ):
+                needs_secure_validator = True
+                break
         if needs_secure_validator and not secure_validator:
             raise Exception  # TODO
         super().__init__(homeserver, username, password)

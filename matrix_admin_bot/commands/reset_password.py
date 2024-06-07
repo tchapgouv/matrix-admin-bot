@@ -1,5 +1,5 @@
 import json
-import random
+import secrets
 import string
 import time
 from typing import Any
@@ -40,7 +40,7 @@ class ResetPasswordCommand(CommandToValidate):
         self.server_name = get_server_name(self.matrix_client.user_id)
 
     async def reset_password(
-        self, user_id: str, password: str, logout_devices: bool = True
+        self, user_id: str, password: str, *, logout_devices: bool = True
     ):
         # TODO check coordinator config
         if get_server_name(user_id) != self.server_name:
@@ -82,15 +82,12 @@ class ResetPasswordCommand(CommandToValidate):
     async def execute(self) -> bool:
         def randomword(length: int):
             characters = string.ascii_lowercase + string.digits
-            return "".join(random.choice(characters) for _ in range(length))
+            return "".join(secrets.choice(characters) for _ in range(length))
 
         for user_id in self.user_ids:
             await self.reset_password(user_id, randomword(32))
 
-        if self.failed_user_ids:
-            return False
-
-        return True
+        return not self.failed_user_ids
 
     @override
     def validation_message(self) -> str | None:
