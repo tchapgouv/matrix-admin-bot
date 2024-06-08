@@ -12,9 +12,8 @@ def get_fallback_stripped_body(reply: RoomMessageText) -> str:
             if line.strip() == "":
                 new_line_found = True
                 continue
-            else:
-                # ...
-                stripped_body_lines.append(line)
+            # Out of spec...
+            stripped_body_lines.append(line)
         else:
             stripped_body_lines.append(line)
 

@@ -27,7 +27,7 @@ class Command(ABC):
             )
 
     async def send_result(self) -> None:
-        pass
+        return
 
     @abstractmethod
     async def execute(self) -> bool: ...

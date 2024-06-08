@@ -42,35 +42,37 @@ reportMissingTypeStubs = false
 reportUnusedCallResult = false
 
 [tool.ruff.lint]
-select = [
-    "E",     # pycodestyle
-    "W",     # pycodestyle warnings
-    "F",     # Pyflakes
-    "I",     # isort
-    "UP",    # pyupgrade
-    "ASYNC", # flake8-async
-    "C4",    # flake8-comprehensions
-    "T10",   # flake8-debugger
-    "FA",    # flake8-future-annotations
-    "PT",    # flake8-pytest-style
-    "RSE",   # flake8-raise
-    "PERF",  # Perflint
-]
-
 # select = [
-# "ALL"
+#     "E",     # pycodestyle
+#     "W",     # pycodestyle warnings
+#     "F",     # Pyflakes
+#     "I",     # isort
+#     "UP",    # pyupgrade
+#     "ASYNC", # flake8-async
+#     "C4",    # flake8-comprehensions
+#     "T10",   # flake8-debugger
+#     "FA",    # flake8-future-annotations
+#     "PT",    # flake8-pytest-style
+#     "RSE",   # flake8-raise
+#     "PERF",  # Perflint
 # ]
-# ignore = [
-#     "D",
-#     "CPY",
-#     "TD",
-#     "ANN",
-#     "COM812",
-#     "ARG002",
-#     "PLR2004",
-#     "PLC1901",
-#     "PLR2004",
-#     "PLR0913",
 
-#     "FIX",
-# ]
+select = [
+"ALL"
+]
+ignore = [
+    "D",       # Missing docstring
+    "TD",      # TODO formatting
+    "ANN",     # Missing type annotation
+    "COM812",  # Trailing comma missing
+    "ARG002",  # Unused method argument
+    "PLR2004", # Magic value used in comparison
+    "PLR0913", # Too many arguments in function definition
+
+    # TO BE FIXED !!
+    "T201",    # `print` found
+    "TRY002",  # Create your own exception
+    "BLE001",  # Do not catch blind exception
+    "S101",    # Use of `assert` detected
+    "FIX002",  # Line contains TODO, consider resolving the issue
+]
