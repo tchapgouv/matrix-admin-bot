@@ -47,6 +47,7 @@ select = [
 ]
 ignore = [
     "TD",      # TODO formatting
+    "ISC001",  # This rule conflicts with ruff formatter
     "ANN101",  # Missing type annotation for `self` in method
     "ANN102",  # Missing type annotation for `cls` in classmethod
     "COM812",  # Trailing comma missing
