@@ -19,7 +19,7 @@ class ResetPasswordCommand(CommandToValidate):
 
     @staticmethod
     @override
-    def needs_secure_validation():
+    def needs_secure_validation() -> bool:
         return True
 
     def __init__(
@@ -41,7 +41,7 @@ class ResetPasswordCommand(CommandToValidate):
 
     async def reset_password(
         self, user_id: str, password: str, *, logout_devices: bool = True
-    ):
+    ) -> bool:
         # TODO check coordinator config
         if get_server_name(user_id) != self.server_name:
             return True
@@ -80,7 +80,7 @@ class ResetPasswordCommand(CommandToValidate):
 
     @override
     async def execute(self) -> bool:
-        def randomword(length: int):
+        def randomword(length: int) -> str:
             characters = string.ascii_lowercase + string.digits
             return "".join(secrets.choice(characters) for _ in range(length))
 

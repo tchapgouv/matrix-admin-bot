@@ -42,28 +42,13 @@ reportMissingTypeStubs = false
 reportUnusedCallResult = false
 
 [tool.ruff.lint]
-# select = [
-#     "E",     # pycodestyle
-#     "W",     # pycodestyle warnings
-#     "F",     # Pyflakes
-#     "I",     # isort
-#     "UP",    # pyupgrade
-#     "ASYNC", # flake8-async
-#     "C4",    # flake8-comprehensions
-#     "T10",   # flake8-debugger
-#     "FA",    # flake8-future-annotations
-#     "PT",    # flake8-pytest-style
-#     "RSE",   # flake8-raise
-#     "PERF",  # Perflint
-# ]
-
 select = [
 "ALL"
 ]
 ignore = [
-    "D",       # Missing docstring
     "TD",      # TODO formatting
-    "ANN",     # Missing type annotation
+    "ANN101",  # Missing type annotation for `self` in method
+    "ANN102",  # Missing type annotation for `cls` in classmethod
     "COM812",  # Trailing comma missing
     "ARG002",  # Unused method argument
     "PLR2004", # Magic value used in comparison
@@ -75,4 +60,5 @@ ignore = [
     "BLE001",  # Do not catch blind exception
     "S101",    # Use of `assert` detected
     "FIX002",  # Line contains TODO, consider resolving the issue
+    "D",       # Missing docstring
 ]

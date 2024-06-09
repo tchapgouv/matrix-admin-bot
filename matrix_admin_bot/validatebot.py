@@ -19,7 +19,7 @@ class ValidateBot(MatrixBot):
         commands: list[type[Command]],
         secure_validator: Validator | None,
         coordinator: str | None,
-    ):
+    ) -> None:
         needs_secure_validator = False
         for command_type in commands:
             if (
@@ -51,10 +51,10 @@ class ValidateBot(MatrixBot):
         room: MatrixRoom,
         message: RoomMessage,
         matrix_client: MatrixClient,
-    ):
+    ) -> None:
         self.recent_events_cache[message.event_id] = message
 
-    def get_replied_event(self, message: RoomMessage):
+    def get_replied_event(self, message: RoomMessage) -> RoomMessage | None:
         return self.recent_events_cache.get(
             message.source.get("content", {})
             .get("m.relates_to", {})
@@ -95,7 +95,7 @@ class ValidateBot(MatrixBot):
         room: MatrixRoom,
         message: RoomMessage,
         matrix_client: MatrixClient,
-    ):
+    ) -> None:
         if not isinstance(message, RoomMessageText):
             return
 
@@ -103,7 +103,6 @@ class ValidateBot(MatrixBot):
         if not content:
             return
 
-        # let's check if we have a thread root message and if it is a command
         command_to_validate: (
             CommandToValidate | None
         ) = await self.get_related_command_to_validate(message)
@@ -123,7 +122,7 @@ class ValidateBot(MatrixBot):
         if await validator.validate(room, message, command_to_validate, matrix_client):
             await self.execute_command(command_to_validate)
 
-    async def execute_command(self, command: Command):
+    async def execute_command(self, command: Command) -> None:
         await command.set_status_reaction("🚀")
         result_reaction = "❌"
         try:
@@ -144,7 +143,7 @@ class ValidateBot(MatrixBot):
         room: MatrixRoom,
         message: RoomMessage,
         matrix_client: MatrixClient,
-    ):
+    ) -> None:
         for command_type in self.commands:
             try:
                 command = command_type(room, message, matrix_client)

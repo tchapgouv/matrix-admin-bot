@@ -36,7 +36,7 @@ class AdminBotConfig(BaseSettings):
         return (TomlConfigSettingsSource(settings_cls),)
 
 
-def main():
+def main() -> None:
     config = AdminBotConfig()
     bot = ValidateBot(
         homeserver=config.homeserver,
