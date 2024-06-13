@@ -8,10 +8,11 @@ from typing_extensions import override
 
 from matrix_admin_bot.command import Command
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
+from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 from matrix_admin_bot.validatebot import ValidateBot
 from matrix_admin_bot.validators.totp import TOTPValidator
 
-COMMANDS: list[type[Command]] = [ResetPasswordCommand]
+COMMANDS: list[type[Command]] = [ResetPasswordCommand, ServerNoticeCommand]
 
 
 class AdminBotConfig(BaseSettings):
