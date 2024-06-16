@@ -1,40 +1,35 @@
 from matrix_bot.bot import MatrixClient
-from nio import MatrixRoom, RoomMessageText
+from nio import MatrixRoom, RoomMessageText, RoomMessage
 from pyotp import TOTP
 from typing_extensions import override
 
-from matrix_admin_bot.command import Command
+from matrix_admin_bot.command_validator import CommandValidatorStep
 from matrix_admin_bot.util import get_fallback_stripped_body
-from matrix_admin_bot.validator import Validator
+
+DEFAULT_MESSAGE = (
+    "Please reply to this message with an authentication code" 
+    " to validate and execute the command."
+)
 
 
-class TOTPValidator(Validator):
-    def __init__(self, totps: dict[str, str]) -> None:
-        super().__init__()
+class TOTPCommandValidatorStep(CommandValidatorStep):
+
+    def __init__(self, totps: dict[str, str], message: str = DEFAULT_MESSAGE) -> None:
+        super().__init__(message)
         self.totps = {user_id: TOTP(totp_seed) for user_id, totp_seed in totps.items()}
 
     @override
-    def validation_prompt(self) -> str:
-        return (
-            "Please reply to this message with an authentication code"
-            " to validate and execute the command."
-        )
-
-    @override
-    async def validate(
-        self,
-        room: MatrixRoom,
-        user_response: RoomMessageText,
-        command: Command,
-        matrix_client: MatrixClient,
-    ) -> bool:
+    async def validate(self, user_response: RoomMessage, thread_root_message: RoomMessage, room: MatrixRoom,
+                       matrix_client: MatrixClient) -> bool:
+        if not isinstance(user_response, RoomMessageText):
+            return
         error_msg = None
 
         body = get_fallback_stripped_body(user_response)
         totp_code = body.replace(" ", "")
 
         if len(totp_code) == 6 and totp_code.isdigit():
-            totp_checker = self.totps.get(command.message.sender)
+            totp_checker = self.totps.get(thread_root_message.sender)
             if not totp_checker:
                 error_msg = "You are not allowed to execute secure commands, sorry."
             elif not totp_checker.verify(totp_code):
@@ -48,7 +43,7 @@ class TOTPValidator(Validator):
                 room.room_id,
                 error_msg,
                 reply_to=user_response.event_id,
-                thread_root=command.message.event_id,
+                thread_root=thread_root_message.event_id,
             )
             return False
 

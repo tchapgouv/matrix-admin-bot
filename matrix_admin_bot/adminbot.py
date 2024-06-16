@@ -6,12 +6,13 @@ from pydantic_settings import (
 )
 from typing_extensions import override
 
+from matrix_admin_bot.bot_handler import BotHandler
 from matrix_admin_bot.command import Command
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
-from matrix_admin_bot.validatebot import ValidateBot
-from matrix_admin_bot.validators.totp import TOTPValidator
+# from matrix_admin_bot.commands.test import TestCommand
 
 COMMANDS: list[type[Command]] = [ResetPasswordCommand]
+# COMMANDS: list[type[Command]] = [TestCommand, ResetPasswordCommand]
 
 
 class AdminBotConfig(BaseSettings):
@@ -38,12 +39,12 @@ class AdminBotConfig(BaseSettings):
 
 def main() -> None:
     config = AdminBotConfig()
-    bot = ValidateBot(
+    bot = BotHandler(
         homeserver=config.homeserver,
         username=config.bot_username,
         password=config.bot_password,
         commands=COMMANDS,
-        secure_validator=TOTPValidator(config.totps),
+        totps=config.totps,
         coordinator=config.coordinator,
     )
     bot.run()
