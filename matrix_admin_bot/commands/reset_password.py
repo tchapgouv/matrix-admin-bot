@@ -11,21 +11,27 @@ from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
 from matrix_admin_bot.command import CommandToValidate
+from matrix_admin_bot.command_validator import CommandValidatorStep
 from matrix_admin_bot.util import get_server_name
+from matrix_admin_bot.validators.totp import TOTPCommandValidatorStep, DEFAULT_MESSAGE
 
 
 class ResetPasswordCommand(CommandToValidate):
     KEYWORD = "reset_password"
 
-    @staticmethod
-    @override
-    def needs_secure_validation() -> bool:
-        return True
+    # @staticmethod
+    # @override
+    # def needs_secure_validation() -> bool:
+    #     return True
 
     def __init__(
-        self, room: MatrixRoom, message: RoomMessage, matrix_client: MatrixClient
+            self,
+            room: MatrixRoom,
+            message: RoomMessage,
+            matrix_client: MatrixClient,
+            totps: dict[str, str] | None,
     ) -> None:
-        super().__init__(room, message, matrix_client)
+        super().__init__(room, message, matrix_client, totps)
 
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client
@@ -39,8 +45,19 @@ class ResetPasswordCommand(CommandToValidate):
 
         self.server_name = get_server_name(self.matrix_client.user_id)
 
+        message = (("\n".join([
+                "You are about to reset password of the following users:",
+                "",
+                *[f"- {user_id}" for user_id in self.user_ids],
+                "",
+                "⚠⚠ This will also log-out all of their devices!",])
+                + "\n\n"
+                + DEFAULT_MESSAGE))
+
+        self.command_validator: list[CommandValidatorStep] = [TOTPCommandValidatorStep(totps, message)]
+
     async def reset_password(
-        self, user_id: str, password: str, *, logout_devices: bool = True
+            self, user_id: str, password: str, *, logout_devices: bool = True
     ) -> bool:
         # TODO check coordinator config
         if get_server_name(user_id) != self.server_name:
@@ -88,18 +105,6 @@ class ResetPasswordCommand(CommandToValidate):
             await self.reset_password(user_id, randomword(32))
 
         return not self.failed_user_ids
-
-    @override
-    def validation_message(self) -> str | None:
-        return "\n".join(
-            [
-                "You are about to reset password of the following users:",
-                "",
-                *[f"- {user_id}" for user_id in self.user_ids],
-                "",
-                "⚠⚠ This will also log-out all of their devices!",
-            ]
-        )
 
     @override
     async def send_result(self) -> None:
