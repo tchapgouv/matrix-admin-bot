@@ -1,11 +1,18 @@
 import asyncio
+import time
 from asyncio import Task
 from collections.abc import Awaitable, Callable
 from typing import Any, NoReturn
 from unittest.mock import AsyncMock
 
 from matrix_bot.bot import MatrixBot
-from nio import Event, MatrixRoom, RoomMessage
+from nio import Event, MatrixRoom, RoomMessage, RoomMessageText
+from typing_extensions import override
+
+from matrix_command_bot.command import ICommand
+from matrix_command_bot.validation import IValidator
+
+USER1_ID = "@user1:example.org"
 
 event_id_counter: int = 0
 
@@ -50,6 +57,34 @@ class MatrixClientMock:
             if event_filter is None or isinstance(message, event_filter):
                 await callback(room, message)
 
+    async def fake_synced_text_message(
+        self,
+        room: MatrixRoom,
+        sender: str,
+        text: str,
+        *,
+        content: dict[str, Any] | None = None,
+    ) -> str:
+        event_id = generate_event_id()
+        source: dict[str, Any] = {
+            "event_id": event_id,
+            "sender": sender,
+            "origin_server_ts": int(time.time() * 1000),
+        }
+        if content:
+            source["content"] = content
+        message = RoomMessageText(
+            source=source,
+            body=text,
+            format=None,
+            formatted_body=None,
+        )
+        await self.fake_synced_message(
+            room,
+            message,
+        )
+        return event_id
+
     async def sync_forever(self, *_args: Any, **_kwargs: Any) -> NoReturn:
         self.sync_forever_called = True
         while True:
@@ -66,3 +101,13 @@ async def mock_client_and_run(bot: MatrixBot) -> tuple[MatrixClientMock, Task[No
         await asyncio.sleep(0.001)
 
     return fake_client, t
+
+
+class OkValidator(IValidator):
+    @override
+    async def validate(
+        self,
+        user_response: RoomMessage | None,
+        command: ICommand,
+    ) -> bool:
+        return True

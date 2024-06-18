@@ -62,10 +62,7 @@ ignore = [
     "PLR0913", # Too many arguments in function definition
 
     # TO BE FIXED !!
-    "T201",    # `print` found
     "TRY002",  # Create your own exception
-    "BLE001",  # Do not catch blind exception
-    "S101",    # Use of `assert` detected
     "FIX002",  # Line contains TODO, consider resolving the issue
     "D",       # Missing docstring
 ]
@@ -73,6 +70,8 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
+    "INP001",  # File is part of an implicit namespace package. Add an `__init__.py`
     "PLW0603", # Using the global statement to update variable is discouraged
+    "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned
 ]

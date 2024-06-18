@@ -10,22 +10,24 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_admin_bot.command import CommandToValidate
-from matrix_admin_bot.util import get_server_name
+from matrix_command_bot import validation
+from matrix_command_bot.simple_commands import SimpleValidatedCommand
+from matrix_command_bot.util import get_server_name
 
 
-class ResetPasswordCommand(CommandToValidate):
+class ResetPasswordCommand(SimpleValidatedCommand):
     KEYWORD = "reset_password"
 
-    @staticmethod
-    @override
-    def needs_secure_validation() -> bool:
-        return True
-
     def __init__(
-        self, room: MatrixRoom, message: RoomMessage, matrix_client: MatrixClient
+        self,
+        room: MatrixRoom,
+        message: RoomMessage,
+        matrix_client: MatrixClient,
     ) -> None:
-        super().__init__(room, message, matrix_client)
+        if not validation.SECURE_VALIDATOR:
+            raise Exception
+
+        super().__init__(room, message, matrix_client, validation.SECURE_VALIDATOR)
 
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client
@@ -79,7 +81,7 @@ class ResetPasswordCommand(CommandToValidate):
         return True
 
     @override
-    async def execute(self) -> bool:
+    async def simple_execute(self) -> bool:
         def randomword(length: int) -> str:
             characters = string.ascii_lowercase + string.digits
             return "".join(secrets.choice(characters) for _ in range(length))
@@ -87,10 +89,14 @@ class ResetPasswordCommand(CommandToValidate):
         for user_id in self.user_ids:
             await self.reset_password(user_id, randomword(32))
 
+        if self.json_report:
+            await self.send_report()
+
         return not self.failed_user_ids
 
+    @property
     @override
-    def validation_message(self) -> str | None:
+    def confirm_message(self) -> str | None:
         return "\n".join(
             [
                 "You are about to reset password of the following users:",
@@ -101,8 +107,7 @@ class ResetPasswordCommand(CommandToValidate):
             ]
         )
 
-    @override
-    async def send_result(self) -> None:
+    async def send_report(self) -> None:
         async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
             await tmpfile.write(
                 json.dumps(self.json_report, indent=2, sort_keys=True).encode()
