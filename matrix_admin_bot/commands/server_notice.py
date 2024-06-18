@@ -1,10 +1,9 @@
 import json
-import secrets
-import string
 import time
 from typing import Any
 
 import aiofiles
+import structlog
 from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
@@ -12,9 +11,11 @@ from typing_extensions import override
 
 from matrix_admin_bot.command import CommandWithSteps
 from matrix_admin_bot.command_step import CommandStep
-from matrix_admin_bot.util import get_server_name
 from matrix_admin_bot.steps.confirm import ConfirmCommandStep
-from matrix_admin_bot.steps.totp import TOTPCommandStep, DEFAULT_MESSAGE
+from matrix_admin_bot.steps.totp import DEFAULT_MESSAGE, TOTPCommandStep
+from matrix_admin_bot.util import get_server_name
+
+logger = structlog.getLogger(__name__)
 
 
 class ServerNoticeState:
@@ -44,17 +45,17 @@ class ServerNoticeGetNoticeStep(CommandStep):
         return True
 
 
-class ServerNoticeConfirmStep(ConfirmCommandStep):
-
-    def __init__(self, command_state: ServerNoticeState, message: str = DEFAULT_MESSAGE) -> None:
-        super().__init__(message)
+class ServerNoticeConfirmStep(TOTPCommandStep):
+    def __init__(self, command_state: ServerNoticeState, totps: dict[str, str], message: str = DEFAULT_MESSAGE) -> None:
+        super().__init__(totps, message)
         self.command_state = command_state
 
     @override
     def validation_message(self) -> str :
         return "\n".join(
             [
-                f"Are you ok with the following notice ? Type {ConfirmCommandStep.CONFIRM_KEYWORDS}",
+                super().validation_message(),
+                "",
                 "",
                 self.command_state.notice["body"]
             ]
@@ -89,18 +90,16 @@ class ServerNoticeCommand(CommandWithSteps):
 
         self.command_state = ServerNoticeState()
         self.command_steps: list[CommandStep] = [ServerNoticeGetNoticeStep(self.command_state),
-                                                     ServerNoticeConfirmStep(self.command_state),
-                                                     # TOTPCommandStep(totps)
-                                                     ]
+                                                 ServerNoticeConfirmStep(self.command_state, totps),
+                                                ]
 
     @override
     async def execute(self) -> bool:
         user_id = "@mag:my.matrix.host"
         return await self.send_server_notice(self.command_state.notice, user_id)
 
-    async def send_server_notice(self, message: str, user_id: str) -> bool:
-        # print(message)
-        content:dict[str, Any] = {}
+    async def send_server_notice(self, message: dict[str:Any], user_id: str) -> bool:
+        content: dict[str, Any] = {}
         for key in ["msgtype", "body", "format", "formatted_body"]:
             if key in message:
                 content[key] = message[key]
@@ -135,6 +134,7 @@ class ServerNoticeCommand(CommandWithSteps):
 
     @override
     async def send_result(self) -> None:
+        logger.info(f"result={self.json_report}")
         async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
             await tmpfile.write(
                 json.dumps(self.json_report, indent=2, sort_keys=True).encode()
