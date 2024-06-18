@@ -10,6 +10,7 @@ authors = ["Tchap Team <tech@tchap.beta.gouv.fr>"]
 license = "MIT"
 packages = [
     { include = "matrix_admin_bot" },
+    { include = "matrix_command_bot" },
 ]
 
 [tool.poetry.scripts]
@@ -29,6 +30,7 @@ ruff = "^0.4.6"
 basedpyright = "^1.12.4"
 pytest = "^8.2.2"
 pytest-asyncio = "^0.23.7"
+coverage = "^7.5.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -62,10 +64,7 @@ ignore = [
     "PLR0913", # Too many arguments in function definition
 
     # TO BE FIXED !!
-    "T201",    # `print` found
     "TRY002",  # Create your own exception
-    "BLE001",  # Do not catch blind exception
-    "S101",    # Use of `assert` detected
     "FIX002",  # Line contains TODO, consider resolving the issue
     "D",       # Missing docstring
 ]
@@ -73,6 +72,8 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
+    "INP001",  # File is part of an implicit namespace package. Add an `__init__.py`
     "PLW0603", # Using the global statement to update variable is discouraged
+    "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned
 ]
