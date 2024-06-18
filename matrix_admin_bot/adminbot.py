@@ -9,10 +9,11 @@ from typing_extensions import override
 from matrix_admin_bot.bot_handler import BotHandler
 from matrix_admin_bot.command import Command
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
-# from matrix_admin_bot.commands.test import TestCommand
+from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 
-COMMANDS: list[type[Command]] = [ResetPasswordCommand]
-# COMMANDS: list[type[Command]] = [TestCommand, ResetPasswordCommand]
+from matrix_admin_bot.commands.test import TestCommand
+
+COMMANDS: list[type[Command]] = [ResetPasswordCommand, ServerNoticeCommand, TestCommand]
 
 
 class AdminBotConfig(BaseSettings):
