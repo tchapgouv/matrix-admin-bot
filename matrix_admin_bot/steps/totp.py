@@ -3,7 +3,7 @@ from nio import MatrixRoom, RoomMessageText, RoomMessage
 from pyotp import TOTP
 from typing_extensions import override
 
-from matrix_admin_bot.command_validator import CommandValidatorStep
+from matrix_admin_bot.command_step import CommandStep
 from matrix_admin_bot.util import get_fallback_stripped_body
 
 DEFAULT_MESSAGE = (
@@ -12,7 +12,7 @@ DEFAULT_MESSAGE = (
 )
 
 
-class TOTPCommandValidatorStep(CommandValidatorStep):
+class TOTPCommandStep(CommandStep):
 
     def __init__(self, totps: dict[str, str], message: str = DEFAULT_MESSAGE) -> None:
         super().__init__(message)

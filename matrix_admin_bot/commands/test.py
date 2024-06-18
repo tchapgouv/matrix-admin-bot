@@ -5,15 +5,15 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_admin_bot.command import CommandToValidate
-from matrix_admin_bot.command_validator import CommandValidatorStep
+from matrix_admin_bot.command import CommandWithSteps
+from matrix_admin_bot.command_step import CommandStep
 from matrix_admin_bot.util import get_server_name
-# from matrix_admin_bot.validators.confirm import CONFIRM_VALIDATOR_STEP
-from matrix_admin_bot.validators.totp import TOTPCommandValidatorStep
+# from matrix_admin_bot.steps.confirm import CONFIRM_COMMAND_STEP
+from matrix_admin_bot.steps.totp import TOTPCommandStep
 
 
 # FIXME: remove this when prototype is finised
-class TestCommandValidatorStep(CommandValidatorStep):
+class TestCommandStep(CommandStep):
 
     @override
     def validation_message(self) -> str:
@@ -31,7 +31,7 @@ class TestCommandValidatorStep(CommandValidatorStep):
         return user_response.source.get("content", {}).get("body") == 'ok'
 
 
-class TestCommandValidatorStep2(CommandValidatorStep):
+class TestCommandStep2(CommandStep):
 
     @override
     def validation_message(self) -> str :
@@ -49,7 +49,7 @@ class TestCommandValidatorStep2(CommandValidatorStep):
         return user_response.source.get("content", {}).get("body") == 'yes'
 
 
-class TestCommand(CommandToValidate):
+class TestCommand(CommandWithSteps):
     KEYWORD = "test"
 
     def __init__(
@@ -73,9 +73,9 @@ class TestCommand(CommandToValidate):
 
         self.server_name = get_server_name(self.matrix_client.user_id)
 
-        self.command_validator: list[CommandValidatorStep] = [TestCommandValidatorStep(),
-                                                              TestCommandValidatorStep2(),
-                                                              TOTPCommandValidatorStep(totps)]
+        self.command_steps: list[CommandStep] = [TestCommandStep(),
+                                                     TestCommandStep2(),
+                                                     TOTPCommandStep(totps)]
 
     @override
     async def execute(self) -> bool:

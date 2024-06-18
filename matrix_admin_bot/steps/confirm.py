@@ -4,11 +4,11 @@ from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessageText, RoomMessage
 from typing_extensions import override
 
-from matrix_admin_bot.command_validator import CommandValidatorStep
+from matrix_admin_bot.command_step import CommandStep
 from matrix_admin_bot.util import get_fallback_stripped_body
 
 
-class ConfirmCommandValidatorStep(CommandValidatorStep):
+class ConfirmCommandStep(CommandStep):
     CONFIRM_KEYWORDS: Final = [
         "yes",
         "ok",
@@ -33,5 +33,5 @@ class ConfirmCommandValidatorStep(CommandValidatorStep):
         return body.strip().strip(".") in self.CONFIRM_KEYWORDS
 
 
-CONFIRM_VALIDATOR_STEP = ConfirmCommandValidatorStep()
+CONFIRM_COMMAND_STEP = ConfirmCommandStep()
 
