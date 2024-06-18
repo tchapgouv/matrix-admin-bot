@@ -1,0 +1,11 @@
+#homeserver = "http://localhost:8008"
+homeserver = "http://host.docker.internal:8008"
+
+bot_username = "adminbot"
+bot_password = "test1!"
+
+#coordinator = "@adminbot:tout.im"
+
+[totps]
+"@mag:my.matrix.host" = "JBSWY3DPEHPK3PXP"
+

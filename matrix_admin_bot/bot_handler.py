@@ -37,12 +37,12 @@ class BotHandler(MatrixBot):
 
         self.callbacks.register_on_message_event(self.store_event_in_cache)
         # self.callbacks.register_on_message_event(self.validate_and_execute)
-        self.callbacks.register_on_message_event(self.handle_commands, self.matrix_client)
+        self.callbacks.register_on_message_event(self.handle_commands)
 
     async def store_event_in_cache(
         self,
         room: MatrixRoom,
-        message: RoomMessage,
+        message: RoomMessage
     ) -> None:
         self.recent_events_cache[message.event_id] = message
 
@@ -88,20 +88,20 @@ class BotHandler(MatrixBot):
         message: RoomMessage,
     ) -> None:
         event_parser = MessageEventParser(
-            room=room, event=message, matrix_client=matrix_client
+            room=room, event=message, matrix_client=self.matrix_client
         )
         try:
             event_parser.do_not_accept_own_message()
         except EventNotConcerned:
             return
         # Existing command
-        command = await self.find_existing_command(room, message, matrix_client)
+        command = await self.find_existing_command(room, message, self.matrix_client)
         logger.info(f"existing_command={command}")
         if command:
             await command.process_steps(message)
         else:
             # Is new command
-            command = self.create_command(room, message, matrix_client)
+            command = self.create_command(room, message, self.matrix_client)
             if command:
                 logger.info(f"new command={command}")
                 await command.process_steps(message)
