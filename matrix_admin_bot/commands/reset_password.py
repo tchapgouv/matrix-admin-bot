@@ -5,18 +5,21 @@ import time
 from typing import Any
 
 import aiofiles
+import structlog
 from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_admin_bot.command import CommandToValidate
-from matrix_admin_bot.command_validator import CommandValidatorStep
+from matrix_admin_bot.command import CommandWithSteps
+from matrix_admin_bot.command_step import CommandStep
 from matrix_admin_bot.util import get_server_name
-from matrix_admin_bot.validators.totp import TOTPCommandValidatorStep, DEFAULT_MESSAGE
+from matrix_admin_bot.steps.totp import TOTPCommandStep, DEFAULT_MESSAGE
+
+logger = structlog.getLogger(__name__)
 
 
-class ResetPasswordCommand(CommandToValidate):
+class ResetPasswordCommand(CommandWithSteps):
     KEYWORD = "reset_password"
 
     # @staticmethod
@@ -54,7 +57,7 @@ class ResetPasswordCommand(CommandToValidate):
                 + "\n\n"
                 + DEFAULT_MESSAGE))
 
-        self.command_validator: list[CommandValidatorStep] = [TOTPCommandValidatorStep(totps, message)]
+        self.command_steps: list[CommandStep] = [TOTPCommandStep(totps, message)]
 
     async def reset_password(
             self, user_id: str, password: str, *, logout_devices: bool = True
@@ -108,6 +111,7 @@ class ResetPasswordCommand(CommandToValidate):
 
     @override
     async def send_result(self) -> None:
+        logger.info(f"result={self.json_report}")
         async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
             await tmpfile.write(
                 json.dumps(self.json_report, indent=2, sort_keys=True).encode()

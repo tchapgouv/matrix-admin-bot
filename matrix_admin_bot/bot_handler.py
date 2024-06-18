@@ -7,7 +7,7 @@ from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import EventNotConcerned, MessageEventParser
 from nio import MatrixRoom, RoomMessage
 
-from matrix_admin_bot.command import Command, CommandToValidate
+from matrix_admin_bot.command import Command, CommandWithSteps
 
 logger = structlog.getLogger(__name__)
 
@@ -57,18 +57,18 @@ class BotHandler(MatrixBot):
 
     async def get_related_command_to_validate(
         self, message: RoomMessage
-    ) -> CommandToValidate | None:
+    ) -> CommandWithSteps | None:
         content = message.source.get("content", {})
         if not content:
             return None
 
         # let's check if we have a thread root message and if it is a command
-        command_to_validate: CommandToValidate | None = None
+        command_to_validate: CommandWithSteps | None = None
         if content.get("m.relates_to", {}).get("rel_type") == "m.thread":
             command = self.commands_cache.get(
                 content.get("m.relates_to", {}).get("event_id")
             )
-            if isinstance(command, CommandToValidate):
+            if isinstance(command, CommandWithSteps):
                 return command
 
         if not command_to_validate:
@@ -78,7 +78,7 @@ class BotHandler(MatrixBot):
                 replied_event = self.get_replied_event(replied_event)
                 if replied_event:
                     command = self.commands_cache.get(replied_event.event_id)
-                    if isinstance(command, CommandToValidate):
+                    if isinstance(command, CommandWithSteps):
                         return command
 
         return None
@@ -100,13 +100,13 @@ class BotHandler(MatrixBot):
         command = await self.find_existing_command(room, message, matrix_client)
         logger.info(f"existing_command={command}")
         if command:
-            await command.process_validator_steps(message)
+            await command.process_steps(message)
         else:
             # Is new command
             command = self.create_command(room, message, matrix_client)
             if command:
                 logger.info(f"new command={command}")
-                await command.process_validator_steps(message)
+                await command.process_steps(message)
 
         if not command:
             logger.info(f"command=No command found for {message}")
@@ -119,15 +119,15 @@ class BotHandler(MatrixBot):
         await self.execute_command(command)
 
     async def find_existing_command(self, room, message, matrix_client) -> (
-            CommandToValidate | None
+            CommandWithSteps | None
         ):
         existing_command_request = await self.get_related_command_to_validate(message)
         return existing_command_request
 
-    def create_command(self, room, message, matrix_client) -> CommandToValidate:
+    def create_command(self, room, message, matrix_client) -> CommandWithSteps:
         for command_type in self.commands:
             try:
-                if issubclass(command_type, CommandToValidate):
+                if issubclass(command_type, CommandWithSteps):
                     command = command_type(room, message, matrix_client, self.totps)
                 else:
                     command = command_type(room, message, matrix_client)

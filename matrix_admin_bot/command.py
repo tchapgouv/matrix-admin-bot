@@ -4,7 +4,7 @@ from functools import reduce
 from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
 
-from matrix_admin_bot.command_validator import CommandValidatorStep
+from matrix_admin_bot.command_step import CommandStep
 
 
 class Command(ABC):
@@ -37,7 +37,7 @@ class Command(ABC):
         ...
 
 
-class CommandToValidate(Command):
+class CommandWithSteps(Command):
 
     def __init__(
             self,
@@ -48,7 +48,7 @@ class CommandToValidate(Command):
     ) -> None:
         super().__init__(room, message, matrix_client)
         self.totps = totps
-        self.command_validator: list[CommandValidatorStep] = []
+        self.command_steps: list[CommandStep] = []
 
     # # TODO: remove this or re-use this
     # @staticmethod
@@ -56,23 +56,23 @@ class CommandToValidate(Command):
     # def needs_secure_validation() -> bool:
         ...
 
-    async def process_validator_steps(self, message: RoomMessage):
+    async def process_steps(self, message: RoomMessage):
         # the validation should come from the sender of the command
         if self.message.sender != message.sender:
             return
-        command_validator = self.get_next_command_validator()
-        if command_validator:
-            await command_validator.process(self.room, message, self.matrix_client, self.message)
-            if command_validator.is_success():
-                next_command_validator = self.get_next_command_validator()
-                if next_command_validator:
-                    await next_command_validator.process(self.room, message, self.matrix_client, self.message)
+        command_steps = self.get_next_command_step()
+        if command_steps:
+            await command_steps.process(self.room, message, self.matrix_client, self.message)
+            if command_steps.is_success():
+                next_command_step = self.get_next_command_step()
+                if next_command_step:
+                    await next_command_step.process(self.room, message, self.matrix_client, self.message)
 
-    def get_next_command_validator(self):
-        for command_validator in self.command_validator:
-            if not command_validator.is_success():
-                return command_validator
+    def get_next_command_step(self):
+        for command_step in self.command_steps:
+            if not command_step.is_success():
+                return command_step
         return None
 
     def is_valid(self):
-        return reduce(lambda x, y: x and y.is_success(), self.command_validator, True)
+        return reduce(lambda x, y: x and y.is_success(), self.command_steps, True)

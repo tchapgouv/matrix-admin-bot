@@ -10,18 +10,18 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_admin_bot.command import CommandToValidate
-from matrix_admin_bot.command_validator import CommandValidatorStep
+from matrix_admin_bot.command import CommandWithSteps
+from matrix_admin_bot.command_step import CommandStep
 from matrix_admin_bot.util import get_server_name
-from matrix_admin_bot.validators.confirm import ConfirmCommandValidatorStep
-from matrix_admin_bot.validators.totp import TOTPCommandValidatorStep, DEFAULT_MESSAGE
+from matrix_admin_bot.steps.confirm import ConfirmCommandStep
+from matrix_admin_bot.steps.totp import TOTPCommandStep, DEFAULT_MESSAGE
 
 
 class ServerNoticeState:
     notice: dict[str, str]
 
 
-class ServerNoticeGetNoticeStep(CommandValidatorStep):
+class ServerNoticeGetNoticeStep(CommandStep):
 
     def __init__(self, command_state: ServerNoticeState, message: str = DEFAULT_MESSAGE) -> None:
         super().__init__(message)
@@ -44,7 +44,7 @@ class ServerNoticeGetNoticeStep(CommandValidatorStep):
         return True
 
 
-class ServerNoticeConfirmStep(ConfirmCommandValidatorStep):
+class ServerNoticeConfirmStep(ConfirmCommandStep):
 
     def __init__(self, command_state: ServerNoticeState, message: str = DEFAULT_MESSAGE) -> None:
         super().__init__(message)
@@ -54,14 +54,14 @@ class ServerNoticeConfirmStep(ConfirmCommandValidatorStep):
     def validation_message(self) -> str :
         return "\n".join(
             [
-                f"Are you ok with the following notice ? Type {ConfirmCommandValidatorStep.CONFIRM_KEYWORDS}",
+                f"Are you ok with the following notice ? Type {ConfirmCommandStep.CONFIRM_KEYWORDS}",
                 "",
                 self.command_state.notice["body"]
             ]
         )
 
 
-class ServerNoticeCommand(CommandToValidate):
+class ServerNoticeCommand(CommandWithSteps):
     KEYWORD = "server_notice"
 
     # @staticmethod
@@ -88,10 +88,10 @@ class ServerNoticeCommand(CommandToValidate):
         self.server_name = get_server_name(self.matrix_client.user_id)
 
         self.command_state = ServerNoticeState()
-        self.command_validator: list[CommandValidatorStep] = [ServerNoticeGetNoticeStep(self.command_state),
-                                                              ServerNoticeConfirmStep(self.command_state),
-                                                              # TOTPCommandValidatorStep(totps)
-                                                              ]
+        self.command_steps: list[CommandStep] = [ServerNoticeGetNoticeStep(self.command_state),
+                                                     ServerNoticeConfirmStep(self.command_state),
+                                                     # TOTPCommandStep(totps)
+                                                     ]
 
     @override
     async def execute(self) -> bool:
