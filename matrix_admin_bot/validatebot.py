@@ -1,6 +1,5 @@
 import cachetools
 from matrix_bot.bot import MatrixBot
-from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import EventNotConcerned
 from nio import MatrixRoom, RoomMessage, RoomMessageText
 
@@ -50,7 +49,6 @@ class ValidateBot(MatrixBot):
         self,
         room: MatrixRoom,
         message: RoomMessage,
-        matrix_client: MatrixClient,
     ) -> None:
         self.recent_events_cache[message.event_id] = message
 
@@ -94,7 +92,6 @@ class ValidateBot(MatrixBot):
         self,
         room: MatrixRoom,
         message: RoomMessage,
-        matrix_client: MatrixClient,
     ) -> None:
         if not isinstance(message, RoomMessageText):
             return
@@ -119,7 +116,9 @@ class ValidateBot(MatrixBot):
             assert self.secure_validator is not None
             validator = self.secure_validator
 
-        if await validator.validate(room, message, command_to_validate, matrix_client):
+        if await validator.validate(
+            room, message, command_to_validate, self.matrix_client
+        ):
             await self.execute_command(command_to_validate)
 
     async def execute_command(self, command: Command) -> None:
@@ -142,14 +141,16 @@ class ValidateBot(MatrixBot):
         self,
         room: MatrixRoom,
         message: RoomMessage,
-        matrix_client: MatrixClient,
     ) -> None:
         for command_type in self.commands:
             try:
-                command = command_type(room, message, matrix_client)
+                command = command_type(room, message, self.matrix_client)
                 if isinstance(command, CommandToValidate):
                     self.commands_cache[message.event_id] = command
-                    if self.coordinator and matrix_client.user_id != self.coordinator:
+                    if (
+                        self.coordinator
+                        and self.matrix_client.user_id != self.coordinator
+                    ):
                         continue  # TODO or return ?
 
                     validator: Validator = CONFIRM_VALIDATOR
