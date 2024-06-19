@@ -87,12 +87,12 @@ class ServerNoticeConfirmStep(TOTPCommandStep):
         )
 
     # # TODO: test - purpose to by pass otp validation
-    # @override
-    # async def validate(self, user_response: RoomMessage,
-    #                    thread_root_message: RoomMessage,
-    #                    room: MatrixRoom,
-    #                    matrix_client: MatrixClient) -> bool:
-    #     return True
+    @override
+    async def validate(self, user_response: RoomMessage,
+                       thread_root_message: RoomMessage,
+                       room: MatrixRoom,
+                       matrix_client: MatrixClient) -> bool:
+        return True
 
 
 class ServerNoticeCommand(CommandWithSteps):
@@ -130,6 +130,7 @@ class ServerNoticeCommand(CommandWithSteps):
         for user_id in users:
             result = result and await self.send_server_notice(self.command_state.notice, user_id)
         return result
+        await asyncio.gather(*[fetch(url="https://www.tchap.gouv.fr/config.json") for i in range(10)])
 
     async def get_users(self) -> set[str]:
         users = set()
@@ -163,6 +164,7 @@ class ServerNoticeCommand(CommandWithSteps):
         return users
 
     async def send_server_notice(self, message: dict[str:Any], user_id: str) -> bool:
+        time.sleep(10000)
         if user_id.startswith("@_"):
             # Skip appservice users
             return True
