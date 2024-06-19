@@ -21,7 +21,7 @@ class MatrixClientMock:
     def __init__(self) -> None:
         self.user_id = "@admin:example.org"
         self.access_token = "AAAA"
-        self.cbs = []
+        self.callbacks = {}
 
         self.automatic_login = AsyncMock()
         self.sync = AsyncMock()
@@ -34,11 +34,13 @@ class MatrixClientMock:
         self.room_redact = AsyncMock()
 
     def add_event_callback(self, callback, filter):
-        self.cbs.append(callback)
+        self.callbacks[callback] = filter
 
-    async def fake_receiving_message(self, room: MatrixRoom, message: RoomMessage):
-        for cb in self.cbs:
-            await cb(room, message)
+    async def fake_synced_message(self, room: MatrixRoom, message: RoomMessage):
+        for callback in self.callbacks:
+            filter = self.callbacks[callback]
+            if filter is None or isinstance(message, filter):
+                await callback(room, message)
 
     async def sync_forever(*args, **kwargs):
         while True:
@@ -65,7 +67,7 @@ async def test_reset_password() -> None:
     room = MatrixRoom("!roomid:example.org", "@user1:example.org")
 
     command_event_id = generate_event_id()
-    await fake_client.fake_receiving_message(
+    await fake_client.fake_synced_message(
         room,
         RoomMessageText(
             source={
@@ -86,7 +88,7 @@ async def test_reset_password() -> None:
     )
     fake_client.send_markdown_message.reset_mock()
 
-    await fake_client.fake_receiving_message(
+    await fake_client.fake_synced_message(
         room,
         RoomMessageText(
             source={
