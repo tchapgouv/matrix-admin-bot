@@ -1,6 +1,6 @@
 ARG PYTHON_VERSION=3.11
 
-FROM python:${PYTHON_VERSION}-buster as builder
+FROM python:${PYTHON_VERSION}-bookworm as builder
 
 ENV POETRY_VERSION=1.8.3
 
@@ -18,7 +18,7 @@ COPY pyproject.toml poetry.lock ./
 
 RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --no-root
 
-FROM python:${PYTHON_VERSION}-slim-buster as runtime
+FROM python:${PYTHON_VERSION}-slim-bookworm as runtime
 
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH"
