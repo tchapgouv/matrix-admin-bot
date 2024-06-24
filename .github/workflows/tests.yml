@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Poetry
-        uses: matrix-org/setup-python-poetry@v1
+        uses: MatMaul/setup-python-poetry@v1
         with:
           groups: dev
 
@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Poetry
-        uses: matrix-org/setup-python-poetry@v1
+        uses: MatMaul/setup-python-poetry@v1
         with:
           groups: dev
 
@@ -55,10 +55,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Poetry
-        uses: matrix-org/setup-python-poetry@v1
+        uses: MatMaul/setup-python-poetry@v1
         with:
           groups: dev
 
       - name: Type checks
         run: poetry run basedpyright
-
