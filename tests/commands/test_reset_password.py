@@ -81,7 +81,7 @@ async def test_reset_password() -> None:
     assert len(mocked_client.send.await_args_list) == 2
 
     assert mocked_client.send.await_args
-    assert "/reset_password/" in mocked_client.send.await_args.get[0][1]
+    assert "/reset_password/" in mocked_client.send.await_args[0][1]
     mocked_client.send.reset_mock()
 
     t.cancel()
