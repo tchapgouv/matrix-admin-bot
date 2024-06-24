@@ -1,4 +1,5 @@
 import asyncio
+from asyncio import Task
 from collections.abc import Awaitable, Callable
 from typing import Any, NoReturn
 from unittest.mock import AsyncMock
@@ -34,6 +35,7 @@ class MatrixClientMock:
         self.send_file_message = AsyncMock(side_effect=generate_event_id)
         self.send_reaction = AsyncMock(side_effect=generate_event_id)
         self.room_redact = AsyncMock()
+        self.sync_forever_called = False
 
     def add_event_callback(
         self,
@@ -48,13 +50,19 @@ class MatrixClientMock:
             if event_filter is None or isinstance(message, event_filter):
                 await callback(room, message)
 
-    async def sync_forever(*args: Any, **kwargs: Any) -> NoReturn:
+    async def sync_forever(self, *args: Any, **kwargs: Any) -> NoReturn:
+        self.sync_forever_called = True
         while True:
             await asyncio.sleep(30)
 
 
-async def mock_client(bot: MatrixBot) -> MatrixClientMock:
+async def mock_client_and_run(bot: MatrixBot) -> tuple[MatrixClientMock, Task[None]]:
     fake_client = MatrixClientMock()
     bot.matrix_client = fake_client
     bot.callbacks.matrix_client = fake_client
-    return fake_client
+
+    t = asyncio.create_task(bot.main())
+    while not fake_client.sync_forever_called:
+        await asyncio.sleep(0.001)
+
+    return fake_client, t

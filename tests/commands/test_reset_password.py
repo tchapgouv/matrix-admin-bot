@@ -1,4 +1,3 @@
-import asyncio
 import time
 from unittest.mock import AsyncMock, Mock
 
@@ -8,7 +7,7 @@ from nio import MatrixRoom, RoomMessageText
 from matrix_admin_bot.adminbot import COMMANDS
 from matrix_admin_bot.validatebot import ValidateBot
 from matrix_admin_bot.validators.confirm import ConfirmValidator
-from tests import generate_event_id, mock_client
+from tests import generate_event_id, mock_client_and_run
 
 
 @pytest.mark.asyncio()
@@ -21,13 +20,10 @@ async def test_reset_password() -> None:
         secure_validator=ConfirmValidator(),
         coordinator=None,
     )
-    mocked_client = await mock_client(bot)
+    mocked_client, t = await mock_client_and_run(bot)
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
-
-    t = asyncio.create_task(bot.main())
-    await asyncio.sleep(0.01)
 
     room = MatrixRoom("!roomid:example.org", "@user1:example.org")
 
