@@ -47,6 +47,7 @@ async def test_reset_password() -> None:
     )
 
     mocked_client.send_markdown_message.assert_awaited_once()
+    assert mocked_client.send_markdown_message.await_args
     assert (
         "You are about to reset password of the following users"
         in mocked_client.send_markdown_message.await_args[0][1]
@@ -78,7 +79,9 @@ async def test_reset_password() -> None:
 
     # one call to fetch the devices, and one call to reset the password
     assert len(mocked_client.send.await_args_list) == 2
-    assert "/reset_password/" in mocked_client.send.await_args[0][1]
+
+    assert mocked_client.send.await_args
+    assert "/reset_password/" in mocked_client.send.await_args.get[0][1]
     mocked_client.send.reset_mock()
 
     t.cancel()

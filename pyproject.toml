@@ -43,13 +43,8 @@ reportUnknownMemberType = false
 reportMissingTypeStubs = false
 reportUnusedCallResult = false
 
-include = [
-   "matrix_admin_bot",
-]
-
-[tool.ruff]
-extend-exclude = [
-   "tests",
+executionEnvironments = [
+  { root = "tests", reportAttributeAccessIssue = false },
 ]
 
 [tool.ruff.lint]
@@ -73,4 +68,11 @@ ignore = [
     "S101",    # Use of `assert` detected
     "FIX002",  # Line contains TODO, consider resolving the issue
     "D",       # Missing docstring
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
+    "PLW0603", # Using the global statement to update variable is discouraged
+    "S105",    # Possible hardcoded password assigned
 ]

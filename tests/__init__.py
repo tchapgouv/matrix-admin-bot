@@ -9,7 +9,7 @@ from nio import Event, MatrixRoom, RoomMessage
 event_id_counter: int = 0
 
 
-def generate_event_id(*args: Any, **kwargs: Any) -> str:
+def generate_event_id(*_args: Any, **_kwargs: Any) -> str:
     global event_id_counter
     event_id_counter += 1
     return f"$eventid{event_id_counter}"
@@ -20,7 +20,7 @@ class MatrixClientMock:
         self.user_id = "@admin:example.org"
         self.access_token = "AAAA"
         self.callbacks: dict[
-            Callable[[MatrixRoom, Event], Awaitable[None] | None],
+            Callable[[MatrixRoom, Event], Awaitable[None]],
             type[Event] | tuple[type[Event]] | None,
         ] = {}
 
@@ -37,20 +37,20 @@ class MatrixClientMock:
 
     def add_event_callback(
         self,
-        callback: Callable[[MatrixRoom, Event], Awaitable[None] | None],
-        filter: type[Event] | tuple[type[Event]] | None,
+        callback: Callable[[MatrixRoom, Event], Awaitable[None]],
+        event_filter: type[Event] | tuple[type[Event]] | None,
     ) -> None:
-        self.callbacks[callback] = filter
+        self.callbacks[callback] = event_filter
 
     async def fake_synced_message(self, room: MatrixRoom, message: RoomMessage) -> None:
         for callback in self.callbacks:
-            filter = self.callbacks[callback]
-            if filter is None or isinstance(message, filter):
+            event_filter = self.callbacks[callback]
+            if event_filter is None or isinstance(message, event_filter):
                 await callback(room, message)
 
     async def sync_forever(*args: Any, **kwargs: Any) -> NoReturn:
         while True:
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(30)
 
 
 async def mock_client(bot: MatrixBot) -> MatrixClientMock:
