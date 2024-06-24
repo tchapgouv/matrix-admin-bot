@@ -22,7 +22,7 @@ jobs:
       - name: Setup Poetry
         uses: matrix-org/setup-python-poetry@v1
         with:
-          extras: dev
+          groups: dev
 
       - name: Run tests
         run: poetry run pytest
@@ -38,7 +38,7 @@ jobs:
       - name: Setup Poetry
         uses: matrix-org/setup-python-poetry@v1
         with:
-          extras: dev
+          groups: dev
 
       - name: Code style (ruff)
         run: poetry run ruff format --diff
@@ -57,7 +57,7 @@ jobs:
       - name: Setup Poetry
         uses: matrix-org/setup-python-poetry@v1
         with:
-          extras: dev
+          groups: dev
 
       - name: Type checks
         run: poetry run basedpyright
