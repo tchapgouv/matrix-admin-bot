@@ -1,3 +1,4 @@
+from matrix_bot.bot import bot_lib_config
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -20,6 +21,7 @@ class AdminBotConfig(BaseSettings):
     homeserver: str = "http://localhost:8008"
     bot_username: str = ""
     bot_password: str = ""
+    allowed_room_ids: list[str] = []
     totps: dict[str, str] = {}
     coordinator: str | None = None
 
@@ -38,6 +40,7 @@ class AdminBotConfig(BaseSettings):
 
 def main() -> None:
     config = AdminBotConfig()
+    bot_lib_config.allowed_room_ids = config.allowed_room_ids
     bot = ValidateBot(
         homeserver=config.homeserver,
         username=config.bot_username,
