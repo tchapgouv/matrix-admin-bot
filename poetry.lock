@@ -1422,7 +1422,7 @@ toml = "^0.10.2"
 type = "git"
 url = "https://code.peren.fr/MatMaul/tchapbot.git"
 reference = "tchapadmin"
-resolved_reference = "102bde0705e74e5f34b8d105dd69f5f59bb4e5ac"
+resolved_reference = "040946cad888e40d78ef52f46b24fd5b1ce17341"
 
 [[package]]
 name = "toml"
