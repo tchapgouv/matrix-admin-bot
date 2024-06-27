@@ -50,7 +50,7 @@ class MatrixClientMock:
             if event_filter is None or isinstance(message, event_filter):
                 await callback(room, message)
 
-    async def sync_forever(self, *args: Any, **kwargs: Any) -> NoReturn:
+    async def sync_forever(self, *_args: Any, **_kwargs: Any) -> NoReturn:
         self.sync_forever_called = True
         while True:
             await asyncio.sleep(30)

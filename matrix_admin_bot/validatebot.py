@@ -47,7 +47,7 @@ class ValidateBot(MatrixBot):
 
     async def store_event_in_cache(
         self,
-        room: MatrixRoom,
+        _room: MatrixRoom,
         message: RoomMessage,
     ) -> None:
         self.recent_events_cache[message.event_id] = message
