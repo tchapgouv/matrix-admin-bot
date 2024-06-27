@@ -18,7 +18,8 @@ matrix-admin-bot = "matrix_admin_bot.adminbot:main"
 [tool.poetry.dependencies]
 python = "^3.11"
 #tchap-bot = { path = "../tchapbot/", develop = true }
-tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", branch = "tchapadmin" }
+#tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", branch = "tchapadmin" }
+tchap-bot = { git = "https://code.peren.fr/open-source/tchapbot.git", branch = "main" }
 pydantic = "^2.6.3"
 pydantic-settings = "^2.2.1"
 pyotp = "^2.9.0"
@@ -57,7 +58,6 @@ ignore = [
     "ANN101",  # Missing type annotation for `self` in method
     "ANN102",  # Missing type annotation for `cls` in classmethod
     "COM812",  # Trailing comma missing
-    "ARG002",  # Unused method argument
     "PLR2004", # Magic value used in comparison
     "PLR0913", # Too many arguments in function definition
 
