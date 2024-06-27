@@ -1420,9 +1420,9 @@ toml = "^0.10.2"
 
 [package.source]
 type = "git"
-url = "https://code.peren.fr/MatMaul/tchapbot.git"
-reference = "tchapadmin"
-resolved_reference = "040946cad888e40d78ef52f46b24fd5b1ce17341"
+url = "https://code.peren.fr/open-source/tchapbot.git"
+reference = "main"
+resolved_reference = "1bfd5185420abc5a271dd232e11449f191a59da5"
 
 [[package]]
 name = "toml"
@@ -1580,4 +1580,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "83d5c44e503d94ddc3494c1789fc50a6f7ab01ebd9c03aa6ff39bfea311cd13d"
+content-hash = "07f71d165831e2046297e9ab6e3b91462504faa2e10d5d80116fb0ae40fbd248"
