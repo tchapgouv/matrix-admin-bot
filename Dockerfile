@@ -20,6 +20,7 @@ RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --n
 
 FROM python:${PYTHON_VERSION}-slim-bookworm as runtime
 
+WORKDIR /data
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH"
 
