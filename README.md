@@ -2,7 +2,7 @@
 ```
 python -m venv .env
 source .env/bin/activate
-python install poetry
+pip install poetry
 poetry install
 ```
 
