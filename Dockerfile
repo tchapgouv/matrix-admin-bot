@@ -14,17 +14,13 @@ ENV POETRY_NO_INTERACTION=1 \
 WORKDIR /app
 
 COPY pyproject.toml poetry.lock ./
-# RUN touch README.md
+COPY matrix_admin_bot ./matrix_admin_bot
 
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --no-root
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --compile
 
 FROM python:${PYTHON_VERSION}-slim-bookworm as runtime
 
-ENV VIRTUAL_ENV=/app/.venv \
-    PATH="/app/.venv/bin:$PATH"
+COPY --from=builder /app /app
 
-COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
-
-COPY matrix_admin_bot ./matrix_admin_bot
-
-ENTRYPOINT ["python", "-m", "matrix_admin_bot.adminbot"]
+WORKDIR /data
+ENTRYPOINT ["/app/.venv/bin/matrix-admin-bot"]
