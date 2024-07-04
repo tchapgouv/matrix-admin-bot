@@ -18,8 +18,8 @@ matrix-admin-bot = "matrix_admin_bot.adminbot:main"
 [tool.poetry.dependencies]
 python = "^3.11"
 #tchap-bot = { path = "../tchapbot/", develop = true }
-#tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", branch = "tchapadmin" }
-tchap-bot = { git = "https://code.peren.fr/open-source/tchapbot.git", branch = "main" }
+tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", branch = "tchapadmin" }
+#tchap-bot = { git = "https://code.peren.fr/open-source/tchapbot.git", branch = "main" }
 pydantic = "^2.6.3"
 pydantic-settings = "^2.2.1"
 pyotp = "^2.9.0"
