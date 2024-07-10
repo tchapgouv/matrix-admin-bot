@@ -2,7 +2,7 @@ import pytest
 from nio import MatrixRoom
 from typing_extensions import override
 
-from matrix_command_bot.simple_commands import SimpleCommand
+from matrix_command_bot.simple_command import SimpleCommand
 from tests import USER1_ID, create_fake_command_bot
 
 
@@ -22,14 +22,12 @@ async def test_success() -> None:
 
     await mocked_client.fake_synced_text_message(room, USER1_ID, "!test")
 
-    assert len(mocked_client.send_reaction.await_args_list) == 2
-    assert mocked_client.send_reaction.await_args_list[0][0][2] == "🚀"
-    assert mocked_client.send_reaction.await_args_list[1][0][2] == "✅"
-    mocked_client.send_reaction.reset_mock()
+    mocked_client.check_sent_reactions("🚀", "✅")
 
     assert mocked_client.executed
 
     t.cancel()
+
 
 class FailureCommand(SimpleCommand):
     @override
@@ -47,10 +45,7 @@ async def test_failure() -> None:
 
     await mocked_client.fake_synced_text_message(room, USER1_ID, "!test")
 
-    assert len(mocked_client.send_reaction.await_args_list) == 2
-    assert mocked_client.send_reaction.await_args_list[0][0][2] == "🚀"
-    assert mocked_client.send_reaction.await_args_list[1][0][2] == "❌"
-    mocked_client.send_reaction.reset_mock()
+    mocked_client.check_sent_reactions("🚀", "❌")
 
     assert mocked_client.executed
 

@@ -1,10 +1,18 @@
 from abc import abstractmethod
+from enum import Enum
 
 from matrix_bot.client import MatrixClient
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
 from matrix_command_bot.command import ICommand
+
+
+class CommandAction(Enum):
+    ABORT = 1
+    CONTINUE = 2
+    RETRY = 3
+    WAIT_FOR_NEXT_REPLY = 4
 
 
 class ICommandStep:
@@ -14,15 +22,15 @@ class ICommandStep:
     ) -> None:
         self.command = command
 
-    async def execute(self, reply: RoomMessage | None = None) -> tuple[bool, bool]:  # noqa: ARG002
-        return True, True
+    async def execute(
+        self,
+        reply: RoomMessage | None = None,  # noqa: ARG002
+    ) -> tuple[bool, CommandAction]:
+        return True, CommandAction.CONTINUE
 
     @property
     def status_reaction(self) -> str | None:
         return None
-
-    def wait_for_next_reply(self, current_reply: RoomMessage | None) -> bool:  # noqa: ARG002
-        return False
 
 
 class CommandWithSteps(ICommand):
@@ -33,7 +41,7 @@ class CommandWithSteps(ICommand):
         matrix_client: MatrixClient,
     ) -> None:
         super().__init__(room, message, matrix_client)
-        self.current_step: ICommandStep | None = None
+        self.current_step_index: int = 0
         self.current_result = True
 
     @abstractmethod
@@ -45,26 +53,29 @@ class CommandWithSteps(ICommand):
         return await self.resume_execute(None)
 
     async def resume_execute(self, reply: RoomMessage | None) -> bool:
-        i = 0
-        if self.current_step:
-            i = self.steps.index(self.current_step)
-        for step in self.steps[i:]:
-            self.current_step = step
-            if step.wait_for_next_reply(reply):
-                return True
+        while self.current_step_index < len(self.steps):
+            step = self.steps[self.current_step_index]
 
-            res, _continue = await self.execute_step(step, reply)
-            reply = None
+            # TODO handle exception ?
+            res, action = await self.execute_step(step, reply)
+
             if not res:
                 self.current_result = False
-            if not _continue:
+            if action == CommandAction.ABORT:
                 return self.current_result
+            if action == CommandAction.WAIT_FOR_NEXT_REPLY:
+                return True
+            if action == CommandAction.RETRY:
+                continue
+
+            reply = None
+            self.current_step_index += 1
 
         return self.current_result
 
     async def execute_step(
         self, step: ICommandStep, reply: RoomMessage | None
-    ) -> tuple[bool, bool]:
+    ) -> tuple[bool, CommandAction]:
         await self.set_status_reaction(step.status_reaction)
         return await step.execute(reply)
 

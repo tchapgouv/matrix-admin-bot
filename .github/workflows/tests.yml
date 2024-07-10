@@ -61,3 +61,22 @@ jobs:
 
       - name: Type checks
         run: poetry run basedpyright
+
+  coverage:
+    runs-on: ubuntu-latest
+    name: Calculating coverage
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Poetry
+        uses: MatMaul/setup-python-poetry@v1
+        with:
+          groups: dev
+
+      - name: Run tests & generate coverage
+        run: poetry run coverage run -m pytest
+
+      - name: Display coverage report
+        run: poetry run coverage report

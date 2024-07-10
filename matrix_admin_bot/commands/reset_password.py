@@ -11,8 +11,8 @@ from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
 from matrix_command_bot import validation
-from matrix_command_bot.simple_commands import SimpleValidatedCommand
 from matrix_command_bot.util import get_server_name
+from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 
 
 class ResetPasswordCommand(SimpleValidatedCommand):

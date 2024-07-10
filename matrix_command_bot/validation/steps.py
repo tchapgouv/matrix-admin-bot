@@ -2,7 +2,7 @@ from nio import RoomMessage
 from typing_extensions import override
 
 from matrix_command_bot.command import ICommand
-from matrix_command_bot.step import ICommandStep
+from matrix_command_bot.step import CommandAction, ICommandStep
 from matrix_command_bot.validation import IValidator
 
 
@@ -20,24 +20,25 @@ class ConfirmStep(ICommandStep):
         return None
 
     @override
-    async def execute(self, reply: RoomMessage | None = None) -> tuple[bool, bool]:
-        message = self.message if self.message else ""
-        validation_prompt = self.validator.prompt if self.validator.prompt else ""
-        if message and validation_prompt:
-            message += "\n\n"
-        message += validation_prompt
+    async def execute(
+        self, reply: RoomMessage | None = None
+    ) -> tuple[bool, CommandAction]:
+        confirm_text = self.validator.prompt if self.validator.prompt else ""
+        if confirm_text:
+            message = self.message if self.message else ""
+            if message:
+                confirm_text += f"\n\n{message}"
 
-        if message:
             await self.command.matrix_client.send_markdown_message(
                 self.command.room.room_id,
-                message,
+                confirm_text,
                 reply_to=self.command.message.event_id,
                 thread_root=self.command.message.event_id,
             )
 
         await self.command.set_status_reaction(self.validator.reaction)
 
-        return True, True
+        return True, CommandAction.CONTINUE
 
 
 class ValidateStep(ICommandStep):
@@ -50,12 +51,14 @@ class ValidateStep(ICommandStep):
         self.validator = validator
 
     @override
-    async def execute(self, reply: RoomMessage | None = None) -> tuple[bool, bool]:
-        res = await self.validator.validate(reply, self.command)
-        return res, res
+    async def execute(
+        self, reply: RoomMessage | None = None
+    ) -> tuple[bool, CommandAction]:
+        if self.validator.prompt and not reply:
+            return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
-    @override
-    def wait_for_next_reply(self, current_reply: RoomMessage | None) -> bool:
-        if not self.validator.prompt:
-            return False
-        return current_reply is None
+        res = await self.validator.validate(reply, self.command)
+        return (
+            True,
+            CommandAction.CONTINUE if res else CommandAction.WAIT_FOR_NEXT_REPLY,
+        )

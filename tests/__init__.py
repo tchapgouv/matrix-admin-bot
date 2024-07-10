@@ -91,6 +91,23 @@ class MatrixClientMock:
         while True:
             await asyncio.sleep(30)
 
+    def check_sent_reactions(self, *expected_reactions: str) -> None:
+        assert len(self.send_reaction.await_args_list) == len(expected_reactions)
+        for i in range(len(expected_reactions)):
+            assert self.send_reaction.await_args_list[i][0][2] == expected_reactions[i]
+        self.send_reaction.reset_mock()
+
+    def check_sent_message(self, contains: str) -> None:
+        msg = ""
+        if self.send_markdown_message.await_count > 0:
+            msg = self.send_markdown_message.await_args_list[0][0][1]
+            self.send_markdown_message.reset_mock()
+        if self.send_text_message.await_count > 0:
+            msg = self.send_text_message.await_args_list[0][0][1]
+            self.send_text_message.reset_mock()
+
+        assert contains in msg
+
 
 async def create_fake_command_bot(
     commands: list[type[ICommand]],
@@ -117,13 +134,17 @@ async def mock_client_and_run(bot: MatrixBot) -> tuple[MatrixClientMock, Task[No
     return fake_client, t
 
 
-def create_thread_relation(thread_root: str) -> Mapping[str, Any]:
+def create_thread_relation(thread_root_id: str) -> Mapping[str, Any]:
     return {
         "m.relates_to": {
-            "event_id": thread_root,
+            "event_id": thread_root_id,
             "rel_type": "m.thread",
         }
     }
+
+
+def create_reply_relation(replied_event_id: str) -> Mapping[str, Any]:
+    return {"m.relates_to": {"m.in_reply_to": {"event_id": replied_event_id}}}
 
 
 class OkValidator(IValidator):
