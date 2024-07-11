@@ -70,6 +70,15 @@ async def test_failure_then_success() -> None:
     assert not mocked_client.executed
 
     await mocked_client.fake_synced_text_message(
+        room,
+        "@user2:example.org",
+        "yes",
+        content=create_thread_relation(command_event_id),
+    )
+
+    assert not mocked_client.executed
+
+    await mocked_client.fake_synced_text_message(
         room, USER1_ID, "yes", content=create_thread_relation(command_event_id)
     )
 
