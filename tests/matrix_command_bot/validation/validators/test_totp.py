@@ -53,7 +53,7 @@ async def test_success() -> None:
 
 
 @pytest.mark.asyncio()
-async def test_failures_then_success() -> None:
+async def test_failures() -> None:
     mocked_client, t = await create_fake_command_bot([ConfirmValidatedCommand])
     mocked_client.executed = False
 

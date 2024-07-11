@@ -53,7 +53,7 @@ async def test_success() -> None:
 
 
 @pytest.mark.asyncio()
-async def test_failure_then_success() -> None:
+async def test_failures_then_success() -> None:
     mocked_client, t = await create_fake_command_bot([ConfirmValidatedCommand])
     mocked_client.executed = False
 
@@ -69,6 +69,7 @@ async def test_failure_then_success() -> None:
 
     assert not mocked_client.executed
 
+    # It should be ignored since it doesn't come from the original command sender
     await mocked_client.fake_synced_text_message(
         room,
         "@user2:example.org",

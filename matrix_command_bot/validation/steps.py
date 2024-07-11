@@ -57,6 +57,7 @@ class ValidateStep(ICommandStep):
         if self.validator.prompt and not reply:
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
+        # It should be ignored since it doesn't come from the original command sender
         if reply and self.command.message.sender != reply.sender:
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
