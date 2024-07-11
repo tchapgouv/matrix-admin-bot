@@ -37,7 +37,7 @@ class ResetPasswordCommand(SimpleValidatedCommand):
 
         self.failed_user_ids: list[str] = []
 
-        self.json_report: dict[str, Any] = {"command": self.KEYWORD}
+        self.json_report: dict[str, Any] = {}
 
         self.server_name = get_server_name(self.matrix_client.user_id)
 
@@ -90,6 +90,7 @@ class ResetPasswordCommand(SimpleValidatedCommand):
             await self.reset_password(user_id, randomword(32))
 
         if self.json_report:
+            self.json_report["command"] = self.KEYWORD
             await self.send_report()
 
         return not self.failed_user_ids
