@@ -1,11 +1,19 @@
 import asyncio
+import time
 from asyncio import Task
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, NoReturn
 from unittest.mock import AsyncMock
 
 from matrix_bot.bot import MatrixBot
-from nio import Event, MatrixRoom, RoomMessage
+from nio import Event, MatrixRoom, RoomMessage, RoomMessageText
+from typing_extensions import override
+
+from matrix_command_bot.command import ICommand
+from matrix_command_bot.commandbot import CommandBot
+from matrix_command_bot.validation import IValidator
+
+USER1_ID = "@user1:example.org"
 
 event_id_counter: int = 0
 
@@ -50,10 +58,68 @@ class MatrixClientMock:
             if event_filter is None or isinstance(message, event_filter):
                 await callback(room, message)
 
+    async def fake_synced_text_message(
+        self,
+        room: MatrixRoom,
+        sender: str,
+        text: str,
+        *,
+        content: Mapping[str, Any] | None = None,
+    ) -> str:
+        event_id = generate_event_id()
+        source: dict[str, Any] = {
+            "event_id": event_id,
+            "sender": sender,
+            "origin_server_ts": int(time.time() * 1000),
+        }
+        if content:
+            source["content"] = content
+        message = RoomMessageText(
+            source=source,
+            body=text,
+            format=None,
+            formatted_body=None,
+        )
+        await self.fake_synced_message(
+            room,
+            message,
+        )
+        return event_id
+
     async def sync_forever(self, *_args: Any, **_kwargs: Any) -> NoReturn:
         self.sync_forever_called = True
         while True:
             await asyncio.sleep(30)
+
+    def check_sent_reactions(self, *expected_reactions: str) -> None:
+        assert len(self.send_reaction.await_args_list) == len(expected_reactions)
+        for i in range(len(expected_reactions)):
+            assert self.send_reaction.await_args_list[i][0][2] == expected_reactions[i]
+        self.send_reaction.reset_mock()
+
+    def check_sent_message(self, contains: str) -> None:
+        msg = ""
+        if self.send_markdown_message.await_count > 0:
+            msg = self.send_markdown_message.await_args_list[0][0][1]
+            self.send_markdown_message.reset_mock()
+        if self.send_text_message.await_count > 0:
+            msg = self.send_text_message.await_args_list[0][0][1]
+            self.send_text_message.reset_mock()
+
+        assert contains in msg
+
+
+async def create_fake_command_bot(
+    commands: list[type[ICommand]],
+) -> tuple[MatrixClientMock, Task[None]]:
+    bot = CommandBot(
+        homeserver="http://localhost:8008",
+        username="",
+        password="",
+        commands=commands,
+        coordinator=None,
+    )
+    return await mock_client_and_run(bot)
 
 
 async def mock_client_and_run(bot: MatrixBot) -> tuple[MatrixClientMock, Task[None]]:
@@ -66,3 +132,26 @@ async def mock_client_and_run(bot: MatrixBot) -> tuple[MatrixClientMock, Task[No
         await asyncio.sleep(0.001)
 
     return fake_client, t
+
+
+def create_thread_relation(thread_root_id: str) -> Mapping[str, Any]:
+    return {
+        "m.relates_to": {
+            "event_id": thread_root_id,
+            "rel_type": "m.thread",
+        }
+    }
+
+
+def create_reply_relation(replied_event_id: str) -> Mapping[str, Any]:
+    return {"m.relates_to": {"m.in_reply_to": {"event_id": replied_event_id}}}
+
+
+class OkValidator(IValidator):
+    @override
+    async def validate(
+        self,
+        user_response: RoomMessage | None,
+        command: ICommand,
+    ) -> bool:
+        return True

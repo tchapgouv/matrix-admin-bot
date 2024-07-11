@@ -15,6 +15,7 @@ WORKDIR /app
 
 COPY pyproject.toml poetry.lock ./
 COPY matrix_admin_bot ./matrix_admin_bot
+COPY matrix_command_bot ./matrix_command_bot
 
 RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --compile
 
