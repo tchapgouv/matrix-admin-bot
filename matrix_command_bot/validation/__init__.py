@@ -20,6 +20,3 @@ class IValidator(ABC):
         user_response: RoomMessage | None,
         command: ICommand,
     ) -> bool: ...
-
-
-SECURE_VALIDATOR: IValidator | None = None

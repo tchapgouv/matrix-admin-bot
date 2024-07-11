@@ -23,18 +23,19 @@ class ConfirmStep(ICommandStep):
     async def execute(
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
-        confirm_text = self.validator.prompt if self.validator.prompt else ""
-        if confirm_text:
-            message = self.message if self.message else ""
-            if message:
-                confirm_text += f"\n\n{message}"
+        if self.command.extra_config.get("is_coordinator", True):
+            confirm_text = self.validator.prompt if self.validator.prompt else ""
+            if confirm_text:
+                message = self.message if self.message else ""
+                if message:
+                    confirm_text += f"\n\n{message}"
 
-            await self.command.matrix_client.send_markdown_message(
-                self.command.room.room_id,
-                confirm_text,
-                reply_to=self.command.message.event_id,
-                thread_root=self.command.message.event_id,
-            )
+                await self.command.matrix_client.send_markdown_message(
+                    self.command.room.room_id,
+                    confirm_text,
+                    reply_to=self.command.message.event_id,
+                    thread_root=self.command.message.event_id,
+                )
 
         await self.command.set_status_reaction(self.validator.reaction)
 

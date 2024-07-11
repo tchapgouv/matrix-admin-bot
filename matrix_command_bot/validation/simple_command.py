@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from typing import Any
+
 from matrix_bot.client import MatrixClient
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
@@ -16,8 +19,9 @@ class SimpleValidatedCommand(SimpleCommand):
         message: RoomMessage,
         matrix_client: MatrixClient,
         validator: IValidator,
+        extra_config: Mapping[str, Any],
     ) -> None:
-        super().__init__(room, message, matrix_client)
+        super().__init__(room, message, matrix_client, extra_config)
         self.validator = validator
 
     @override

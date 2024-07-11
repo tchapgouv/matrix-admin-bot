@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from typing import Any
+
 import pyotp
 import pytest
 from matrix_bot.client import MatrixClient
@@ -6,7 +9,11 @@ from typing_extensions import override
 
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 from matrix_command_bot.validation.validators.totp import TOTPValidator
-from tests import USER1_ID, create_fake_command_bot, create_thread_relation
+from tests import (
+    USER1_ID,
+    create_fake_command_bot,
+    create_thread_relation,
+)
 
 TOTP_SEED = "P7ZBD5ZLMACOOTX4"
 
@@ -17,9 +24,14 @@ class ConfirmValidatedCommand(SimpleValidatedCommand):
         room: MatrixRoom,
         message: RoomMessage,
         matrix_client: MatrixClient,
+        extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(
-            room, message, matrix_client, TOTPValidator({USER1_ID: TOTP_SEED})
+            room,
+            message,
+            matrix_client,
+            TOTPValidator({USER1_ID: TOTP_SEED}),
+            extra_config,
         )
 
     @override
