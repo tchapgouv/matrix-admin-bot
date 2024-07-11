@@ -1,5 +1,7 @@
 from abc import abstractmethod
+from collections.abc import Mapping
 from enum import Enum
+from typing import Any
 
 from matrix_bot.client import MatrixClient
 from nio import MatrixRoom, RoomMessage
@@ -39,8 +41,9 @@ class CommandWithSteps(ICommand):
         room: MatrixRoom,
         message: RoomMessage,
         matrix_client: MatrixClient,
+        extra_config: Mapping[str, Any],
     ) -> None:
-        super().__init__(room, message, matrix_client)
+        super().__init__(room, message, matrix_client, extra_config)
         self.current_step_index: int = 0
         self.current_result = True
 
