@@ -2,6 +2,7 @@ import json
 import secrets
 import string
 import time
+from collections.abc import Mapping
 from typing import Any
 
 import aiofiles
@@ -10,8 +11,8 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_command_bot import validation
 from matrix_command_bot.util import get_server_name
+from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 
 
@@ -23,11 +24,11 @@ class ResetPasswordCommand(SimpleValidatedCommand):
         room: MatrixRoom,
         message: RoomMessage,
         matrix_client: MatrixClient,
+        extra_config: Mapping[str, Any],
     ) -> None:
-        if not validation.SECURE_VALIDATOR:
-            raise Exception
+        secure_validator: IValidator = extra_config.get("secure_validator")  # type: ignore[reportAssignmentType]
 
-        super().__init__(room, message, matrix_client, validation.SECURE_VALIDATOR)
+        super().__init__(room, message, matrix_client, secure_validator, extra_config)
 
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client

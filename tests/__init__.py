@@ -5,6 +5,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, NoReturn
 from unittest.mock import AsyncMock
 
+import pytest
 from matrix_bot.bot import MatrixBot
 from nio import Event, MatrixRoom, RoomMessage, RoomMessageText
 from typing_extensions import override
@@ -45,6 +46,12 @@ class MatrixClientMock:
         self.room_redact = AsyncMock()
         self.sync_forever_called = False
 
+        self.send_text_message_mocks = [
+            self.send_text_message,
+            self.send_markdown_message,
+            self.send_html_message,
+        ]
+
     def add_event_callback(
         self,
         callback: Callable[[MatrixRoom, Event], Awaitable[None]],
@@ -65,8 +72,10 @@ class MatrixClientMock:
         text: str,
         *,
         content: Mapping[str, Any] | None = None,
+        event_id: str | None = None,
     ) -> str:
-        event_id = generate_event_id()
+        if not event_id:
+            event_id = generate_event_id()
         source: dict[str, Any] = {
             "event_id": event_id,
             "sender": sender,
@@ -97,27 +106,46 @@ class MatrixClientMock:
             assert self.send_reaction.await_args_list[i][0][2] == expected_reactions[i]
         self.send_reaction.reset_mock()
 
-    def check_sent_message(self, contains: str) -> None:
-        msg = ""
-        if self.send_markdown_message.await_count > 0:
-            msg = self.send_markdown_message.await_args_list[0][0][1]
-            self.send_markdown_message.reset_mock()
-        if self.send_text_message.await_count > 0:
-            msg = self.send_text_message.await_args_list[0][0][1]
-            self.send_text_message.reset_mock()
+    def check_no_sent_message(self) -> None:
+        for send_mock in self.send_text_message_mocks:
+            assert send_mock.await_count == 0
 
-        assert contains in msg
+    def check_sent_message(self, contains: str) -> None:
+        for send_mock in self.send_text_message_mocks:
+            if send_mock.await_count > 0:
+                msg = send_mock.await_args_list[0][0][1]
+                if contains in msg:
+                    send_mock.reset_mock()
+                    return
+        pytest.fail("No matching sent message")
+
+
+async def fake_synced_text_message(
+    mocked_clients: list[MatrixClientMock],
+    room: MatrixRoom,
+    sender: str,
+    text: str,
+    *,
+    content: Mapping[str, Any] | None = None,
+) -> str:
+    event_id = generate_event_id()
+    for mocked_client in mocked_clients:
+        await mocked_client.fake_synced_text_message(
+            room, sender, text, content=content, event_id=event_id
+        )
+    return event_id
 
 
 async def create_fake_command_bot(
     commands: list[type[ICommand]],
+    **extra_config: Any,
 ) -> tuple[MatrixClientMock, Task[None]]:
     bot = CommandBot(
         homeserver="http://localhost:8008",
         username="",
         password="",
         commands=commands,
-        coordinator=None,
+        **extra_config,
     )
     return await mock_client_and_run(bot)
 
