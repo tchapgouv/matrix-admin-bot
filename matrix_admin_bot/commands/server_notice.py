@@ -25,11 +25,11 @@ logger = structlog.getLogger(__name__)
 
 
 class ServerNoticeState:
-    notice: dict[str, str] | None
+    notice_event: RoomMessage | None
     recipients: list[str] | None
 
     def __init__(self) -> None:
-        self.notice = None
+        self.notice_event = None
         self.recipients = None
 
 
@@ -116,7 +116,7 @@ class ServerNoticeGetNoticeStep(ICommandStep):
         if reply and self.command.message.sender != reply.sender:
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
-        self.command_state.notice = reply.source["content"]
+        self.command_state.notice_event = reply
         return True, CommandAction.CONTINUE
 
 
@@ -157,12 +157,11 @@ class ServerNoticeCommand(CommandWithSteps):
             @property
             @override
             def message(self) -> str | None:
-                body = command.state.notice["body"] if command.state.notice else ""
-                return f"""We will send the following message:
-                \n\n===================================
-                \n\n{body}
-                \n\n===================================
-                """
+                return (
+                    "Please verify the previous message, "
+                    "it will be sent as this to the users.\n"
+                    "You can edit it if needed."
+                )
 
         return [
             ServerNoticeAskRecipientsStep(self),
@@ -177,10 +176,10 @@ class ServerNoticeCommand(CommandWithSteps):
     async def simple_execute(self) -> bool:
         users = await self.get_users()
         result = len(users) > 0
-        if self.state.notice:
+        if self.state.notice_event:
             for user_id in users:
                 result = result and await self.send_server_notice(
-                    self.state.notice, user_id
+                    self.state.notice_event.source["content"], user_id
                 )
         else:
             self.json_report["details"]["status"] = "FAILED"
@@ -294,3 +293,13 @@ class ServerNoticeCommand(CommandWithSteps):
                 reply_to=self.message.event_id,
                 thread_root=self.message.event_id,
             )
+
+    @override
+    async def replace_received(
+        self, replace: RoomMessage, original: RoomMessage
+    ) -> None:
+        if (
+            self.state.notice_event
+            and self.state.notice_event.event_id == original.event_id
+        ):
+            self.state.notice_event = replace

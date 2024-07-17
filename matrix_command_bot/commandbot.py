@@ -49,7 +49,7 @@ class CommandBot(MatrixBot):
             .get("event_id")
         )
 
-    async def get_related_command(self, message: RoomMessage) -> ICommand | None:
+    def get_related_command(self, message: RoomMessage) -> ICommand | None:
         content = message.source.get("content", {})
         if not content:
             return None
@@ -73,15 +73,30 @@ class CommandBot(MatrixBot):
 
         return None
 
+    def get_replaced_event(self, message: RoomMessage) -> RoomMessage | None:
+        relates_to_payload = message.source.get("content", {}).get("m.relates_to", {})
+        if relates_to_payload.get("rel_type", "") == "m.replace":
+            replace_event_id = relates_to_payload.get("event_id", None)
+            if replace_event_id:
+                return self.recent_events_cache.get(replace_event_id)
+        return None
+
     async def handle_events(
         self,
         room: MatrixRoom,
         message: RoomMessage,
     ) -> None:
-        related_command = await self.get_related_command(message)
-        if related_command:
-            await related_command.reply_received(message)
-            return
+        replaced_event = self.get_replaced_event(message)
+        if replaced_event:
+            related_command = self.get_related_command(replaced_event)
+            if related_command:
+                await related_command.replace_received(message, replaced_event)
+                return
+        else:
+            related_command = self.get_related_command(message)
+            if related_command:
+                await related_command.reply_received(message)
+                return
 
         for command_type in self.commands:
             try:
@@ -90,6 +105,6 @@ class CommandBot(MatrixBot):
                 )
                 self.commands_cache[message.event_id] = command
                 await command.execute()
-                # TODO break or not ?
+                break
             except EventNotConcerned:
                 pass

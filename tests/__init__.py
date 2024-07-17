@@ -174,26 +174,20 @@ def create_thread_relation(thread_root_id: str) -> Mapping[str, Any]:
     }
 
 
+def create_replace_relation(original_event_id: str) -> Mapping[str, Any]:
+    return {
+        "m.relates_to": {
+            "event_id": original_event_id,
+            "rel_type": "m.replace",
+        }
+    }
+
+
 def create_reply_relation(replied_event_id: str) -> Mapping[str, Any]:
     return {"m.relates_to": {"m.in_reply_to": {"event_id": replied_event_id}}}
 
 
 class OkValidator(IValidator):
-    @override
-    async def validate(
-        self,
-        user_response: RoomMessage | None,
-        command: ICommand,
-    ) -> bool:
-        return True
-
-
-class OkValidatorWithPrompt(IValidator):
-    @property
-    @override
-    def prompt(self) -> str | None:
-        return "Your command will automatically be executed"
-
     @override
     async def validate(
         self,
