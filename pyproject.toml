@@ -63,6 +63,7 @@ ignore = [
     "COM812",  # Trailing comma missing
     "PLR2004", # Magic value used in comparison
     "PLR0913", # Too many arguments in function definition
+    "TCH001",  # Move application import into a type-checking block
 
     # TO BE FIXED !!
     "TRY002",  # Create your own exception

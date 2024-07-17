@@ -1,7 +1,6 @@
 import json
-import secrets
-import string
 import time
+from collections.abc import Mapping
 from typing import Any
 
 import aiofiles
@@ -11,14 +10,13 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_command_bot import validation
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.simple_command import SimpleExecuteStep
-from matrix_command_bot.step import CommandWithSteps, ICommandStep, CommandAction
+from matrix_command_bot.step import CommandAction, CommandWithSteps, ICommandStep
 from matrix_command_bot.step.simple_steps import ReactionStep, ResultReactionStep
 from matrix_command_bot.util import get_server_name
 from matrix_command_bot.validation import IValidator
-from matrix_command_bot.validation.steps import ConfirmStep, ValidateStep
+from matrix_command_bot.validation.steps import ValidateStep
 
 logger = structlog.getLogger(__name__)
 
@@ -94,7 +92,7 @@ class ServerNoticeGetRecipientsStep(ICommandStep):
         )
 
 
-class ServerNoticeGetNoticeStep(ConfirmStep):
+class ServerNoticeGetNoticeStep(ValidateStep):
 
     def __init__(
             self,
@@ -106,6 +104,7 @@ class ServerNoticeGetNoticeStep(ConfirmStep):
         self.command_state = command_state
 
     @property
+    @override
     def message(self) -> str | None:
         return self.command_state.notice["body"]
 
@@ -128,12 +127,11 @@ class ServerNoticeCommand(CommandWithSteps):
             room: MatrixRoom,
             message: RoomMessage,
             matrix_client: MatrixClient,
+            extra_config: Mapping[str, Any],
     ) -> None:
-        if not validation.SECURE_VALIDATOR:
-            raise Exception
+        super().__init__(room, message, matrix_client, extra_config)
+        self.secure_validator: IValidator = extra_config.get("secure_validator")  # type: ignore[reportAssignmentType]
 
-        super().__init__(room, message, matrix_client)
-        self.validator = validation.SECURE_VALIDATOR
         self.state = ServerNoticeState()
 
         event_parser = MessageEventParser(
@@ -157,15 +155,14 @@ class ServerNoticeCommand(CommandWithSteps):
         return [
             ServerNoticeAskRecipientsStep(self),
             ServerNoticeGetRecipientsStep(self, command.state),
-            ServerNoticeGetNoticeStep(self, self.validator, command.state),
-            ValidateStep(self, self.validator),
+            ServerNoticeGetNoticeStep(self, self.secure_validator, command.state),
             ReactionStep(self, "🚀"),
             SimpleExecuteStep(self, self.simple_execute),
             ResultReactionStep(self),
         ]
 
     async def get_users(self) -> set[str]:
-        users = set()
+        users: set[str] = set()
         if "all" in self.state.recipients:
             # Get list of users
             resp = await self.matrix_client.send(
@@ -195,46 +192,6 @@ class ServerNoticeCommand(CommandWithSteps):
                     users.add(user_id)
         return users
 
-    async def send_notice(
-            self, user_id: str, password: str, *, logout_devices: bool = True
-    ) -> bool:
-        # TODO check coordinator config
-        if get_server_name(user_id) != self.server_name:
-            return True
-
-        resp = await self.matrix_client.send(
-            "GET",
-            f"/_synapse/admin/v2/users/{user_id}/devices",
-            headers={"Authorization": f"Bearer {self.matrix_client.access_token}"},
-        )
-
-        self.json_report.setdefault(user_id, {})
-
-        # TODO handle unknown user here and return
-        if resp.ok:
-            json_body = await resp.json()
-            self.json_report[user_id]["devices"] = json_body.get("devices", [])
-
-        resp = await self.matrix_client.send(
-            "POST",
-            f"/_synapse/admin/v1/reset_password/{user_id}",
-            headers={"Authorization": f"Bearer {self.matrix_client.access_token}"},
-            data=json.dumps(
-                {
-                    "new_password": password,
-                    "logout_devices": logout_devices,
-                }
-            ),
-        )
-        if not resp.ok:
-            json_body = await resp.json()
-            self.json_report[user_id].update(json_body)
-            self.failed_user_ids.append(user_id)
-            return False
-
-        return True
-
-    @override
     async def simple_execute(self) -> bool:
         users = await self.get_users()
         result = len(users) > 0
@@ -245,7 +202,7 @@ class ServerNoticeCommand(CommandWithSteps):
             await self.send_report()
         return result
 
-    async def send_server_notice(self, message: dict[str:Any], user_id: str) -> bool:
+    async def send_server_notice(self, message: dict[str, Any], user_id: str) -> bool:
         if user_id.startswith("@_"):
             # Skip appservice users
             return True

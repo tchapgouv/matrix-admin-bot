@@ -1,3 +1,5 @@
+from typing import Any
+
 import cachetools
 from matrix_bot.bot import MatrixBot
 from matrix_bot.eventparser import EventNotConcerned
@@ -14,11 +16,13 @@ class CommandBot(MatrixBot):
         username: str,
         password: str,
         commands: list[type[ICommand]],
-        coordinator: str | None,
+        **extra_config: Any,  # noqa: ANN401
     ) -> None:
         super().__init__(homeserver, username, password)
         self.commands = commands
-        self.coordinator = coordinator
+        self.extra_config = {}
+        if extra_config:
+            self.extra_config = extra_config
 
         self.recent_events_cache: cachetools.TTLCache[str, RoomMessage] = (
             cachetools.TTLCache(maxsize=5120, ttl=24 * 60 * 60)
@@ -81,7 +85,9 @@ class CommandBot(MatrixBot):
 
         for command_type in self.commands:
             try:
-                command = command_type(room, message, self.matrix_client)
+                command = command_type(
+                    room, message, self.matrix_client, self.extra_config
+                )
                 self.commands_cache[message.event_id] = command
                 await command.execute()
                 # TODO break or not ?

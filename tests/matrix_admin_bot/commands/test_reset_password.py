@@ -3,15 +3,15 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from nio import MatrixRoom
 
-import matrix_command_bot
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
 from tests import USER1_ID, OkValidator, create_fake_command_bot
 
 
 @pytest.mark.asyncio()
 async def test_reset_password() -> None:
-    matrix_command_bot.validation.SECURE_VALIDATOR = OkValidator()
-    mocked_client, t = await create_fake_command_bot([ResetPasswordCommand])
+    mocked_client, t = await create_fake_command_bot(
+        [ResetPasswordCommand], secure_validator=OkValidator()
+    )
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -36,8 +36,9 @@ async def test_reset_password() -> None:
 
 @pytest.mark.asyncio()
 async def test_failed_reset_password() -> None:
-    matrix_command_bot.validation.SECURE_VALIDATOR = OkValidator()
-    mocked_client, t = await create_fake_command_bot([ResetPasswordCommand])
+    mocked_client, t = await create_fake_command_bot(
+        [ResetPasswordCommand], secure_validator=OkValidator()
+    )
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=False, json=AsyncMock(return_value={}))
     )

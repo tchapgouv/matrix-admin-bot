@@ -9,7 +9,6 @@ from typing_extensions import override
 
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
 from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
-from matrix_command_bot import validation
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot
 from matrix_command_bot.validation.validators.totp import TOTPValidator
@@ -25,7 +24,7 @@ class AdminBotConfig(BaseSettings):
     bot_password: str = ""
     allowed_room_ids: list[str] = []
     totps: dict[str, str] = {}
-    coordinator: str | None = None
+    is_coordinator: bool = True
 
     @classmethod
     @override
@@ -48,9 +47,9 @@ def main() -> None:
         username=config.bot_username,
         password=config.bot_password,
         commands=COMMANDS,
-        coordinator=config.coordinator,
+        is_coordinator=config.is_coordinator,
+        secure_validator=TOTPValidator(config.totps),
     )
-    validation.SECURE_VALIDATOR = TOTPValidator(config.totps)
     bot.run()
 
 

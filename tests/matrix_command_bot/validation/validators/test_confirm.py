@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from typing import Any
+
 import pytest
 from matrix_bot.client import MatrixClient
 from nio import MatrixRoom, RoomMessage
@@ -19,8 +22,9 @@ class ConfirmValidatedCommand(SimpleValidatedCommand):
         room: MatrixRoom,
         message: RoomMessage,
         matrix_client: MatrixClient,
+        extra_config: Mapping[str, Any],
     ) -> None:
-        super().__init__(room, message, matrix_client, ConfirmValidator())
+        super().__init__(room, message, matrix_client, ConfirmValidator(), extra_config)
 
     @override
     async def simple_execute(self) -> bool:

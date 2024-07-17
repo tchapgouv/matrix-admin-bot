@@ -48,7 +48,9 @@ class TOTPValidator(IValidator):
                     "Couldnt parse the authentication code, "
                     "it should be a 6 digits code."
                 )
-            if error_msg is not None:
+            if error_msg is not None and command.extra_config.get(
+                "is_coordinator", True
+            ):
                 await command.matrix_client.send_text_message(
                     command.room.room_id,
                     error_msg,
