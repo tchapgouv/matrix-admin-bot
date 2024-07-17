@@ -1,17 +1,21 @@
+import json
+import time
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from nio import MatrixRoom
+from nio import Event, MatrixRoom, RoomMessage
 
 from matrix_admin_bot.commands.server_notice import USER_ALL, ServerNoticeCommand
+from matrix_command_bot.validation.validators.confirm import ConfirmValidator
 from tests import (
     USER1_ID,
     USER2_ID,
     USER3_ID,
     USER4_ID,
-    OkValidatorWithPrompt,
     create_fake_command_bot,
+    create_replace_relation,
     create_thread_relation,
+    generate_event_id,
 )
 
 user_response_data = {
@@ -84,7 +88,7 @@ user_response_data = {
 @pytest.mark.asyncio()
 async def test_server_notice_to_all_recipients() -> None:
     mocked_client, t = await create_fake_command_bot(
-        [ServerNoticeCommand], secure_validator=OkValidatorWithPrompt()
+        [ServerNoticeCommand], secure_validator=ConfirmValidator()
     )
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
@@ -119,7 +123,7 @@ async def test_server_notice_to_all_recipients() -> None:
         content={**custom_content, **create_thread_relation(msg_event_id)},
     )
 
-    mocked_client.check_sent_message("Dear **friends** of Element")
+    mocked_client.check_sent_message("Please reply")
 
     await mocked_client.fake_synced_text_message(
         room,
@@ -146,7 +150,7 @@ async def test_server_notice_to_all_recipients() -> None:
 @pytest.mark.asyncio()
 async def test_server_notice_to_one_recipient() -> None:
     mocked_client, t = await create_fake_command_bot(
-        [ServerNoticeCommand], secure_validator=OkValidatorWithPrompt()
+        [ServerNoticeCommand], secure_validator=ConfirmValidator()
     )
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
@@ -181,7 +185,7 @@ async def test_server_notice_to_one_recipient() -> None:
         content={**custom_content, **create_thread_relation(msg_event_id)},
     )
 
-    mocked_client.check_sent_message("Dear **friends** of Element")
+    mocked_client.check_sent_message("Please reply")
 
     await mocked_client.fake_synced_text_message(
         room,
@@ -197,6 +201,10 @@ async def test_server_notice_to_one_recipient() -> None:
     assert len(mocked_client.send.await_args_list) == 1
     assert "/users" not in mocked_client.send.await_args_list[0][0][1]
     assert "/send_server_notice" in mocked_client.send.await_args_list[0][0][1]
+    assert (
+        "Dear **friends** of Element"
+        in mocked_client.send.await_args_list[0][1]["data"]
+    )
     mocked_client.send.reset_mock()
 
     t.cancel()
@@ -205,7 +213,7 @@ async def test_server_notice_to_one_recipient() -> None:
 @pytest.mark.asyncio()
 async def test_failed_server_notice_with_no_matrix_id() -> None:
     mocked_client, t = await create_fake_command_bot(
-        [ServerNoticeCommand], secure_validator=OkValidatorWithPrompt()
+        [ServerNoticeCommand], secure_validator=ConfirmValidator()
     )
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
@@ -240,7 +248,7 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
         content={**custom_content, **create_thread_relation(msg_event_id)},
     )
 
-    mocked_client.check_sent_message("Dear **friends** of Element")
+    mocked_client.check_sent_message("Please reply")
 
     await mocked_client.fake_synced_text_message(
         room,
@@ -251,6 +259,115 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
 
     # no call to any endpoint if user is not a matrix id
     assert len(mocked_client.send.await_args_list) == 0
+    mocked_client.send.reset_mock()
+
+    t.cancel()
+
+
+@pytest.mark.asyncio()
+async def test_server_notice_with_edit() -> None:
+    mocked_client, t = await create_fake_command_bot(
+        [ServerNoticeCommand], secure_validator=ConfirmValidator()
+    )
+    mocked_client.send = AsyncMock(
+        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+    )
+
+    room = MatrixRoom("!roomid:example.org", USER1_ID)
+
+    msg_event_id = await mocked_client.fake_synced_text_message(
+        room, USER1_ID, "!server_notice"
+    )
+
+    mocked_client.check_sent_message("Type your recipients with space separated")
+
+    custom_content = {"body": USER2_ID}
+    await mocked_client.fake_synced_text_message(
+        room,
+        USER1_ID,
+        USER2_ID,
+        content={**custom_content, **create_thread_relation(msg_event_id)},
+    )
+    mocked_client.check_sent_message("Type your notice")
+
+    custom_content = {
+        "body": "Dear **friends** of Element",
+        "format": "org.matrix.custom.html",
+        "formatted_body": "Dear <strong>Friend</strong>",
+    }
+    original_event_id = await mocked_client.fake_synced_text_message(
+        room,
+        USER1_ID,
+        "Dear **friends** of Element",
+        content={**custom_content, **create_thread_relation(msg_event_id)},
+    )
+
+    mocked_client.check_sent_message("Please reply")
+
+    replace_message = Event.parse_event(
+        {
+            "event_id": generate_event_id(),
+            "sender": USER1_ID,
+            "type": "m.room.message",
+            "origin_server_ts": int(time.time() * 1000),
+            "content": {
+                "msgtype": "m.text",
+                "body": "* Dear **other friends** of Element",
+                "format": "org.matrix.custom.html",
+                "formatted_body": "* Dear <strong>Friend</strong>",
+                "m.new_content": {
+                    "msgtype": "m.text",
+                    "body": "Dear **other friends** of Element",
+                    "format": "org.matrix.custom.html",
+                    "formatted_body": "Dear <strong>Friend</strong>",
+                },
+                **create_replace_relation(original_event_id),
+            },
+        }
+    )
+    assert isinstance(replace_message, RoomMessage)
+    await mocked_client.fake_synced_message(room, replace_message)
+
+    replace_message = Event.parse_event(
+        {
+            "event_id": generate_event_id(),
+            "sender": USER1_ID,
+            "type": "m.room.message",
+            "origin_server_ts": int(time.time() * 1000),
+            "content": {
+                "msgtype": "m.text",
+                "body": "* Dear **final friends** of Element",
+                "format": "org.matrix.custom.html",
+                "formatted_body": "* Dear <strong>Friend</strong>",
+                "m.new_content": {
+                    "msgtype": "m.text",
+                    "body": "Dear **final friends** of Element",
+                    "format": "org.matrix.custom.html",
+                    "formatted_body": "Dear <strong>Friend</strong>",
+                },
+                **create_replace_relation(original_event_id),
+            },
+        }
+    )
+    assert isinstance(replace_message, RoomMessage)
+    await mocked_client.fake_synced_message(room, replace_message)
+
+    await mocked_client.fake_synced_text_message(
+        room,
+        USER1_ID,
+        "yes",
+        content=create_thread_relation(msg_event_id),
+    )
+
+    # send the report a result
+    mocked_client.send_file_message.assert_awaited_once()
+    mocked_client.send_file_message.reset_mock()
+    # no call to fetch the users, and one call to send the notice directly to the user
+    assert len(mocked_client.send.await_args_list) == 1
+    assert "/users" not in mocked_client.send.await_args_list[0][0][1]
+    assert "/send_server_notice" in mocked_client.send.await_args_list[0][0][1]
+    data = json.loads(mocked_client.send.await_args_list[0][1]["data"])
+    assert data["content"]["body"] == "Dear **final friends** of Element"
     mocked_client.send.reset_mock()
 
     t.cancel()

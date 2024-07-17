@@ -25,12 +25,9 @@ logger = structlog.getLogger(__name__)
 
 
 class ServerNoticeState:
-    notice: dict[str, str] | None
-    recipients: list[str] | None
-
-    def __init__(self) -> None:
-        self.notice = None
-        self.recipients = None
+    notice_content: Mapping[str, Any] | None = None
+    recipients: list[str] | None = None
+    notice_original_event_id: str | None = None
 
 
 class ServerNoticeAskRecipientsStep(ICommandStep):
@@ -116,7 +113,8 @@ class ServerNoticeGetNoticeStep(ICommandStep):
         if reply and self.command.message.sender != reply.sender:
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
-        self.command_state.notice = reply.source["content"]
+        self.command_state.notice_content = reply.source["content"]
+        self.command_state.notice_original_event_id = reply.event_id
         return True, CommandAction.CONTINUE
 
 
@@ -157,12 +155,11 @@ class ServerNoticeCommand(CommandWithSteps):
             @property
             @override
             def message(self) -> str | None:
-                body = command.state.notice["body"] if command.state.notice else ""
-                return f"""We will send the following message:
-                \n\n===================================
-                \n\n{body}
-                \n\n===================================
-                """
+                return (
+                    "Please verify the previous message, "
+                    "it will be sent as this to the users.\n"
+                    "You can edit it if needed."
+                )
 
         return [
             ServerNoticeAskRecipientsStep(self),
@@ -177,10 +174,10 @@ class ServerNoticeCommand(CommandWithSteps):
     async def simple_execute(self) -> bool:
         users = await self.get_users()
         result = len(users) > 0
-        if self.state.notice:
+        if self.state.notice_content:
             for user_id in users:
                 result = result and await self.send_server_notice(
-                    self.state.notice, user_id
+                    self.state.notice_content, user_id
                 )
         else:
             self.json_report["details"]["status"] = "FAILED"
@@ -232,7 +229,9 @@ class ServerNoticeCommand(CommandWithSteps):
                     users.add(user_id)
         return users
 
-    async def send_server_notice(self, message: dict[str, Any], user_id: str) -> bool:
+    async def send_server_notice(
+        self, message: Mapping[str, Any], user_id: str
+    ) -> bool:
         if user_id.startswith("@_"):
             # Skip appservice users
             return True
@@ -294,3 +293,15 @@ class ServerNoticeCommand(CommandWithSteps):
                 reply_to=self.message.event_id,
                 thread_root=self.message.event_id,
             )
+
+    @override
+    async def replace_received(
+        self,
+        new_content: Mapping[str, Any],
+        original_event: RoomMessage,
+    ) -> None:
+        if (
+            self.state.notice_original_event_id
+            and self.state.notice_original_event_id == original_event.event_id
+        ):
+            self.state.notice_content = new_content
