@@ -26,6 +26,13 @@ class ICommand(ABC):
     async def reply_received(self, reply: RoomMessage) -> None:  # noqa: ARG002
         return
 
+    async def replace_received(
+        self,
+        new_content: Mapping[str, Any],  # noqa: ARG002
+        original_event: RoomMessage,  # noqa: ARG002
+    ) -> None:
+        return
+
     async def set_status_reaction(self, key: str | None) -> None:
         if key is None:
             return
