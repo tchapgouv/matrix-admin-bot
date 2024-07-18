@@ -45,7 +45,7 @@ class ValidateStep(ICommandStep):
             if confirm_text:
                 message = self.message if self.message else ""
                 if message:
-                    confirm_text = f"{message}\n\n"+confirm_text
+                    confirm_text = f"{message}\n\n" + confirm_text
 
                 await self.command.matrix_client.send_markdown_message(
                     self.command.room.room_id,

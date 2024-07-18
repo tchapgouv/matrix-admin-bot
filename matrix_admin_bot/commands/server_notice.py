@@ -25,28 +25,26 @@ class ServerNoticeState:
     notice: dict[str, str] | None
     recipients: list[str] | None
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.notice = None
         self.recipients = None
 
 
 class ServerNoticeAskRecipientsStep(ICommandStep):
-
     def __init__(
-            self,
-            command: ICommand,
+        self,
+        command: ICommand,
     ) -> None:
         super().__init__(command)
 
     @override
-    async def execute(self, reply: RoomMessage | None = None) -> tuple[bool, CommandAction]:
-        message = "\n".join(
-            [
-                "Type your recipients with space separated : ",
-                "- `all`",
-                "- `@john.doe:matrix.org @jane.doe:matrix.org @judith.doe:matrix.org`"
-            ]
-        )
+    async def execute(
+        self, reply: RoomMessage | None = None
+    ) -> tuple[bool, CommandAction]:
+        message = """Type your recipients with space separated :
+                  - `all`
+                  - `@john.doe:matrix.org @jane.doe:matrix.org @judith.doe:matrix.org`
+                  """
 
         await self.command.matrix_client.send_markdown_message(
             self.command.room.room_id,
@@ -61,28 +59,27 @@ class ServerNoticeAskRecipientsStep(ICommandStep):
 
 
 class ServerNoticeGetRecipientsStep(ICommandStep):
-
     def __init__(
-            self,
-            command: ICommand,
-            command_state: ServerNoticeState,
+        self,
+        command: ICommand,
+        command_state: ServerNoticeState,
     ) -> None:
         super().__init__(command)
         self.command_state = command_state
 
     @override
-    async def execute(self, reply: RoomMessage | None = None) -> tuple[bool, CommandAction]:
+    async def execute(
+        self, reply: RoomMessage | None = None
+    ) -> tuple[bool, CommandAction]:
         if not reply:
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
         if reply and self.command.message.sender != reply.sender:
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
-        self.command_state.recipients = reply.source.get("content", {}).get("body", "").split()
-        message = "\n".join(
-            [
-                "Type your notice",
-            ]
+        self.command_state.recipients = (
+            reply.source.get("content", {}).get("body", "").split()
         )
+        message = "Type your notice"
 
         await self.command.matrix_client.send_markdown_message(
             self.command.room.room_id,
@@ -97,17 +94,18 @@ class ServerNoticeGetRecipientsStep(ICommandStep):
 
 
 class ServerNoticeGetNoticeStep(ICommandStep):
-
     def __init__(
-            self,
-            command: ICommand,
-            command_state: ServerNoticeState,
+        self,
+        command: ICommand,
+        command_state: ServerNoticeState,
     ) -> None:
         super().__init__(command)
         self.command_state = command_state
 
     @override
-    async def execute(self, reply: RoomMessage | None = None) -> tuple[bool, CommandAction]:
+    async def execute(
+        self, reply: RoomMessage | None = None
+    ) -> tuple[bool, CommandAction]:
         if not reply:
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
         if reply and self.command.message.sender != reply.sender:
@@ -121,11 +119,11 @@ class ServerNoticeCommand(CommandWithSteps):
     KEYWORD = "server_notice"
 
     def __init__(
-            self,
-            room: MatrixRoom,
-            message: RoomMessage,
-            matrix_client: MatrixClient,
-            extra_config: Mapping[str, Any],
+        self,
+        room: MatrixRoom,
+        message: RoomMessage,
+        matrix_client: MatrixClient,
+        extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, extra_config)
         self.secure_validator: IValidator = extra_config.get("secure_validator")  # type: ignore[reportAssignmentType]
@@ -168,31 +166,35 @@ class ServerNoticeCommand(CommandWithSteps):
 
     async def get_users(self) -> set[str]:
         users: set[str] = set()
-        if "all" in self.state.recipients:
+        if self.state.recipients and "all" in self.state.recipients:
             # Get list of users
             resp = await self.matrix_client.send(
                 "GET",
-                f"/_synapse/admin/v2/users?from=0&guests=false",
-                headers={"Authorization": f"Bearer {self.matrix_client.access_token}"}
+                "/_synapse/admin/v2/users?from=0&guests=false",
+                headers={"Authorization": f"Bearer {self.matrix_client.access_token}"},
             )
             if not resp.ok:
                 return users
             while True:
                 data = await resp.json()
                 if "users" in data:
-                    users = users | {user["name"] for user in data["users"] if not user["user_type"]}
+                    users = users | {
+                        user["name"] for user in data["users"] if not user["user_type"]
+                    }
                 if data.get("next_token"):
                     counter = data["next_token"]
                     resp = await self.matrix_client.send(
                         "GET",
                         f"/_synapse/admin/v2/users?from={counter}&guests=false",
-                        headers={"Authorization": f"Bearer {self.matrix_client.access_token}"}
+                        headers={
+                            "Authorization": f"Bearer {self.matrix_client.access_token}"
+                        },
                     )
                     if not resp.ok:
                         return users
                 else:
                     break
-        else:
+        elif self.state.recipients:
             for user_id in self.state.recipients:
                 if user_id.startswith("@"):
                     users.add(user_id)
@@ -201,8 +203,14 @@ class ServerNoticeCommand(CommandWithSteps):
     async def simple_execute(self) -> bool:
         users = await self.get_users()
         result = len(users) > 0
-        for user_id in users:
-            result = result and await self.send_server_notice(self.state.notice, user_id)
+        if self.state.notice:
+            for user_id in users:
+                result = result and await self.send_server_notice(
+                    self.state.notice, user_id
+                )
+        else:
+            self.json_report["details"]["status"] = "FAILED"
+            self.json_report["details"]["reason"] = "There is no notice to send"
 
         if self.json_report:
             await self.send_report()
@@ -222,39 +230,41 @@ class ServerNoticeCommand(CommandWithSteps):
         while retry_nb < 5:
             resp = await self.matrix_client.send(
                 "POST",
-                f"/_synapse/admin/v1/send_server_notice",
+                "/_synapse/admin/v1/send_server_notice",
                 headers={"Authorization": f"Bearer {self.matrix_client.access_token}"},
-                data=json.dumps(
-                    {
-                        "user_id": user_id,
-                        "content": content
-                    }
-                ),
+                data=json.dumps({"user_id": user_id, "content": content}),
             )
             if resp.status == 429:
                 retry_nb += 1
                 # use some exp backoff
-                time.sleep(0.5 * retry_nb)
+                time.sleep(0.5 * retry_nb)  # noqa: ASYNC101
             else:
                 break
 
         self.json_report["details"].setdefault(user_id, {})
 
         # TODO handle unknown user here and return
-        if resp.ok:
+        if resp and resp.ok:
             json_body = await resp.json()
             self.json_report["details"][user_id]["status"] = "SUCCESS"
             self.json_report["details"][user_id]["response"] = str(json_body)
-        else:
+        elif resp:
             json_body = await resp.json()
             self.json_report["details"][user_id]["status"] = "FAILED"
             self.json_report["details"][user_id]["response"] = str(json_body)
-            self.json_report["failed_users"] = self.json_report["failed_users"] + user_id + " "
+            self.json_report["failed_users"] = (
+                self.json_report["failed_users"] + user_id + " "
+            )
+        else:
+            self.json_report["details"]["status"] = "FAILED"
+            self.json_report["details"]["reason"] = (
+                "No response /_synapse/admin/v1/send_server_notice"
+            )
 
         return True
 
     async def send_report(self) -> None:
-        logger.info(f"result={self.json_report}")
+        logger.info("result=%s", self.json_report)
         async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
             await tmpfile.write(
                 json.dumps(self.json_report, indent=2, sort_keys=True).encode()
