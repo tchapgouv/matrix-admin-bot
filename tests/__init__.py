@@ -15,6 +15,9 @@ from matrix_command_bot.commandbot import CommandBot
 from matrix_command_bot.validation import IValidator
 
 USER1_ID = "@user1:example.org"
+USER2_ID = "@user2:example.org"
+USER3_ID = "@user3:example.org"
+USER4_ID = "@user4:example.org"
 
 event_id_counter: int = 0
 
@@ -53,9 +56,9 @@ class MatrixClientMock:
         ]
 
     def add_event_callback(
-        self,
-        callback: Callable[[MatrixRoom, Event], Awaitable[None]],
-        event_filter: type[Event] | tuple[type[Event]] | None,
+            self,
+            callback: Callable[[MatrixRoom, Event], Awaitable[None]],
+            event_filter: type[Event] | tuple[type[Event]] | None,
     ) -> None:
         self.callbacks[callback] = event_filter
 
@@ -66,13 +69,13 @@ class MatrixClientMock:
                 await callback(room, message)
 
     async def fake_synced_text_message(
-        self,
-        room: MatrixRoom,
-        sender: str,
-        text: str,
-        *,
-        content: Mapping[str, Any] | None = None,
-        event_id: str | None = None,
+            self,
+            room: MatrixRoom,
+            sender: str,
+            text: str,
+            *,
+            content: Mapping[str, Any] | None = None,
+            event_id: str | None = None,
     ) -> str:
         if not event_id:
             event_id = generate_event_id()
@@ -121,12 +124,12 @@ class MatrixClientMock:
 
 
 async def fake_synced_text_message(
-    mocked_clients: list[MatrixClientMock],
-    room: MatrixRoom,
-    sender: str,
-    text: str,
-    *,
-    content: Mapping[str, Any] | None = None,
+        mocked_clients: list[MatrixClientMock],
+        room: MatrixRoom,
+        sender: str,
+        text: str,
+        *,
+        content: Mapping[str, Any] | None = None,
 ) -> str:
     event_id = generate_event_id()
     for mocked_client in mocked_clients:
@@ -137,8 +140,8 @@ async def fake_synced_text_message(
 
 
 async def create_fake_command_bot(
-    commands: list[type[ICommand]],
-    **extra_config: Any,
+        commands: list[type[ICommand]],
+        **extra_config: Any,
 ) -> tuple[MatrixClientMock, Task[None]]:
     bot = CommandBot(
         homeserver="http://localhost:8008",
@@ -176,10 +179,26 @@ def create_reply_relation(replied_event_id: str) -> Mapping[str, Any]:
 
 
 class OkValidator(IValidator):
+
     @override
     async def validate(
-        self,
-        user_response: RoomMessage | None,
-        command: ICommand,
+            self,
+            user_response: RoomMessage | None,
+            command: ICommand,
+    ) -> bool:
+        return True
+
+
+class OkValidatorWithPrompt(IValidator):
+
+    @property
+    def prompt(self) -> str | None:
+        return "Your command will automatically be executed"
+
+    @override
+    async def validate(
+            self,
+            user_response: RoomMessage | None,
+            command: ICommand,
     ) -> bool:
         return True

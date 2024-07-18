@@ -22,8 +22,12 @@ logger = structlog.getLogger(__name__)
 
 
 class ServerNoticeState:
-    notice: dict[str, str]
-    recipients: list[str]
+    notice: dict[str, str] | None
+    recipients: list[str] | None
+
+    def __init__(self):
+        self.notice = None
+        self.recipients = None
 
 
 class ServerNoticeAskRecipientsStep(ICommandStep):
@@ -92,21 +96,15 @@ class ServerNoticeGetRecipientsStep(ICommandStep):
         )
 
 
-class ServerNoticeGetNoticeStep(ValidateStep):
+class ServerNoticeGetNoticeStep(ICommandStep):
 
     def __init__(
             self,
             command: ICommand,
-            validator: IValidator,
             command_state: ServerNoticeState,
     ) -> None:
-        super().__init__(command, validator)
+        super().__init__(command)
         self.command_state = command_state
-
-    @property
-    @override
-    def message(self) -> str | None:
-        return self.command_state.notice["body"]
 
     @override
     async def execute(self, reply: RoomMessage | None = None) -> tuple[bool, CommandAction]:
@@ -116,7 +114,7 @@ class ServerNoticeGetNoticeStep(ValidateStep):
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
         self.command_state.notice = reply.source["content"]
-        return await super().execute()
+        return True, CommandAction.CONTINUE
 
 
 class ServerNoticeCommand(CommandWithSteps):
@@ -152,10 +150,17 @@ class ServerNoticeCommand(CommandWithSteps):
     async def create_steps(self) -> list[ICommandStep]:
         command = self
 
+        class _ValidateStep(ValidateStep):
+            @property
+            @override
+            def message(self) -> str | None:
+                return command.state.notice["body"] if command.state.notice else None
+
         return [
             ServerNoticeAskRecipientsStep(self),
             ServerNoticeGetRecipientsStep(self, command.state),
-            ServerNoticeGetNoticeStep(self, self.secure_validator, command.state),
+            ServerNoticeGetNoticeStep(self, command.state),
+            _ValidateStep(self, self.secure_validator),
             ReactionStep(self, "🚀"),
             SimpleExecuteStep(self, self.simple_execute),
             ResultReactionStep(self),
@@ -174,7 +179,8 @@ class ServerNoticeCommand(CommandWithSteps):
                 return users
             while True:
                 data = await resp.json()
-                users = users | {user["name"] for user in data["users"] if not user["user_type"]}
+                if "users" in data:
+                    users = users | {user["name"] for user in data["users"] if not user["user_type"]}
                 if data.get("next_token"):
                     counter = data["next_token"]
                     resp = await self.matrix_client.send(
