@@ -41,17 +41,18 @@ class ServerNoticeAskRecipientsStep(ICommandStep):
     async def execute(
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
-        message = """Type your recipients with space separated :
-                  - `all`
-                  - `@john.doe:matrix.org @jane.doe:matrix.org @judith.doe:matrix.org`
-                  """
+        if self.command.extra_config.get("is_coordinator", True):
+            message = """Type your recipients with space separated :
+                      - `all`
+                      - `@john.doe:matrix.org @jane.doe:matrix.org @judith.doe:matrix.org`
+                      """
 
-        await self.command.matrix_client.send_markdown_message(
-            self.command.room.room_id,
-            message,
-            reply_to=self.command.message.event_id,
-            thread_root=self.command.message.event_id,
-        )
+            await self.command.matrix_client.send_markdown_message(
+                self.command.room.room_id,
+                message,
+                reply_to=self.command.message.event_id,
+                thread_root=self.command.message.event_id,
+            )
         return (
             True,
             CommandAction.CONTINUE,
@@ -79,14 +80,14 @@ class ServerNoticeGetRecipientsStep(ICommandStep):
         self.command_state.recipients = (
             reply.source.get("content", {}).get("body", "").split()
         )
-        message = "Type your notice"
-
-        await self.command.matrix_client.send_markdown_message(
-            self.command.room.room_id,
-            message,
-            reply_to=self.command.message.event_id,
-            thread_root=self.command.message.event_id,
-        )
+        if self.command.extra_config.get("is_coordinator", True):
+            message = "Type your notice"
+            await self.command.matrix_client.send_markdown_message(
+                self.command.room.room_id,
+                message,
+                reply_to=self.command.message.event_id,
+                thread_root=self.command.message.event_id,
+            )
         return (
             True,
             CommandAction.CONTINUE,
@@ -196,7 +197,7 @@ class ServerNoticeCommand(CommandWithSteps):
                     break
         elif self.state.recipients:
             for user_id in self.state.recipients:
-                if user_id.startswith("@"):
+                if user_id.startswith("@") and get_server_name(user_id) == self.server_name:
                     users.add(user_id)
         return users
 
