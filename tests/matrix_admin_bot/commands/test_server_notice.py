@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from nio import MatrixRoom
 
-from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
+from matrix_admin_bot.commands.server_notice import USER_ALL, ServerNoticeCommand
 from tests import (
     USER1_ID,
     USER2_ID,
@@ -98,11 +98,11 @@ async def test_server_notice_to_all_recipients() -> None:
 
     mocked_client.check_sent_message("Type your recipients with space separated")
 
-    custom_content = {"body": "all"}
+    custom_content = {"body": USER_ALL}
     await mocked_client.fake_synced_text_message(
         room,
         USER1_ID,
-        "all",
+        USER_ALL,
         content={**custom_content, **create_thread_relation(msg_event_id)},
     )
     mocked_client.check_sent_message("Type your notice")

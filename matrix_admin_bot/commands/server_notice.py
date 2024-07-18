@@ -18,6 +18,8 @@ from matrix_command_bot.util import get_server_name
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.steps import ValidateStep
 
+USER_ALL = "all"
+
 logger = structlog.getLogger(__name__)
 
 
@@ -41,17 +43,19 @@ class ServerNoticeAskRecipientsStep(ICommandStep):
     async def execute(
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
-        message = """Type your recipients with space separated :
-                  - `all`
-                  - `@john.doe:matrix.org @jane.doe:matrix.org @judith.doe:matrix.org`
-                  """
+        if self.command.extra_config.get("is_coordinator", True):
+            message = """Type your recipients with space separated :
+                      - `all`
+                      - `matrix.org element.io homeserver.org`
+                      - `@john.doe:matrix.org @jane.doe:matrix.org @june.doe:matrix.org`
+                      """
 
-        await self.command.matrix_client.send_markdown_message(
-            self.command.room.room_id,
-            message,
-            reply_to=self.command.message.event_id,
-            thread_root=self.command.message.event_id,
-        )
+            await self.command.matrix_client.send_markdown_message(
+                self.command.room.room_id,
+                message,
+                reply_to=self.command.message.event_id,
+                thread_root=self.command.message.event_id,
+            )
         return (
             True,
             CommandAction.CONTINUE,
@@ -79,14 +83,14 @@ class ServerNoticeGetRecipientsStep(ICommandStep):
         self.command_state.recipients = (
             reply.source.get("content", {}).get("body", "").split()
         )
-        message = "Type your notice"
-
-        await self.command.matrix_client.send_markdown_message(
-            self.command.room.room_id,
-            message,
-            reply_to=self.command.message.event_id,
-            thread_root=self.command.message.event_id,
-        )
+        if self.command.extra_config.get("is_coordinator", True):
+            message = "Type your notice"
+            await self.command.matrix_client.send_markdown_message(
+                self.command.room.room_id,
+                message,
+                reply_to=self.command.message.event_id,
+                thread_root=self.command.message.event_id,
+            )
         return (
             True,
             CommandAction.CONTINUE,
@@ -152,7 +156,12 @@ class ServerNoticeCommand(CommandWithSteps):
             @property
             @override
             def message(self) -> str | None:
-                return command.state.notice["body"] if command.state.notice else None
+                body = command.state.notice["body"] if command.state.notice else ""
+                return f"""We will send the following message:
+                \n\n===================================
+                \n\n{body}
+                \n\n===================================
+                """
 
         return [
             ServerNoticeAskRecipientsStep(self),
@@ -164,9 +173,28 @@ class ServerNoticeCommand(CommandWithSteps):
             ResultReactionStep(self),
         ]
 
+    async def simple_execute(self) -> bool:
+        users = await self.get_users()
+        result = len(users) > 0
+        if self.state.notice:
+            for user_id in users:
+                result = result and await self.send_server_notice(
+                    self.state.notice, user_id
+                )
+        else:
+            self.json_report["details"]["status"] = "FAILED"
+            self.json_report["details"]["reason"] = "There is no notice to send"
+
+        if self.json_report:
+            await self.send_report()
+        return result
+
     async def get_users(self) -> set[str]:
         users: set[str] = set()
-        if self.state.recipients and "all" in self.state.recipients:
+        if self.state.recipients and (
+            (USER_ALL in self.state.recipients and len(self.state.recipients) == 1)
+            or (self.server_name in self.state.recipients)
+        ):
             # Get list of users
             resp = await self.matrix_client.send(
                 "GET",
@@ -196,25 +224,12 @@ class ServerNoticeCommand(CommandWithSteps):
                     break
         elif self.state.recipients:
             for user_id in self.state.recipients:
-                if user_id.startswith("@"):
+                if (
+                    user_id.startswith("@")
+                    and get_server_name(user_id) == self.server_name
+                ):
                     users.add(user_id)
         return users
-
-    async def simple_execute(self) -> bool:
-        users = await self.get_users()
-        result = len(users) > 0
-        if self.state.notice:
-            for user_id in users:
-                result = result and await self.send_server_notice(
-                    self.state.notice, user_id
-                )
-        else:
-            self.json_report["details"]["status"] = "FAILED"
-            self.json_report["details"]["reason"] = "There is no notice to send"
-
-        if self.json_report:
-            await self.send_report()
-        return result
 
     async def send_server_notice(self, message: dict[str, Any], user_id: str) -> bool:
         if user_id.startswith("@_"):
