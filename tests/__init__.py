@@ -15,6 +15,9 @@ from matrix_command_bot.commandbot import CommandBot
 from matrix_command_bot.validation import IValidator
 
 USER1_ID = "@user1:example.org"
+USER2_ID = "@user2:example.org"
+USER3_ID = "@user3:example.org"
+USER4_ID = "@user4:example.org"
 
 event_id_counter: int = 0
 
@@ -176,6 +179,21 @@ def create_reply_relation(replied_event_id: str) -> Mapping[str, Any]:
 
 
 class OkValidator(IValidator):
+    @override
+    async def validate(
+        self,
+        user_response: RoomMessage | None,
+        command: ICommand,
+    ) -> bool:
+        return True
+
+
+class OkValidatorWithPrompt(IValidator):
+    @property
+    @override
+    def prompt(self) -> str | None:
+        return "Your command will automatically be executed"
+
     @override
     async def validate(
         self,

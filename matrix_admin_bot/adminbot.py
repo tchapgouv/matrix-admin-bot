@@ -8,11 +8,12 @@ from pydantic_settings import (
 from typing_extensions import override
 
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
+from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot
 from matrix_command_bot.validation.validators.totp import TOTPValidator
 
-COMMANDS: list[type[ICommand]] = [ResetPasswordCommand]
+COMMANDS: list[type[ICommand]] = [ResetPasswordCommand, ServerNoticeCommand]
 
 
 class AdminBotConfig(BaseSettings):
