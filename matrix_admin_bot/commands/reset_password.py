@@ -27,6 +27,7 @@ class ResetPasswordCommand(SimpleValidatedCommand):
         extra_config: Mapping[str, Any],
     ) -> None:
         secure_validator: IValidator = extra_config.get("secure_validator")  # type: ignore[reportAssignmentType]
+        self.instance_name: str | None = extra_config.get("instance_name")
 
         super().__init__(room, message, matrix_client, secure_validator, extra_config)
 
@@ -115,11 +116,12 @@ class ResetPasswordCommand(SimpleValidatedCommand):
                 json.dumps(self.json_report, indent=2, sort_keys=True).encode()
             )
             await tmpfile.flush()
+            instance_name_str = f"-{self.instance_name}" if self.instance_name else ""
             await self.matrix_client.send_file_message(
                 self.room.room_id,
                 str(tmpfile.name),
                 mime_type="application/json",
-                filename=f"{time.strftime('%Y_%m_%d-%H_%M')}-{self.KEYWORD}.json",
+                filename=f"{time.strftime('%Y_%m_%d-%H_%M')}-{self.KEYWORD}{instance_name_str}.json",
                 reply_to=self.message.event_id,
                 thread_root=self.message.event_id,
             )
