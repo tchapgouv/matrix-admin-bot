@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from collections.abc import Mapping
@@ -252,7 +253,7 @@ class ServerNoticeCommand(CommandWithSteps):
             if resp.status == 429:
                 retry_nb += 1
                 # use some exp backoff
-                time.sleep(0.5 * retry_nb)  # noqa: ASYNC101
+                await asyncio.sleep(0.5 * retry_nb)
             else:
                 break
 
