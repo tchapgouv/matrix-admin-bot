@@ -25,6 +25,7 @@ class AdminBotConfig(BaseSettings):
     allowed_room_ids: list[str] = []
     totps: dict[str, str] = {}
     is_coordinator: bool = True
+    instance_name: str | None = None
 
     @classmethod
     @override
@@ -49,6 +50,7 @@ def main() -> None:
         commands=COMMANDS,
         is_coordinator=config.is_coordinator,
         secure_validator=TOTPValidator(config.totps),
+        instance_name=config.instance_name,
     )
     bot.run()
 
