@@ -13,15 +13,13 @@ ENV POETRY_NO_INTERACTION=1 \
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock ./
-COPY matrix_admin_bot ./matrix_admin_bot
-COPY matrix_command_bot ./matrix_command_bot
+COPY . .
 
 RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --compile
 
 FROM python:${PYTHON_VERSION}-slim-bookworm as runtime
 
-COPY --from=builder /app /app
+COPY --from=builder /app/.venv /app/.venv
 
 WORKDIR /data
 ENTRYPOINT ["/app/.venv/bin/matrix-admin-bot"]
