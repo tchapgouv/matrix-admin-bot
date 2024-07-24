@@ -56,7 +56,7 @@ async def test_success() -> None:
 
     code = pyotp.TOTP(TOTP_SEED).now()
     await mocked_client.fake_synced_text_message(
-        room, USER1_ID, code, content=create_thread_relation(command_event_id)
+        room, USER1_ID, code, extra_content=create_thread_relation(command_event_id)
     )
 
     assert mocked_client.executed
@@ -78,13 +78,13 @@ async def test_failures() -> None:
     mocked_client.send_text_message.reset_mock()
 
     await mocked_client.fake_synced_text_message(
-        room, USER1_ID, "yes", content=create_thread_relation(command_event_id)
+        room, USER1_ID, "yes", extra_content=create_thread_relation(command_event_id)
     )
 
     mocked_client.check_sent_message("parse")
 
     await mocked_client.fake_synced_text_message(
-        room, USER1_ID, "000000", content=create_thread_relation(command_event_id)
+        room, USER1_ID, "000000", extra_content=create_thread_relation(command_event_id)
     )
 
     mocked_client.check_sent_message("Wrong authentication code")

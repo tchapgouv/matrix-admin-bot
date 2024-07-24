@@ -36,7 +36,7 @@ async def test_with_single_coordinator() -> None:
         room,
         USER1_ID,
         "yes",
-        content=create_thread_relation(command_event_id),
+        extra_content=create_thread_relation(command_event_id),
     )
 
     assert mocked_client1.executed

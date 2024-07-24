@@ -76,28 +76,30 @@ class MatrixClientMock:
         format_: str | None = None,
         formatted_body: str | None = None,
         *,
-        content: Mapping[str, Any] | None = None,
+        extra_content: Mapping[str, Any] | None = None,
         event_id: str | None = None,
     ) -> str:
         if not event_id:
             event_id = generate_event_id()
+        if extra_content is None:
+            extra_content = {}
         source: dict[str, Any] = {
             "event_id": event_id,
             "sender": sender,
             "origin_server_ts": int(time.time() * 1000),
+            "type": "m.room.message",
+            "content": {
+                "msgtype": "m.text",
+                "body": text,
+                **extra_content,
+            },
         }
-        if content:
-            source["content"] = content
-        message = RoomMessageText(
-            source=source,
-            body=text,
-            format=format_,
-            formatted_body=formatted_body,
-        )
-        await self.fake_synced_message(
-            room,
-            message,
-        )
+        if format_ and formatted_body:
+            source["content"]["format"] = format_
+            source["content"]["formatted_body"] = formatted_body
+        message = RoomMessageText.parse_event(source)
+        assert isinstance(message, RoomMessageText)
+        await self.fake_synced_message(room, message)
         return event_id
 
     async def sync_forever(self, *_args: Any, **_kwargs: Any) -> NoReturn:
@@ -131,12 +133,12 @@ async def fake_synced_text_message(
     sender: str,
     text: str,
     *,
-    content: Mapping[str, Any] | None = None,
+    extra_content: Mapping[str, Any] | None = None,
 ) -> str:
     event_id = generate_event_id()
     for mocked_client in mocked_clients:
         await mocked_client.fake_synced_text_message(
-            room, sender, text, content=content, event_id=event_id
+            room, sender, text, extra_content=extra_content, event_id=event_id
         )
     return event_id
 

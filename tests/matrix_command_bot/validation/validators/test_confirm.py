@@ -49,7 +49,7 @@ async def test_success() -> None:
         room,
         USER1_ID,
         "> fallback reply\n\nyes",
-        content=create_reply_relation(command_event_id),
+        extra_content=create_reply_relation(command_event_id),
     )
     assert mocked_client.executed
 
@@ -68,7 +68,7 @@ async def test_failures_then_success() -> None:
     )
 
     await mocked_client.fake_synced_text_message(
-        room, USER1_ID, "no", content=create_thread_relation(command_event_id)
+        room, USER1_ID, "no", extra_content=create_thread_relation(command_event_id)
     )
 
     assert not mocked_client.executed
@@ -78,13 +78,13 @@ async def test_failures_then_success() -> None:
         room,
         "@user2:example.org",
         "yes",
-        content=create_thread_relation(command_event_id),
+        extra_content=create_thread_relation(command_event_id),
     )
 
     assert not mocked_client.executed
 
     await mocked_client.fake_synced_text_message(
-        room, USER1_ID, "yes", content=create_thread_relation(command_event_id)
+        room, USER1_ID, "yes", extra_content=create_thread_relation(command_event_id)
     )
 
     assert mocked_client.executed
