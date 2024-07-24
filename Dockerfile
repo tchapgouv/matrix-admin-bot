@@ -13,6 +13,8 @@ ENV POETRY_NO_INTERACTION=1 \
 
 WORKDIR /app
 
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry self add "poetry-dynamic-versioning[plugin]"
+
 COPY pyproject.toml poetry.lock ./
 COPY matrix_admin_bot ./matrix_admin_bot
 COPY matrix_command_bot ./matrix_command_bot
