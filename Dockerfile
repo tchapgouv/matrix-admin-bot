@@ -4,7 +4,7 @@ FROM python:${PYTHON_VERSION}-bookworm as builder
 
 ENV POETRY_VERSION=1.8.3
 
-RUN pip install poetry==$POETRY_VERSION
+RUN pip install poetry==$POETRY_VERSION poetry-dynamic-versioning[plugin]
 
 ENV POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=1 \
@@ -12,8 +12,6 @@ ENV POETRY_NO_INTERACTION=1 \
     POETRY_CACHE_DIR=/tmp/poetry_cache
 
 WORKDIR /app
-
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry self add "poetry-dynamic-versioning[plugin]"
 
 COPY pyproject.toml poetry.lock ./
 COPY matrix_admin_bot ./matrix_admin_bot
