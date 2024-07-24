@@ -4,7 +4,7 @@ requires-python = ">=3.11"
 
 [tool.poetry]
 name = "matrix_admin_bot"
-version = "0.1"
+version = "0.0.0"
 description = "Admin bot"
 authors = ["Tchap Team <tech@tchap.beta.gouv.fr>"]
 license = "MIT"
@@ -33,9 +33,12 @@ pytest = "^8.2.2"
 pytest-asyncio = "^0.23.7"
 coverage = "^7.5.4"
 
+[tool.poetry-dynamic-versioning]
+enable = true
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.pyright]
 pythonVersion = "3.11"
