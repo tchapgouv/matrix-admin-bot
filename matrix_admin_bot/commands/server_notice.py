@@ -7,8 +7,8 @@ from typing import Any
 import aiofiles
 import structlog
 from matrix_bot.bot import MatrixClient
-from matrix_bot.eventparser import MessageEventParser
-from nio import MatrixRoom, RoomMessage
+from matrix_bot.eventparser import EventNotConcerned, MessageEventParser
+from nio import MatrixRoom, RoomMessage, RoomMessageText
 from typing_extensions import override
 
 from matrix_command_bot.command import ICommand
@@ -133,18 +133,14 @@ class ServerNoticeCommand(CommandWithSteps):
 
         self.state = ServerNoticeState()
 
+        if not isinstance(message, RoomMessageText):
+            raise EventNotConcerned
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client
         )
         event_parser.do_not_accept_own_message()
-        self.user_ids = event_parser.command(self.KEYWORD).split()
 
-        self.failed_user_ids: list[str] = []
-
-        self.json_report: dict[str, Any] = {"command": self.KEYWORD}
-        self.json_report.setdefault("details", {})
-        self.json_report.setdefault("failed_users", "")
-
+        self.json_report: dict[str, Any] = {"command": message.body}
         self.server_name = get_server_name(self.matrix_client.user_id)
 
     @override
@@ -173,18 +169,19 @@ class ServerNoticeCommand(CommandWithSteps):
 
     async def simple_execute(self) -> bool:
         users = await self.get_users()
-        result = len(users) > 0
+        result = True
         if self.state.notice_content:
             for user_id in users:
                 result = result and await self.send_server_notice(
                     self.state.notice_content, user_id
                 )
         else:
-            self.json_report["details"]["status"] = "FAILED"
-            self.json_report["details"]["reason"] = "There is no notice to send"
+            # This should never happen
+            return False
 
-        if self.json_report and result:
+        if users:
             await self.send_report()
+
         return result
 
     async def get_users(self) -> set[str]:
@@ -193,32 +190,26 @@ class ServerNoticeCommand(CommandWithSteps):
             (USER_ALL in self.state.recipients and len(self.state.recipients) == 1)
             or (self.server_name in self.state.recipients)
         ):
-            # Get list of users
-            resp = await self.matrix_client.send(
-                "GET",
-                "/_synapse/admin/v2/users?from=0&guests=false",
-                headers={"Authorization": f"Bearer {self.matrix_client.access_token}"},
-            )
-            if not resp.ok:
-                return users
+            next_token: str | None = None
             while True:
+                from_param = f"&from={next_token}" if next_token else ""
+                resp = await self.matrix_client.send(
+                    "GET",
+                    f"/_synapse/admin/v2/users?guests=false{from_param}",
+                    headers={
+                        "Authorization": f"Bearer {self.matrix_client.access_token}"
+                    },
+                )
+                if not resp.ok:
+                    break
                 data = await resp.json()
-                if "users" in data:
-                    users = users | {
-                        user["name"] for user in data["users"] if not user["user_type"]
-                    }
-                if data.get("next_token"):
-                    counter = data["next_token"]
-                    resp = await self.matrix_client.send(
-                        "GET",
-                        f"/_synapse/admin/v2/users?from={counter}&guests=false",
-                        headers={
-                            "Authorization": f"Bearer {self.matrix_client.access_token}"
-                        },
-                    )
-                    if not resp.ok:
-                        return users
-                else:
+                users = users | {
+                    user["name"]
+                    for user in data.get("users", [])
+                    if not user["user_type"]
+                }
+                next_token = data.get("next_token")
+                if not next_token:
                     break
         elif self.state.recipients:
             for user_id in self.state.recipients:
@@ -256,25 +247,14 @@ class ServerNoticeCommand(CommandWithSteps):
             else:
                 break
 
-        self.json_report["details"].setdefault(user_id, {})
-
-        # TODO handle unknown user here and return
-        if resp and resp.ok:
-            json_body = await resp.json()
-            self.json_report["details"][user_id]["status"] = "SUCCESS"
-            self.json_report["details"][user_id]["response"] = str(json_body)
-        elif resp:
-            json_body = await resp.json()
-            self.json_report["details"][user_id]["status"] = "FAILED"
-            self.json_report["details"][user_id]["response"] = str(json_body)
-            self.json_report["failed_users"] = (
-                self.json_report["failed_users"] + user_id + " "
-            )
+        if resp:
+            if not resp.ok:
+                json_body = await resp.json()
+                self.json_report[user_id] = json_body
         else:
-            self.json_report["details"]["status"] = "FAILED"
-            self.json_report["details"]["reason"] = (
-                "No response /_synapse/admin/v1/send_server_notice"
-            )
+            self.json_report[user_id] = {
+                "error": "No response to /_synapse/admin/v1/send_server_notice"
+            }
 
         return True
 

@@ -7,7 +7,11 @@ from typing import Any
 
 import aiofiles
 from matrix_bot.bot import MatrixClient
-from matrix_bot.eventparser import MessageEventParser
+from matrix_bot.eventparser import (
+    EventNotConcerned,
+    MessageEventParser,
+    RoomMessageText,
+)
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
@@ -29,6 +33,10 @@ class ResetPasswordCommand(SimpleValidatedCommand):
         secure_validator: IValidator = extra_config.get("secure_validator")  # type: ignore[reportAssignmentType]
 
         super().__init__(room, message, matrix_client, secure_validator, extra_config)
+
+        if not isinstance(message, RoomMessageText):
+            raise EventNotConcerned
+        self.message = message
 
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client
@@ -91,7 +99,7 @@ class ResetPasswordCommand(SimpleValidatedCommand):
             await self.reset_password(user_id, randomword(32))
 
         if self.json_report:
-            self.json_report["command"] = self.KEYWORD
+            self.json_report["command"] = self.message.body
             await self.send_report()
 
         return not self.failed_user_ids

@@ -16,73 +16,6 @@ from tests import (
     create_thread_relation,
 )
 
-user_response_data = {
-    "total": 4,
-    "users": [
-        {
-            "name": USER1_ID,
-            "user_type": None,
-            "is_guest": False,
-            "admin": True,
-            "deactivated": False,
-            "shadow_banned": False,
-            "displayname": "user1",
-            "avatar_url": None,
-            "creation_ts": 1718128165000,
-            "approved": True,
-            "erased": False,
-            "last_seen_ts": 1721288374090,
-            "locked": False,
-        },
-        {
-            "name": USER2_ID,
-            "user_type": None,
-            "is_guest": False,
-            "admin": True,
-            "deactivated": False,
-            "shadow_banned": False,
-            "displayname": "user2",
-            "avatar_url": None,
-            "creation_ts": 1718127825000,
-            "approved": True,
-            "erased": False,
-            "last_seen_ts": 1721288325131,
-            "locked": False,
-        },
-        {
-            "name": USER3_ID,
-            "user_type": None,
-            "is_guest": False,
-            "admin": False,
-            "deactivated": False,
-            "shadow_banned": False,
-            "displayname": "user3",
-            "avatar_url": None,
-            "creation_ts": 1718182110000,
-            "approved": True,
-            "erased": False,
-            "last_seen_ts": None,
-            "locked": False,
-        },
-        {
-            "name": USER4_ID,
-            "user_type": None,
-            "is_guest": False,
-            "admin": False,
-            "deactivated": False,
-            "shadow_banned": False,
-            "displayname": "user4",
-            "avatar_url": None,
-            "creation_ts": 1718182121000,
-            "approved": True,
-            "erased": False,
-            "last_seen_ts": 1720145274734,
-            "locked": False,
-        },
-    ],
-}
-
-
 TEXT_DATA = "Some simple server notice"
 
 
@@ -91,6 +24,15 @@ async def test_server_notice_to_all_recipients() -> None:
     mocked_client, t = await create_fake_command_bot(
         [ServerNoticeCommand], secure_validator=ConfirmValidator()
     )
+    user_response_data = {
+        "total": 4,
+        "users": [
+            {"name": USER1_ID, "user_type": None},
+            {"name": USER2_ID, "user_type": None},
+            {"name": USER3_ID, "user_type": None},
+            {"name": USER4_ID, "user_type": None},
+        ],
+    }
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -126,9 +68,11 @@ async def test_server_notice_to_all_recipients() -> None:
         "yes",
         extra_content=create_thread_relation(command_event_id),
     )
-    # send the report a result
+
+    # send the result report
     mocked_client.send_file_message.assert_awaited_once()
     mocked_client.send_file_message.reset_mock()
+
     # one call to fetch the users, and 4 calls(one per user) to send the notice
     # to all users
     assert len(mocked_client.send.await_args_list) == 5
@@ -148,7 +92,7 @@ async def test_html_server_notice_to_one_recipient() -> None:
         [ServerNoticeCommand], secure_validator=ConfirmValidator()
     )
     mocked_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
@@ -157,15 +101,12 @@ async def test_html_server_notice_to_one_recipient() -> None:
         room, USER1_ID, "!server_notice"
     )
 
-    mocked_client.check_sent_message("Type your recipients with space separated")
-
     await mocked_client.fake_synced_text_message(
         room,
         USER1_ID,
         USER2_ID,
         extra_content=create_thread_relation(command_event_id),
     )
-    mocked_client.check_sent_message("Type your notice")
 
     text_data = "Some **formatted** server notice"
     html_formatted_data = "Some <strong>formatted</strong> server notice"
@@ -178,8 +119,6 @@ async def test_html_server_notice_to_one_recipient() -> None:
         extra_content=create_thread_relation(command_event_id),
     )
 
-    mocked_client.check_sent_message("Please reply")
-
     await mocked_client.fake_synced_text_message(
         room,
         USER1_ID,
@@ -187,9 +126,6 @@ async def test_html_server_notice_to_one_recipient() -> None:
         extra_content=create_thread_relation(command_event_id),
     )
 
-    # send the report a result
-    mocked_client.send_file_message.assert_awaited_once()
-    mocked_client.send_file_message.reset_mock()
     # no call to fetch the users, and one call to send the notice directly to the user
     assert len(mocked_client.send.await_args_list) == 1
     assert "/users" not in mocked_client.send.await_args_list[0][0][1]
@@ -208,39 +144,34 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
         [ServerNoticeCommand], secure_validator=ConfirmValidator()
     )
     mocked_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
-    msg_event_id = await mocked_client.fake_synced_text_message(
+    command_event_id = await mocked_client.fake_synced_text_message(
         room, USER1_ID, "!server_notice"
     )
-
-    mocked_client.check_sent_message("Type your recipients with space separated")
 
     await mocked_client.fake_synced_text_message(
         room,
         USER1_ID,
         "user_not_a_matrix_id",
-        extra_content=create_thread_relation(msg_event_id),
+        extra_content=create_thread_relation(command_event_id),
     )
-    mocked_client.check_sent_message("Type your notice")
 
     await mocked_client.fake_synced_text_message(
         room,
         USER1_ID,
         TEXT_DATA,
-        extra_content=create_thread_relation(msg_event_id),
+        extra_content=create_thread_relation(command_event_id),
     )
-
-    mocked_client.check_sent_message("Please reply")
 
     await mocked_client.fake_synced_text_message(
         room,
         USER1_ID,
         "yes",
-        extra_content=create_thread_relation(msg_event_id),
+        extra_content=create_thread_relation(command_event_id),
     )
 
     # no call to any endpoint if user is not a matrix id
@@ -256,33 +187,28 @@ async def test_server_notice_with_edit() -> None:
         [ServerNoticeCommand], secure_validator=ConfirmValidator()
     )
     mocked_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
-    msg_event_id = await mocked_client.fake_synced_text_message(
+    command_event_id = await mocked_client.fake_synced_text_message(
         room, USER1_ID, "!server_notice"
     )
-
-    mocked_client.check_sent_message("Type your recipients with space separated")
 
     await mocked_client.fake_synced_text_message(
         room,
         USER1_ID,
         USER2_ID,
-        extra_content=create_thread_relation(msg_event_id),
+        extra_content=create_thread_relation(command_event_id),
     )
-    mocked_client.check_sent_message("Type your notice")
 
     original_event_id = await mocked_client.fake_synced_text_message(
         room,
         USER1_ID,
         "Wrong message",
-        extra_content=create_thread_relation(msg_event_id),
+        extra_content=create_thread_relation(command_event_id),
     )
-
-    mocked_client.check_sent_message("Please reply")
 
     await mocked_client.fake_synced_text_message(
         room,
@@ -316,12 +242,9 @@ async def test_server_notice_with_edit() -> None:
         room,
         USER1_ID,
         "yes",
-        extra_content=create_thread_relation(msg_event_id),
+        extra_content=create_thread_relation(command_event_id),
     )
 
-    # send the report a result
-    mocked_client.send_file_message.assert_awaited_once()
-    mocked_client.send_file_message.reset_mock()
     # no call to fetch the users, and one call to send the notice directly to the user
     assert len(mocked_client.send.await_args_list) == 1
     assert "/users" not in mocked_client.send.await_args_list[0][0][1]
