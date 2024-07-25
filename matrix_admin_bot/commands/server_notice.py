@@ -140,9 +140,10 @@ class ServerNoticeCommand(CommandWithSteps):
         event_parser.do_not_accept_own_message()
         self.user_ids = event_parser.command(self.KEYWORD).split()
 
-        self.failed_user_ids: list[str] = []
-
         self.json_report: dict[str, Any] = {"command": self.KEYWORD}
+        self.json_report.setdefault("summary", {})
+        self.json_report["summary"].setdefault("success", 0)
+        self.json_report["summary"].setdefault("failed", 0)
         self.json_report.setdefault("details", {})
         self.json_report.setdefault("failed_users", "")
 
@@ -181,8 +182,8 @@ class ServerNoticeCommand(CommandWithSteps):
                     self.state.notice_content, user_id
                 )
         else:
-            self.json_report["details"]["status"] = "FAILED"
-            self.json_report["details"]["reason"] = "There is no notice to send"
+            self.json_report["summary"]["status"] = "FAILED"
+            self.json_report["summary"]["reason"] = "There is no notice to send"
 
         if self.json_report and result:
             await self.send_report()
@@ -206,7 +207,9 @@ class ServerNoticeCommand(CommandWithSteps):
                 data = await resp.json()
                 if "users" in data:
                     users = users | {
-                        user["name"] for user in data["users"] if not user["user_type"]
+                        user["name"]
+                        for user in data["users"]
+                        if not user["user_type"] and not user["deactivated"]
                     }
                 if data.get("next_token"):
                     counter = data["next_token"]
@@ -258,30 +261,37 @@ class ServerNoticeCommand(CommandWithSteps):
                 # is not a rate limit.
                 if resp.status < 500 and resp.status != 429:
                     break
-            except ClientConnectionError:
-                pass
+            except ClientConnectionError as e:
+                logger.warning("Bot Admin has lost connection for %s: %s", user_id, e)
 
             # use some backoff
             await asyncio.sleep(0.5 * retry_nb)
 
-        self.json_report["details"].setdefault(user_id, {})
-
         # TODO handle unknown user here and return
         if resp and resp.ok:
             json_body = await resp.json()
-            self.json_report["details"][user_id]["status"] = "SUCCESS"
-            self.json_report["details"][user_id]["response"] = str(json_body)
+            logger.info("Notice sent for %s: %s", user_id, str(json_body))
+            self.json_report["summary"]["success"] = (
+                self.json_report["summary"]["success"] + 1
+            )
+
         elif resp:
             json_body = await resp.json()
-            self.json_report["details"][user_id]["status"] = "FAILED"
-            self.json_report["details"][user_id]["response"] = str(json_body)
+            logger.info("Notice sent for %s: %s", user_id, str(json_body))
+            self.json_report["summary"]["failed"] = (
+                self.json_report["summary"]["failed"] + 1
+            )
             self.json_report["failed_users"] = (
                 self.json_report["failed_users"] + user_id + " "
             )
         else:
-            self.json_report["details"]["status"] = "FAILED"
-            self.json_report["details"]["reason"] = (
-                "No response /_synapse/admin/v1/send_server_notice"
+            error_message = "No response from /_synapse/admin/v1/send_server_notice"
+            logger.info("Notice failed for %s: %s", user_id, error_message)
+            self.json_report["summary"]["failed"] = (
+                self.json_report["summary"]["failed"] + 1
+            )
+            self.json_report["failed_users"] = (
+                self.json_report["failed_users"] + user_id + " "
             )
 
         return True
