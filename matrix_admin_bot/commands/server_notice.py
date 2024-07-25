@@ -6,6 +6,7 @@ from typing import Any
 
 import aiofiles
 import structlog
+from aiohttp import ClientConnectionError
 from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
@@ -241,20 +242,27 @@ class ServerNoticeCommand(CommandWithSteps):
                 content[key] = message[key]
 
         resp = None
-        retry_nb = 0
-        while retry_nb < 5:
-            resp = await self.matrix_client.send(
-                "POST",
-                "/_synapse/admin/v1/send_server_notice",
-                headers={"Authorization": f"Bearer {self.matrix_client.access_token}"},
-                data=json.dumps({"user_id": user_id, "content": content}),
-            )
-            if resp.status == 429:
-                retry_nb += 1
-                # use some exp backoff
-                await asyncio.sleep(0.5 * retry_nb)
-            else:
-                break
+        for retry_nb in range(10):
+            try:
+                resp = await self.matrix_client.send(
+                    "POST",
+                    "/_synapse/admin/v1/send_server_notice",
+                    headers={
+                        "Authorization": f"Bearer {self.matrix_client.access_token}"
+                    },
+                    data=json.dumps({"user_id": user_id, "content": content}),
+                )
+                if resp.ok:
+                    break
+                # Let's also stop there if we get a client error that
+                # is not a rate limit.
+                if resp.status < 500 and resp.status != 429:
+                    break
+            except ClientConnectionError:
+                pass
+
+            # use some backoff
+            await asyncio.sleep(0.5 * retry_nb)
 
         self.json_report["details"].setdefault(user_id, {})
 
