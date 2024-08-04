@@ -163,11 +163,38 @@ class ServerNoticeCommand(CommandWithSteps):
                     "You can edit it if needed."
                 )
 
+        class ShouldExecuteStep(ICommandStep):
+            def __init__(
+                self,
+                command: ICommand,
+                command_state: ServerNoticeState,
+            ) -> None:
+                super().__init__(command)
+                self.command_state = command_state
+
+            @override
+            async def execute(
+                self, reply: RoomMessage | None = None
+            ) -> tuple[bool, CommandAction]:
+                if self.command_state.recipients:
+                    if (
+                        USER_ALL in self.command_state.recipients
+                        and len(self.command_state.recipients) == 1
+                    ) or (command.server_name in self.command_state.recipients):
+                        return True, CommandAction.CONTINUE
+
+                    for user_id in self.command_state.recipients:
+                        if command.is_local_user(user_id):
+                            return True, CommandAction.CONTINUE
+
+                return True, CommandAction.ABORT
+
         return [
             ServerNoticeAskRecipientsStep(self),
-            ServerNoticeGetRecipientsStep(self, command.state),
-            ServerNoticeGetNoticeStep(self, command.state),
+            ServerNoticeGetRecipientsStep(self, self.state),
+            ServerNoticeGetNoticeStep(self, self.state),
             _ValidateStep(self, self.secure_validator),
+            ShouldExecuteStep(self, self.state),
             ReactionStep(self, "🚀"),
             SimpleExecuteStep(self, self.simple_execute),
             ResultReactionStep(self),
@@ -175,7 +202,7 @@ class ServerNoticeCommand(CommandWithSteps):
 
     async def simple_execute(self) -> bool:
         users = await self.get_users()
-        result = len(users) > 0
+        result = True
         if self.state.notice_content:
             for user_id in users:
                 result = result and await self.send_server_notice(
@@ -226,12 +253,13 @@ class ServerNoticeCommand(CommandWithSteps):
                     break
         elif self.state.recipients:
             for user_id in self.state.recipients:
-                if (
-                    user_id.startswith("@")
-                    and get_server_name(user_id) == self.server_name
-                ):
+                if self.is_local_user(user_id):
                     users.add(user_id)
+
         return users
+
+    def is_local_user(self, user_id: str) -> bool:
+        return user_id.startswith("@") and get_server_name(user_id) == self.server_name
 
     async def send_server_notice(
         self, message: Mapping[str, Any], user_id: str

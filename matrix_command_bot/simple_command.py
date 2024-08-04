@@ -24,11 +24,17 @@ class SimpleExecuteStep(ICommandStep):
 class SimpleCommand(CommandWithSteps, ABC):
     @override
     async def create_steps(self) -> list[ICommandStep]:
+        if not await self.should_execute():
+            return []
+
         return [
             ReactionStep(self, "🚀"),
             SimpleExecuteStep(self, self.simple_execute),
             ResultReactionStep(self),
         ]
+
+    async def should_execute(self) -> bool:
+        return True
 
     @abstractmethod
     async def simple_execute(self) -> bool: ...

@@ -35,6 +35,9 @@ class SimpleValidatedCommand(SimpleCommand, ABC):
             def message(self) -> str | None:
                 return command.confirm_message
 
+        if not await self.should_execute():
+            return []
+
         return [
             _ValidateStep(self, self.validator),
             ReactionStep(self, "🚀"),

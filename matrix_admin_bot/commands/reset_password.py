@@ -81,6 +81,13 @@ class ResetPasswordCommand(SimpleValidatedCommand):
 
         return True
 
+    def is_local_user(self, user_id: str) -> bool:
+        return user_id.startswith("@") and get_server_name(user_id) == self.server_name
+
+    @override
+    async def should_execute(self) -> bool:
+        return any(self.is_local_user(user_id) for user_id in self.user_ids)
+
     @override
     async def simple_execute(self) -> bool:
         def randomword(length: int) -> str:

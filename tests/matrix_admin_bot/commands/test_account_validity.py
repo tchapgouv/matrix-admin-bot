@@ -28,6 +28,8 @@ async def test_account_validity() -> None:
     #  one call to set the account validity
     assert len(mocked_client.send.await_args_list) == 1
     assert "/account_validity/" in mocked_client.send.await_args_list[0][0][1]
+
+    assert len(mocked_client.send_reaction.await_args_list) == 2
     mocked_client.send.reset_mock()
 
     t.cancel()
@@ -77,8 +79,8 @@ async def test_failed_account_validity_on_other_instance() -> None:
     # send the report a result
     mocked_client.send_file_message.assert_not_awaited()
     mocked_client.send_file_message.reset_mock()
-    # no call to fetch the users, and one call to send the notice directly to the user
+
     assert len(mocked_client.send.await_args_list) == 0
-    mocked_client.send.reset_mock()
+    assert len(mocked_client.send_reaction.await_args_list) == 0
 
     t.cancel()

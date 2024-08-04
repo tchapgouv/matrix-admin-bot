@@ -49,6 +49,10 @@ class AccountValidityCommand(SimpleValidatedCommand):
 
         self.server_name = get_server_name(self.matrix_client.user_id)
 
+    @override
+    async def should_execute(self) -> bool:
+        return len(self.get_users()) > 0
+
     async def account_validity(self, user_id: str, expiration_ts: int) -> bool:
         # TODO check coordinator config
         if get_server_name(user_id) != self.server_name:
