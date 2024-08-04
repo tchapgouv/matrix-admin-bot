@@ -43,7 +43,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 [tool.pyright]
 pythonVersion = "3.11"
 
-typeCheckingMode = "all"
+typeCheckingMode = "strict"
 
 reportAny = false
 reportUnknownMemberType = false

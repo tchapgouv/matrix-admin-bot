@@ -52,3 +52,24 @@ async def test_failed_reset_password() -> None:
     mocked_client.check_sent_message("Couldn't reset the password")
 
     t.cancel()
+
+
+@pytest.mark.asyncio
+async def test_non_local_user_reset_password() -> None:
+    mocked_client, t = await create_fake_command_bot(
+        [ResetPasswordCommand], secure_validator=OkValidator()
+    )
+    mocked_client.send = AsyncMock(
+        return_value=Mock(ok=False, json=AsyncMock(return_value={}))
+    )
+
+    room = MatrixRoom("!roomid:example.org", USER1_ID)
+
+    await mocked_client.fake_synced_text_message(
+        room, USER1_ID, "!reset_password @user_to_reset:example2.org"
+    )
+
+    assert len(mocked_client.send.await_args_list) == 0
+    assert len(mocked_client.send_reaction.await_args_list) == 0
+
+    t.cancel()

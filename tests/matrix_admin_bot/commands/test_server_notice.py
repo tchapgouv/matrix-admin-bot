@@ -180,6 +180,9 @@ async def test_html_server_notice_to_one_recipient() -> None:
 
     mocked_client.check_sent_message("Please reply")
 
+    assert len(mocked_client.send_reaction.await_args_list) == 1
+    mocked_client.send_reaction.reset_mock()
+
     await mocked_client.fake_synced_text_message(
         room,
         USER1_ID,
@@ -198,6 +201,8 @@ async def test_html_server_notice_to_one_recipient() -> None:
     assert data["content"]["body"] == text_data
     assert data["content"]["formatted_body"] == html_formatted_data
     mocked_client.send.reset_mock()
+
+    assert len(mocked_client.send_reaction.await_args_list) == 2
 
     t.cancel()
 
@@ -236,6 +241,9 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
 
     mocked_client.check_sent_message("Please reply")
 
+    assert len(mocked_client.send_reaction.await_args_list) == 1
+    mocked_client.send_reaction.reset_mock()
+
     await mocked_client.fake_synced_text_message(
         room,
         USER1_ID,
@@ -246,6 +254,8 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
     # no call to any endpoint if user is not a matrix id
     assert len(mocked_client.send.await_args_list) == 0
     mocked_client.send.reset_mock()
+
+    assert len(mocked_client.send_reaction.await_args_list) == 0
 
     t.cancel()
 
