@@ -6,6 +6,13 @@ python install poetry
 poetry install
 ```
 
+# In Development
+```
+poetry run ruff check --fix
+poetry run basedpyright
+poetry run ruff format
+```
+
 # Build Release
 ```
 docker build --target=runtime . -t matrix-bot-admin
