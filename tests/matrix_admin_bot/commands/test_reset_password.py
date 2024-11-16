@@ -7,7 +7,7 @@ from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
 from tests import USER1_ID, OkValidator, create_fake_command_bot
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_reset_password() -> None:
     mocked_client, t = await create_fake_command_bot(
         [ResetPasswordCommand], secure_validator=OkValidator()
@@ -34,7 +34,7 @@ async def test_reset_password() -> None:
     t.cancel()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_failed_reset_password() -> None:
     mocked_client, t = await create_fake_command_bot(
         [ResetPasswordCommand], secure_validator=OkValidator()

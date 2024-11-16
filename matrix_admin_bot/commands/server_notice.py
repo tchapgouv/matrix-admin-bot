@@ -130,7 +130,7 @@ class ServerNoticeCommand(CommandWithSteps):
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, extra_config)
-        self.secure_validator: IValidator = extra_config.get("secure_validator")  # type: ignore[reportAssignmentType]
+        self.secure_validator: IValidator = extra_config.get("secure_validator")  # pyright: ignore[reportAttributeAccessIssue]
 
         self.state = ServerNoticeState()
 

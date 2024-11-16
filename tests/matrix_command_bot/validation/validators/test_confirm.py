@@ -32,7 +32,7 @@ class ConfirmValidatedCommand(SimpleValidatedCommand):
         return True
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_success() -> None:
     mocked_client, t = await create_fake_command_bot([ConfirmValidatedCommand])
     mocked_client.executed = False
@@ -56,7 +56,7 @@ async def test_success() -> None:
     t.cancel()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_failures_then_success() -> None:
     mocked_client, t = await create_fake_command_bot([ConfirmValidatedCommand])
     mocked_client.executed = False

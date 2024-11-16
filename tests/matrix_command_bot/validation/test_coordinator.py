@@ -12,7 +12,7 @@ from tests.matrix_command_bot.validation.validators.test_confirm import (
 )
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_with_single_coordinator() -> None:
     mocked_client1, t1 = await create_fake_command_bot([ConfirmValidatedCommand])
     mocked_client1.executed = False
