@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
 
 from nio import RoomMessage
@@ -21,7 +21,7 @@ class SimpleExecuteStep(ICommandStep):
         return await self.fct(), CommandAction.CONTINUE
 
 
-class SimpleCommand(CommandWithSteps):
+class SimpleCommand(CommandWithSteps, ABC):
     @override
     async def create_steps(self) -> list[ICommandStep]:
         return [

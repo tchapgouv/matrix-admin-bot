@@ -30,7 +30,7 @@ class AccountValidityCommand(SimpleValidatedCommand):
         matrix_client: MatrixClient,
         extra_config: Mapping[str, Any],
     ) -> None:
-        secure_validator: IValidator = extra_config.get("secure_validator")  # type: ignore[reportAssignmentType]
+        secure_validator: IValidator = extra_config.get("secure_validator")  # pyright: ignore[reportAssignmentType]
 
         super().__init__(room, message, matrix_client, secure_validator, extra_config)
 

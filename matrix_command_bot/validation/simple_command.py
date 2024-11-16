@@ -1,3 +1,4 @@
+from abc import ABC
 from collections.abc import Mapping
 from typing import Any
 
@@ -12,7 +13,7 @@ from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.steps import ValidateStep
 
 
-class SimpleValidatedCommand(SimpleCommand):
+class SimpleValidatedCommand(SimpleCommand, ABC):
     def __init__(
         self,
         room: MatrixRoom,

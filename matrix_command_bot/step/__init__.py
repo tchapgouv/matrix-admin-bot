@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from enum import Enum
 from typing import Any
@@ -35,7 +35,7 @@ class ICommandStep:
         return None
 
 
-class CommandWithSteps(ICommand):
+class CommandWithSteps(ICommand, ABC):
     def __init__(
         self,
         room: MatrixRoom,

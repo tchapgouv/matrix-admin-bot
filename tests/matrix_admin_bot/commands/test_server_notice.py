@@ -86,7 +86,7 @@ user_response_data = {
 TEXT_DATA = "Some simple server notice"
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_server_notice_to_all_recipients() -> None:
     mocked_client, t = await create_fake_command_bot(
         [ServerNoticeCommand], secure_validator=ConfirmValidator()
@@ -142,7 +142,7 @@ async def test_server_notice_to_all_recipients() -> None:
     t.cancel()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_html_server_notice_to_one_recipient() -> None:
     mocked_client, t = await create_fake_command_bot(
         [ServerNoticeCommand], secure_validator=ConfirmValidator()
@@ -202,7 +202,7 @@ async def test_html_server_notice_to_one_recipient() -> None:
     t.cancel()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_failed_server_notice_with_no_matrix_id() -> None:
     mocked_client, t = await create_fake_command_bot(
         [ServerNoticeCommand], secure_validator=ConfirmValidator()
@@ -250,7 +250,7 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
     t.cancel()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_server_notice_with_edit() -> None:
     mocked_client, t = await create_fake_command_bot(
         [ServerNoticeCommand], secure_validator=ConfirmValidator()

@@ -13,7 +13,7 @@ class SuccessCommand(SimpleCommand):
         return True
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_success() -> None:
     mocked_client, t = await create_fake_command_bot([SuccessCommand])
     mocked_client.executed = False
@@ -36,7 +36,7 @@ class FailureCommand(SimpleCommand):
         return False
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_failure() -> None:
     mocked_client, t = await create_fake_command_bot([FailureCommand])
     mocked_client.executed = False

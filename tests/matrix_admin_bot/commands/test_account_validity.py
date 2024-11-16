@@ -7,7 +7,7 @@ from matrix_admin_bot.commands.account_validity import AccountValidityCommand
 from tests import USER1_ID, OkValidator, create_fake_command_bot
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_account_validity() -> None:
     mocked_client, t = await create_fake_command_bot(
         [AccountValidityCommand], secure_validator=OkValidator()
@@ -33,7 +33,7 @@ async def test_account_validity() -> None:
     t.cancel()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_failed_account_validity_with_error_500() -> None:
     mocked_client, t = await create_fake_command_bot(
         [AccountValidityCommand], secure_validator=OkValidator()
@@ -59,7 +59,7 @@ async def test_failed_account_validity_with_error_500() -> None:
     t.cancel()
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_failed_account_validity_on_other_instance() -> None:
     mocked_client, t = await create_fake_command_bot(
         [AccountValidityCommand], secure_validator=OkValidator()
