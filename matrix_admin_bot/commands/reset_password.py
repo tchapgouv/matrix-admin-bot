@@ -2,7 +2,7 @@ import json
 import secrets
 import string
 import time
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 import aiofiles
@@ -29,6 +29,10 @@ class ResetPasswordCommand(SimpleValidatedCommand):
         secure_validator: IValidator = extra_config.get("secure_validator")  # pyright: ignore[reportAssignmentType]
 
         super().__init__(room, message, matrix_client, secure_validator, extra_config)
+
+        self.get_matrix_id_fct: Callable[[str], Awaitable[str]] | None = (
+            extra_config.get("get_matrix_id_fct")
+        )  # pyright: ignore[reportAttributeAccessIssue]
 
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client
@@ -86,6 +90,10 @@ class ResetPasswordCommand(SimpleValidatedCommand):
 
     @override
     async def should_execute(self) -> bool:
+        if self.get_matrix_id_fct:
+            self.user_ids = [
+                await self.get_matrix_id_fct(user_id) for user_id in self.user_ids
+            ]
         return any(self.is_local_user(user_id) for user_id in self.user_ids)
 
     @override
