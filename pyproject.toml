@@ -11,20 +11,22 @@ license = "MIT"
 packages = [
     { include = "matrix_admin_bot" },
     { include = "matrix_command_bot" },
+    { include = "tchap_admin_bot" },
 ]
 
 [tool.poetry.scripts]
 matrix-admin-bot = "matrix_admin_bot.adminbot:main"
+tchap-admin-bot = "tchap_admin_bot.tchapadminbot:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"
 #tchap-bot = { path = "../tchapbot/", develop = true }
 tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", branch = "tchapadmin" }
-#tchap-bot = { git = "https://code.peren.fr/open-source/tchapbot.git", branch = "main" }
 pydantic = "^2.6.3"
 pydantic-settings = "^2.2.1"
 pyotp = "^2.9.0"
 structlog = "^24.2.0"
+matrix-nio = { git = "https://github.com/MatMaul/matrix-nio.git", branch = "fix-openid-token" }
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.4"
