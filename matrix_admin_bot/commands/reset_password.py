@@ -2,7 +2,7 @@ import json
 import secrets
 import string
 import time
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 import aiofiles
@@ -30,11 +30,15 @@ class ResetPasswordCommand(SimpleValidatedCommand):
 
         super().__init__(room, message, matrix_client, secure_validator, extra_config)
 
+        self.get_matrix_ids_fct: Callable[[list[str]], Awaitable[list[str]]] | None = (
+            extra_config.get("get_matrix_ids_fct")
+        )  # pyright: ignore[reportAttributeAccessIssue]
+
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client
         )
         event_parser.do_not_accept_own_message()
-        self.user_ids = event_parser.command(self.KEYWORD).split()
+        self.user_ids: list[str] = event_parser.command(self.KEYWORD).split()
 
         self.failed_user_ids: list[str] = []
 
@@ -86,6 +90,8 @@ class ResetPasswordCommand(SimpleValidatedCommand):
 
     @override
     async def should_execute(self) -> bool:
+        if self.get_matrix_ids_fct:
+            self.user_ids = await self.get_matrix_ids_fct(self.user_ids)
         return any(self.is_local_user(user_id) for user_id in self.user_ids)
 
     @override
