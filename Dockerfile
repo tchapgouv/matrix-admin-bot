@@ -16,6 +16,7 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock ./
 COPY matrix_admin_bot ./matrix_admin_bot
 COPY matrix_command_bot ./matrix_command_bot
+COPY tchap_admin_bot ./tchap_admin_bot
 # Needed to derivate version from git tag
 COPY .git ./.git
 
@@ -28,4 +29,4 @@ FROM python:${PYTHON_VERSION}-slim-bookworm as runtime
 COPY --from=builder /app /app
 
 WORKDIR /data
-ENTRYPOINT ["/app/.venv/bin/matrix-admin-bot"]
+ENTRYPOINT ["/app/.venv/bin/tchap-admin-bot"]
