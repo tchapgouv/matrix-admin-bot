@@ -94,6 +94,7 @@ class ResetPasswordCommand(SimpleValidatedCommand):
             self.user_ids = [
                 await self.get_matrix_id_fct(user_id) for user_id in self.user_ids
             ]
+        print(self.user_ids)
         return any(self.is_local_user(user_id) for user_id in self.user_ids)
 
     @override
