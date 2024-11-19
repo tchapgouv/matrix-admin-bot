@@ -4,14 +4,14 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from nio import MatrixRoom
 
-from matrix_admin_bot.commands.server_notice import USER_ALL, ServerNoticeCommand
+from matrix_admin_bot.commands.server_notice import USER_ALL
 from matrix_command_bot.validation.validators.confirm import ConfirmValidator
 from tests import (
     USER1_ID,
     USER2_ID,
     USER3_ID,
     USER4_ID,
-    create_fake_command_bot,
+    create_fake_admin_bot,
     create_replace_relation,
     create_thread_relation,
 )
@@ -88,9 +88,7 @@ TEXT_DATA = "Some simple server notice"
 
 @pytest.mark.asyncio
 async def test_server_notice_to_all_recipients() -> None:
-    mocked_client, t = await create_fake_command_bot(
-        [ServerNoticeCommand], secure_validator=ConfirmValidator()
-    )
+    mocked_client, t = await create_fake_admin_bot(secure_validator=ConfirmValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -144,9 +142,7 @@ async def test_server_notice_to_all_recipients() -> None:
 
 @pytest.mark.asyncio
 async def test_html_server_notice_to_one_recipient() -> None:
-    mocked_client, t = await create_fake_command_bot(
-        [ServerNoticeCommand], secure_validator=ConfirmValidator()
-    )
+    mocked_client, t = await create_fake_admin_bot(secure_validator=ConfirmValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -209,9 +205,7 @@ async def test_html_server_notice_to_one_recipient() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_server_notice_with_no_matrix_id() -> None:
-    mocked_client, t = await create_fake_command_bot(
-        [ServerNoticeCommand], secure_validator=ConfirmValidator()
-    )
+    mocked_client, t = await create_fake_admin_bot(secure_validator=ConfirmValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -262,9 +256,7 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
 
 @pytest.mark.asyncio
 async def test_server_notice_with_edit() -> None:
-    mocked_client, t = await create_fake_command_bot(
-        [ServerNoticeCommand], secure_validator=ConfirmValidator()
-    )
+    mocked_client, t = await create_fake_admin_bot(secure_validator=ConfirmValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
