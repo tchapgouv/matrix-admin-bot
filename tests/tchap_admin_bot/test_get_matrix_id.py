@@ -76,7 +76,10 @@ async def test_mail_address() -> None:
     # one call to fetch the devices, and one call to reset the password
     assert len(mocked_client.send.await_args_list) == 2
     assert "/devices" in mocked_client.send.await_args_list[0][0][1]
-    assert "/reset_password/@user_to_reset:example.org" in mocked_client.send.await_args_list[1][0][1]
+    assert (
+        "/reset_password/@user_to_reset:example.org"
+        in mocked_client.send.await_args_list[1][0][1]
+    )
     mocked_client.send.reset_mock()
 
     t.cancel()
