@@ -1,22 +1,18 @@
 import json
 import secrets
 import string
-import time
 from collections.abc import Mapping
 from typing import Any
 
-import aiofiles
 from matrix_bot.bot import MatrixClient
-from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
+from matrix_admin_bot import UserRelatedCommand
 from matrix_command_bot.util import get_server_name
-from matrix_command_bot.validation import IValidator
-from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 
 
-class ResetPasswordCommand(SimpleValidatedCommand):
+class ResetPasswordCommand(UserRelatedCommand):
     KEYWORD = "reset_password"
 
     def __init__(
@@ -26,21 +22,8 @@ class ResetPasswordCommand(SimpleValidatedCommand):
         matrix_client: MatrixClient,
         extra_config: Mapping[str, Any],
     ) -> None:
-        secure_validator: IValidator = extra_config.get("secure_validator")  # pyright: ignore[reportAssignmentType]
-
-        super().__init__(room, message, matrix_client, secure_validator, extra_config)
-
-        event_parser = MessageEventParser(
-            room=room, event=message, matrix_client=matrix_client
-        )
-        event_parser.do_not_accept_own_message()
-        self.user_ids = event_parser.command(self.KEYWORD).split()
-
+        super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
         self.failed_user_ids: list[str] = []
-
-        self.json_report: dict[str, Any] = {}
-
-        self.server_name = get_server_name(self.matrix_client.user_id)
 
     async def reset_password(
         self, user_id: str, password: str, *, logout_devices: bool = True
@@ -81,13 +64,6 @@ class ResetPasswordCommand(SimpleValidatedCommand):
 
         return True
 
-    def is_local_user(self, user_id: str) -> bool:
-        return user_id.startswith("@") and get_server_name(user_id) == self.server_name
-
-    @override
-    async def should_execute(self) -> bool:
-        return any(self.is_local_user(user_id) for user_id in self.user_ids)
-
     @override
     async def simple_execute(self) -> bool:
         def randomword(length: int) -> str:
@@ -100,36 +76,6 @@ class ResetPasswordCommand(SimpleValidatedCommand):
         if self.json_report:
             self.json_report["command"] = self.KEYWORD
             await self.send_report()
-
-        return not self.failed_user_ids
-
-    @property
-    @override
-    def confirm_message(self) -> str | None:
-        return "\n".join(
-            [
-                "You are about to reset password of the following users:",
-                "",
-                *[f"- {user_id}" for user_id in self.user_ids],
-                "",
-                "⚠⚠ This will also log-out all of their devices!",
-            ]
-        )
-
-    async def send_report(self) -> None:
-        async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
-            await tmpfile.write(
-                json.dumps(self.json_report, indent=2, sort_keys=True).encode()
-            )
-            await tmpfile.flush()
-            await self.matrix_client.send_file_message(
-                self.room.room_id,
-                str(tmpfile.name),
-                mime_type="application/json",
-                filename=f"{time.strftime('%Y_%m_%d-%H_%M')}-{self.KEYWORD}.json",
-                reply_to=self.message.event_id,
-                thread_root=self.message.event_id,
-            )
 
         if self.failed_user_ids:
             text = "\n".join(
@@ -145,3 +91,18 @@ class ResetPasswordCommand(SimpleValidatedCommand):
                 reply_to=self.message.event_id,
                 thread_root=self.message.event_id,
             )
+
+        return not self.failed_user_ids
+
+    @property
+    @override
+    def confirm_message(self) -> str | None:
+        return "\n".join(
+            [
+                "You are about to reset password of the following users:",
+                "",
+                *[f"- {user_id}" for user_id in self.user_ids],
+                "",
+                "⚠⚠ This will also log-out all of their devices!",
+            ]
+        )

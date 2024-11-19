@@ -1,26 +1,22 @@
 import asyncio
 import json
-import time
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime, timedelta
 from typing import Any
 
-import aiofiles
 import structlog
 from aiohttp import ClientConnectionError
 from matrix_bot.bot import MatrixClient
-from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
+from matrix_admin_bot import UserRelatedCommand
 from matrix_command_bot.util import get_server_name
-from matrix_command_bot.validation import IValidator
-from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 
 logger = structlog.getLogger(__name__)
 
 
-class AccountValidityCommand(SimpleValidatedCommand):
+class AccountValidityCommand(UserRelatedCommand):
     KEYWORD = "account_validity"
 
     def __init__(
@@ -30,28 +26,18 @@ class AccountValidityCommand(SimpleValidatedCommand):
         matrix_client: MatrixClient,
         extra_config: Mapping[str, Any],
     ) -> None:
-        secure_validator: IValidator = extra_config.get("secure_validator")  # pyright: ignore[reportAssignmentType]
+        super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
 
-        super().__init__(room, message, matrix_client, secure_validator, extra_config)
+        self.get_matrix_ids_fct: Callable[[list[str]], Awaitable[list[str]]] | None = (
+            extra_config.get("get_matrix_ids_fct")
+        )  # pyright: ignore[reportAttributeAccessIssue]
 
-        event_parser = MessageEventParser(
-            room=room, event=message, matrix_client=matrix_client
-        )
-        event_parser.do_not_accept_own_message()
-        self.user_ids = event_parser.command(self.KEYWORD).split()
-
-        self.json_report: dict[str, Any] = {"command": self.KEYWORD}
+        self.json_report["command"] = self.KEYWORD
         self.json_report.setdefault("summary", {})
         self.json_report["summary"].setdefault("success", 0)
         self.json_report["summary"].setdefault("failed", 0)
         self.json_report.setdefault("details", {})
         self.json_report.setdefault("failed_users", "")
-
-        self.server_name = get_server_name(self.matrix_client.user_id)
-
-    @override
-    async def should_execute(self) -> bool:
-        return len(self.get_users()) > 0
 
     async def account_validity(self, user_id: str, expiration_ts: int) -> bool:
         # TODO check coordinator config
@@ -118,12 +104,11 @@ class AccountValidityCommand(SimpleValidatedCommand):
 
     @override
     async def simple_execute(self) -> bool:
-        users = self.get_users()
-        result = len(users) > 0
+        result = len(self.user_ids) > 0
         if result:
             now_plus_6months_datetime = datetime.now() + timedelta(days=180)  # noqa: DTZ005
             now_plus_6months = int(round(now_plus_6months_datetime.timestamp() * 1000))
-            for user_id in users:
+            for user_id in self.user_ids:
                 result = result and await self.account_validity(
                     user_id, now_plus_6months
                 )
@@ -145,26 +130,3 @@ class AccountValidityCommand(SimpleValidatedCommand):
                 *[f"- {user_id}" for user_id in self.user_ids],
             ]
         )
-
-    async def send_report(self) -> None:
-        logger.info("result=%s", self.json_report)
-        async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
-            await tmpfile.write(
-                json.dumps(self.json_report, indent=2, sort_keys=True).encode()
-            )
-            await tmpfile.flush()
-            await self.matrix_client.send_file_message(
-                self.room.room_id,
-                str(tmpfile.name),
-                mime_type="application/json",
-                filename=f"{time.strftime('%Y_%m_%d-%H_%M')}-{self.KEYWORD}.json",
-                reply_to=self.message.event_id,
-                thread_root=self.message.event_id,
-            )
-
-    def get_users(self) -> set[str]:
-        users: set[str] = set()
-        for user_id in self.user_ids:
-            if user_id.startswith("@") and get_server_name(user_id) == self.server_name:
-                users.add(user_id)
-        return users

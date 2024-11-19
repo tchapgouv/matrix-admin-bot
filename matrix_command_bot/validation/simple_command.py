@@ -29,17 +29,14 @@ class SimpleValidatedCommand(SimpleCommand, ABC):
     async def create_steps(self) -> list[ICommandStep]:
         command = self
 
-        class _ValidateStep(ValidateStep):
-            @property
-            @override
-            def message(self) -> str | None:
-                return command.confirm_message
-
         if not await self.should_execute():
-            return [_ValidateStep(self, self.validator), ReactionStep(self, "")]
+            return [
+                ValidateStep(self, self.validator, command.confirm_message),
+                ReactionStep(self, ""),
+            ]
 
         return [
-            _ValidateStep(self, self.validator),
+            ValidateStep(self, self.validator, command.confirm_message),
             ReactionStep(self, "🚀"),
             SimpleExecuteStep(self, self.simple_execute),
             ResultReactionStep(self),

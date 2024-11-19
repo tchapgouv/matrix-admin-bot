@@ -153,16 +153,6 @@ class ServerNoticeCommand(CommandWithSteps):
     async def create_steps(self) -> list[ICommandStep]:
         command = self
 
-        class _ValidateStep(ValidateStep):
-            @property
-            @override
-            def message(self) -> str | None:
-                return (
-                    "Please verify the previous message, "
-                    "it will be sent as this to the users.\n"
-                    "You can edit it if needed."
-                )
-
         class ShouldExecuteStep(ICommandStep):
             def __init__(
                 self,
@@ -193,7 +183,15 @@ class ServerNoticeCommand(CommandWithSteps):
             ServerNoticeAskRecipientsStep(self),
             ServerNoticeGetRecipientsStep(self, self.state),
             ServerNoticeGetNoticeStep(self, self.state),
-            _ValidateStep(self, self.secure_validator),
+            ValidateStep(
+                self,
+                self.secure_validator,
+                (
+                    "Please verify the previous message, "
+                    "it will be sent as this to the users.\n"
+                    "You can edit it if needed."
+                ),
+            ),
             ShouldExecuteStep(self, self.state),
             ReactionStep(self, "🚀"),
             SimpleExecuteStep(self, self.simple_execute),
