@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -34,6 +34,10 @@ class AccountValidityCommand(SimpleValidatedCommand):
 
         super().__init__(room, message, matrix_client, secure_validator, extra_config)
 
+        self.get_matrix_ids_fct: Callable[[list[str]], Awaitable[list[str]]] | None = (
+            extra_config.get("get_matrix_ids_fct")
+        )  # pyright: ignore[reportAttributeAccessIssue]
+
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client
         )
@@ -49,9 +53,14 @@ class AccountValidityCommand(SimpleValidatedCommand):
 
         self.server_name = get_server_name(self.matrix_client.user_id)
 
+    def is_local_user(self, user_id: str) -> bool:
+        return user_id.startswith("@") and get_server_name(user_id) == self.server_name
+
     @override
     async def should_execute(self) -> bool:
-        return len(self.get_users()) > 0
+        if self.get_matrix_ids_fct:
+            self.user_ids = await self.get_matrix_ids_fct(self.user_ids)
+        return any(self.is_local_user(user_id) for user_id in self.user_ids)
 
     async def account_validity(self, user_id: str, expiration_ts: int) -> bool:
         # TODO check coordinator config
@@ -165,6 +174,6 @@ class AccountValidityCommand(SimpleValidatedCommand):
     def get_users(self) -> set[str]:
         users: set[str] = set()
         for user_id in self.user_ids:
-            if user_id.startswith("@") and get_server_name(user_id) == self.server_name:
+            if self.is_local_user(user_id):
                 users.add(user_id)
         return users
