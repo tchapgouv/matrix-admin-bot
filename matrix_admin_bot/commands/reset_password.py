@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 import aiofiles
+import structlog
 from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
@@ -14,6 +15,8 @@ from typing_extensions import override
 from matrix_command_bot.util import get_server_name
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
+
+logger = structlog.getLogger(__name__)
 
 
 class ResetPasswordCommand(SimpleValidatedCommand):
@@ -94,6 +97,7 @@ class ResetPasswordCommand(SimpleValidatedCommand):
             self.user_ids = [
                 await self.get_matrix_id_fct(user_id) for user_id in self.user_ids
             ]
+        logger.warning(self.user_ids)
         return any(self.is_local_user(user_id) for user_id in self.user_ids)
 
     @override
