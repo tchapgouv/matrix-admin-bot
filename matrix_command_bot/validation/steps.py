@@ -11,14 +11,13 @@ class ValidateStep(ICommandStep):
         self,
         command: ICommand,
         validator: IValidator,
+        *,
+        message: str | None = None,
     ) -> None:
         super().__init__(command)
         self.validator = validator
         self.prompting_done = False
-
-    @property
-    def message(self) -> str | None:
-        return None
+        self.message = message
 
     @override
     async def execute(

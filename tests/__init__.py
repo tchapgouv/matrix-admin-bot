@@ -10,9 +10,11 @@ from matrix_bot.bot import MatrixBot
 from nio import Event, MatrixRoom, RoomMessage, RoomMessageText
 from typing_extensions import override
 
+from matrix_admin_bot.adminbot import AdminBot, AdminBotConfig
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot
 from matrix_command_bot.validation import IValidator
+from tchap_admin_bot.tchapadminbot import TchapAdminBot, TchapAdminBotConfig
 
 USER1_ID = "@user1:example.org"
 USER2_ID = "@user2:example.org"
@@ -152,6 +154,41 @@ async def create_fake_command_bot(
         username="",
         password="",
         commands=commands,
+        **extra_config,
+    )
+    return await mock_client_and_run(bot)
+
+
+async def create_fake_admin_bot(
+    **extra_config: Any,
+) -> tuple[MatrixClientMock, Task[None]]:
+    bot = AdminBot(
+        AdminBotConfig(
+            homeserver="http://localhost:8008",
+            bot_username="",
+            bot_password="",
+            is_coordinator=True,
+            allowed_room_ids=[],
+            totps={},
+        ),
+        **extra_config,
+    )
+    return await mock_client_and_run(bot)
+
+
+async def create_fake_tchap_admin_bot(
+    **extra_config: Any,
+) -> tuple[MatrixClientMock, Task[None]]:
+    bot = TchapAdminBot(
+        TchapAdminBotConfig(
+            homeserver="http://localhost:8008",
+            sydent="http://localhost:8090",
+            bot_username="",
+            bot_password="",
+            is_coordinator=True,
+            allowed_room_ids=[],
+            totps={},
+        ),
         **extra_config,
     )
     return await mock_client_and_run(bot)

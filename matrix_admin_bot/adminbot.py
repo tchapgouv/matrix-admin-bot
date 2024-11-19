@@ -1,3 +1,5 @@
+from typing import Any
+
 from matrix_bot.bot import bot_lib_config
 from pydantic_settings import (
     BaseSettings,
@@ -22,7 +24,7 @@ COMMANDS: list[type[ICommand]] = [
 
 
 class AdminBotConfig(BaseSettings):
-    model_config = SettingsConfigDict(toml_file="config.toml")
+    model_config = SettingsConfigDict(toml_file="config.toml", extra="ignore")
 
     homeserver: str = "http://localhost:8008"
     bot_username: str = ""
@@ -44,17 +46,29 @@ class AdminBotConfig(BaseSettings):
         return (TomlConfigSettingsSource(settings_cls),)
 
 
+class AdminBot(CommandBot):
+    def __init__(
+        self,
+        config: AdminBotConfig,
+        **extra_config: Any,  # noqa: ANN401
+    ) -> None:
+        if "secure_validator" not in extra_config:
+            extra_config["secure_validator"] = TOTPValidator(config.totps)
+        bot_lib_config.allowed_room_ids = config.allowed_room_ids
+        super().__init__(
+            homeserver=config.homeserver,
+            username=config.bot_username,
+            password=config.bot_password,
+            commands=COMMANDS,
+            is_coordinator=config.is_coordinator,
+            **extra_config,
+        )
+
+
 def main() -> None:
     config = AdminBotConfig()
     bot_lib_config.allowed_room_ids = config.allowed_room_ids
-    bot = CommandBot(
-        homeserver=config.homeserver,
-        username=config.bot_username,
-        password=config.bot_password,
-        commands=COMMANDS,
-        is_coordinator=config.is_coordinator,
-        secure_validator=TOTPValidator(config.totps),
-    )
+    bot = AdminBot(config)
     bot.run()
 
 
