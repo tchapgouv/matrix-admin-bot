@@ -1,10 +1,8 @@
 import asyncio
 import json
-import time
 from collections.abc import Mapping
 from typing import Any
 
-import aiofiles
 import structlog
 from aiohttp import ClientConnectionError
 from matrix_bot.bot import MatrixClient
@@ -16,7 +14,7 @@ from matrix_command_bot.command import ICommand
 from matrix_command_bot.simple_command import SimpleExecuteStep
 from matrix_command_bot.step import CommandAction, CommandWithSteps, ICommandStep
 from matrix_command_bot.step.simple_steps import ReactionStep, ResultReactionStep
-from matrix_command_bot.util import get_server_name, is_local_user
+from matrix_command_bot.util import get_server_name, is_local_user, send_report
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.steps import ValidateStep
 
@@ -212,7 +210,13 @@ class ServerNoticeCommand(CommandWithSteps):
             self.json_report["summary"]["reason"] = "There is no notice to send"
 
         if self.json_report and result:
-            await self.send_report()
+            await send_report(
+                json_report=self.json_report,
+                report_name=self.KEYWORD,
+                matrix_client=self.matrix_client,
+                room_id=self.room.room_id,
+                replied_event_id=self.message.event_id,
+            )
         return result
 
     async def get_users(self) -> set[str]:
@@ -319,22 +323,6 @@ class ServerNoticeCommand(CommandWithSteps):
             )
 
         return True
-
-    async def send_report(self) -> None:
-        logger.info("result=%s", self.json_report)
-        async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
-            await tmpfile.write(
-                json.dumps(self.json_report, indent=2, sort_keys=True).encode()
-            )
-            await tmpfile.flush()
-            await self.matrix_client.send_file_message(
-                self.room.room_id,
-                str(tmpfile.name),
-                mime_type="application/json",
-                filename=f"{time.strftime('%Y_%m_%d-%H_%M')}-{self.KEYWORD}.json",
-                reply_to=self.message.event_id,
-                thread_root=self.message.event_id,
-            )
 
     @override
     async def replace_received(

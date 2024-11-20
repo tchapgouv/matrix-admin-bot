@@ -1,3 +1,9 @@
+import json
+import time
+from typing import Any
+
+import aiofiles
+from matrix_bot.bot import MatrixClient
 from nio import RoomMessageText
 
 
@@ -29,3 +35,23 @@ def get_server_name(user_or_room_id: str) -> str | None:
 
 def is_local_user(user_id: str, server_name: str | None) -> bool:
     return user_id.startswith("@") and get_server_name(user_id) == server_name
+
+
+async def send_report(
+    json_report: dict[str, Any],
+    report_name: str,
+    matrix_client: MatrixClient,
+    room_id: str,
+    replied_event_id: str,
+) -> None:
+    async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
+        await tmpfile.write(json.dumps(json_report, indent=2, sort_keys=True).encode())
+        await tmpfile.flush()
+        await matrix_client.send_file_message(
+            room_id,
+            str(tmpfile.name),
+            mime_type="application/json",
+            filename=f"{time.strftime('%Y_%m_%d-%H_%M')}-{report_name}.json",
+            reply_to=replied_event_id,
+            thread_root=replied_event_id,
+        )

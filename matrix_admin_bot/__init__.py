@@ -1,16 +1,13 @@
-import json
-import time
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
-import aiofiles
 import structlog
 from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_command_bot.util import get_server_name, is_local_user
+from matrix_command_bot.util import get_server_name, is_local_user, send_report
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 
@@ -55,16 +52,10 @@ class UserRelatedCommand(SimpleValidatedCommand):
         )
 
     async def send_report(self) -> None:
-        async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
-            await tmpfile.write(
-                json.dumps(self.json_report, indent=2, sort_keys=True).encode()
-            )
-            await tmpfile.flush()
-            await self.matrix_client.send_file_message(
-                self.room.room_id,
-                str(tmpfile.name),
-                mime_type="application/json",
-                filename=f"{time.strftime('%Y_%m_%d-%H_%M')}-{self.keyword}.json",
-                reply_to=self.message.event_id,
-                thread_root=self.message.event_id,
-            )
+        await send_report(
+            json_report=self.json_report,
+            report_name=self.keyword,
+            matrix_client=self.matrix_client,
+            room_id=self.room.room_id,
+            replied_event_id=self.message.event_id,
+        )
