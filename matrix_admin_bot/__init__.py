@@ -10,7 +10,7 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_command_bot.util import get_server_name
+from matrix_command_bot.util import get_server_name, is_local_user
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 
@@ -46,14 +46,13 @@ class UserRelatedCommand(SimpleValidatedCommand):
 
         self.json_report: dict[str, Any] = {}
 
-    def is_local_user(self, user_id: str) -> bool:
-        return user_id.startswith("@") and get_server_name(user_id) == self.server_name
-
     @override
     async def should_execute(self) -> bool:
         if self.get_matrix_ids_fct:
             self.user_ids = await self.get_matrix_ids_fct(self.user_ids)
-        return any(self.is_local_user(user_id) for user_id in self.user_ids)
+        return any(
+            is_local_user(user_id, self.server_name) for user_id in self.user_ids
+        )
 
     async def send_report(self) -> None:
         async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:

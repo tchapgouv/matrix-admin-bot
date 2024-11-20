@@ -25,3 +25,7 @@ def get_server_name(user_or_room_id: str) -> str | None:
     if len(parts) < 2:
         return None
     return parts[1]
+
+
+def is_local_user(user_id: str, server_name: str | None) -> bool:
+    return user_id.startswith("@") and get_server_name(user_id) == server_name

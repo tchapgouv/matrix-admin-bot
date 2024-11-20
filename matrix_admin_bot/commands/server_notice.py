@@ -16,7 +16,7 @@ from matrix_command_bot.command import ICommand
 from matrix_command_bot.simple_command import SimpleExecuteStep
 from matrix_command_bot.step import CommandAction, CommandWithSteps, ICommandStep
 from matrix_command_bot.step.simple_steps import ReactionStep, ResultReactionStep
-from matrix_command_bot.util import get_server_name
+from matrix_command_bot.util import get_server_name, is_local_user
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.steps import ValidateStep
 
@@ -119,6 +119,35 @@ class ServerNoticeGetNoticeStep(ICommandStep):
         return True, CommandAction.CONTINUE
 
 
+class ShouldExecuteStep(ICommandStep):
+    def __init__(
+        self,
+        command: ICommand,
+        command_state: ServerNoticeState,
+        server_name: str | None,
+    ) -> None:
+        super().__init__(command)
+        self.command_state = command_state
+        self.server_name = server_name
+
+    @override
+    async def execute(
+        self, reply: RoomMessage | None = None
+    ) -> tuple[bool, CommandAction]:
+        if self.command_state.recipients:
+            if (
+                USER_ALL in self.command_state.recipients
+                and len(self.command_state.recipients) == 1
+            ) or (self.server_name in self.command_state.recipients):
+                return True, CommandAction.CONTINUE
+
+            for user_id in self.command_state.recipients:
+                if is_local_user(user_id, self.server_name):
+                    return True, CommandAction.CONTINUE
+
+        return True, CommandAction.ABORT
+
+
 class ServerNoticeCommand(CommandWithSteps):
     KEYWORD = "server_notice"
 
@@ -151,34 +180,6 @@ class ServerNoticeCommand(CommandWithSteps):
 
     @override
     async def create_steps(self) -> list[ICommandStep]:
-        command = self
-
-        class ShouldExecuteStep(ICommandStep):
-            def __init__(
-                self,
-                command: ICommand,
-                command_state: ServerNoticeState,
-            ) -> None:
-                super().__init__(command)
-                self.command_state = command_state
-
-            @override
-            async def execute(
-                self, reply: RoomMessage | None = None
-            ) -> tuple[bool, CommandAction]:
-                if self.command_state.recipients:
-                    if (
-                        USER_ALL in self.command_state.recipients
-                        and len(self.command_state.recipients) == 1
-                    ) or (command.server_name in self.command_state.recipients):
-                        return True, CommandAction.CONTINUE
-
-                    for user_id in self.command_state.recipients:
-                        if command.is_local_user(user_id):
-                            return True, CommandAction.CONTINUE
-
-                return True, CommandAction.ABORT
-
         return [
             ServerNoticeAskRecipientsStep(self),
             ServerNoticeGetRecipientsStep(self, self.state),
@@ -192,7 +193,7 @@ class ServerNoticeCommand(CommandWithSteps):
                     "You can edit it if needed."
                 ),
             ),
-            ShouldExecuteStep(self, self.state),
+            ShouldExecuteStep(self, self.state, self.server_name),
             ReactionStep(self, "🚀"),
             SimpleExecuteStep(self, self.simple_execute),
             ResultReactionStep(self),
@@ -251,13 +252,10 @@ class ServerNoticeCommand(CommandWithSteps):
                     break
         elif self.state.recipients:
             for user_id in self.state.recipients:
-                if self.is_local_user(user_id):
+                if is_local_user(user_id, self.server_name):
                     users.add(user_id)
 
         return users
-
-    def is_local_user(self, user_id: str) -> bool:
-        return user_id.startswith("@") and get_server_name(user_id) == self.server_name
 
     async def send_server_notice(
         self, message: Mapping[str, Any], user_id: str
