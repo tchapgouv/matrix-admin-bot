@@ -36,7 +36,7 @@ class SimpleValidatedCommand(SimpleCommand, ABC):
                 return command.confirm_message
 
         if not await self.should_execute():
-            return [_ValidateStep(self, self.validator)]
+            return [_ValidateStep(self, self.validator), ReactionStep(self, "")]
 
         return [
             _ValidateStep(self, self.validator),
