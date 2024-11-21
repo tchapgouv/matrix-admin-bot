@@ -143,6 +143,7 @@ class ShouldExecuteStep(ICommandStep):
                 if is_local_user(user_id, self.server_name):
                     return True, CommandAction.CONTINUE
 
+        await self.command.set_status_reaction("")
         return True, CommandAction.ABORT
 
 
