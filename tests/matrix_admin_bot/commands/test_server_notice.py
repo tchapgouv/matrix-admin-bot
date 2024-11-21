@@ -14,6 +14,7 @@ from tests import (
     create_fake_admin_bot,
     create_replace_relation,
     create_thread_relation,
+    fake_synced_text_message,
 )
 
 user_response_data = {
@@ -333,3 +334,75 @@ async def test_server_notice_with_edit() -> None:
     mocked_client.send.reset_mock()
 
     t.cancel()
+
+
+@pytest.mark.asyncio
+async def test_to_one_recipient_with_coordinator() -> None:
+    mocked_client1, t1 = await create_fake_admin_bot(
+        "example.org", secure_validator=ConfirmValidator()
+    )
+    mocked_client1.send = AsyncMock(
+        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
+    )
+    mocked_client2, t2 = await create_fake_admin_bot(
+        "example2.org", secure_validator=ConfirmValidator(), is_coordinator=False
+    )
+    mocked_client2.send = AsyncMock(
+        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
+    )
+    mocked_clients = [mocked_client1, mocked_client2]
+
+    room = MatrixRoom("!roomid:example.org", USER1_ID)
+
+    command_event_id = await fake_synced_text_message(
+        mocked_clients, room, USER1_ID, "!server_notice"
+    )
+
+    mocked_client1.check_sent_message("Type your recipients with space separated")
+    mocked_client2.check_no_sent_message()
+
+    await fake_synced_text_message(
+        mocked_clients,
+        room,
+        USER1_ID,
+        "@user:example2.org",
+        extra_content=create_thread_relation(command_event_id),
+    )
+    mocked_client1.check_sent_message("Type your notice")
+    mocked_client2.check_no_sent_message()
+
+    await fake_synced_text_message(
+        mocked_clients,
+        room,
+        USER1_ID,
+        TEXT_DATA,
+        extra_content=create_thread_relation(command_event_id),
+    )
+
+    mocked_client1.check_sent_message("Please reply")
+
+    mocked_client1.check_sent_reactions("✏️")
+    assert len(mocked_client2.send_reaction.await_args_list) == 0
+
+    await fake_synced_text_message(
+        mocked_clients,
+        room,
+        USER1_ID,
+        "yes",
+        extra_content=create_thread_relation(command_event_id),
+    )
+
+    mocked_client1.check_sent_reactions()
+    assert len(mocked_client1.room_redact.await_args_list) == 1
+    mocked_client2.check_sent_reactions("🚀", "✅")
+
+    assert len(mocked_client1.send.await_args_list) == 0
+
+    # send the report a result
+    mocked_client2.send_file_message.assert_awaited_once()
+    mocked_client2.send_file_message.reset_mock()
+
+    assert "/send_server_notice" in mocked_client2.send.await_args_list[0][0][1]
+
+    t1.cancel()
+    t2.cancel()

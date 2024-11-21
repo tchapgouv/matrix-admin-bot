@@ -14,16 +14,21 @@ from tests.matrix_command_bot.validation.validators.test_confirm import (
 
 @pytest.mark.asyncio
 async def test_with_single_coordinator() -> None:
-    mocked_client1, t1 = await create_fake_command_bot([ConfirmValidatedCommand])
+    mocked_client1, t1 = await create_fake_command_bot(
+        [ConfirmValidatedCommand], "example.org"
+    )
     mocked_client1.executed = False
     mocked_client2, t2 = await create_fake_command_bot(
-        [ConfirmValidatedCommand], is_coordinator=False
+        [ConfirmValidatedCommand], "example2.org", is_coordinator=False
     )
     mocked_client2.executed = False
     # the third bot instance is not concerned by the command and should not execute
     # nor send reactions
     mocked_client3, t3 = await create_fake_command_bot(
-        [ConfirmValidatedCommand], is_coordinator=False, should_execute=False
+        [ConfirmValidatedCommand],
+        "example3.org",
+        is_coordinator=False,
+        should_execute=False,
     )
     mocked_client3.executed = False
 
@@ -62,11 +67,11 @@ async def test_with_single_coordinator() -> None:
 @pytest.mark.asyncio
 async def test_with_non_executing_coordinator() -> None:
     mocked_client1, t1 = await create_fake_command_bot(
-        [ConfirmValidatedCommand], should_execute=False
+        [ConfirmValidatedCommand], "example.org", should_execute=False
     )
     mocked_client1.executed = False
     mocked_client2, t2 = await create_fake_command_bot(
-        [ConfirmValidatedCommand], is_coordinator=False
+        [ConfirmValidatedCommand], "example2.org", is_coordinator=False
     )
     mocked_client2.executed = False
 

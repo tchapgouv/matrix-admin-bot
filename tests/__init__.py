@@ -31,8 +31,8 @@ def generate_event_id(*_args: Any, **_kwargs: Any) -> str:
 
 
 class MatrixClientMock:
-    def __init__(self) -> None:
-        self.user_id = "@admin:example.org"
+    def __init__(self, server_name: str = "example.org") -> None:
+        self.user_id = f"@admin:{server_name}"
         self.access_token = "AAAA"
         self.callbacks: dict[
             Callable[[MatrixRoom, Event], Awaitable[None]],
@@ -147,6 +147,7 @@ async def fake_synced_text_message(
 
 async def create_fake_command_bot(
     commands: list[type[ICommand]],
+    server_name: str = "example.org",
     **extra_config: Any,
 ) -> tuple[MatrixClientMock, Task[None]]:
     bot = CommandBot(
@@ -156,10 +157,13 @@ async def create_fake_command_bot(
         commands=commands,
         **extra_config,
     )
-    return await mock_client_and_run(bot)
+    return await mock_client_and_run(bot, server_name)
 
 
 async def create_fake_admin_bot(
+    server_name: str = "example.org",
+    *,
+    is_coordinator: bool = True,
     **extra_config: Any,
 ) -> tuple[MatrixClientMock, Task[None]]:
     bot = AdminBot(
@@ -167,16 +171,19 @@ async def create_fake_admin_bot(
             homeserver="http://localhost:8008",
             bot_username="",
             bot_password="",
-            is_coordinator=True,
+            is_coordinator=is_coordinator,
             allowed_room_ids=[],
             totps={},
         ),
         **extra_config,
     )
-    return await mock_client_and_run(bot)
+    return await mock_client_and_run(bot, server_name)
 
 
 async def create_fake_tchap_admin_bot(
+    server_name: str = "example.org",
+    *,
+    is_coordinator: bool = True,
     **extra_config: Any,
 ) -> tuple[MatrixClientMock, Task[None]]:
     bot = TchapAdminBot(
@@ -185,17 +192,19 @@ async def create_fake_tchap_admin_bot(
             identity_server="http://localhost:8090",
             bot_username="",
             bot_password="",
-            is_coordinator=True,
+            is_coordinator=is_coordinator,
             allowed_room_ids=[],
             totps={},
         ),
         **extra_config,
     )
-    return await mock_client_and_run(bot)
+    return await mock_client_and_run(bot, server_name)
 
 
-async def mock_client_and_run(bot: MatrixBot) -> tuple[MatrixClientMock, Task[None]]:
-    fake_client = MatrixClientMock()
+async def mock_client_and_run(
+    bot: MatrixBot, server_name: str = "example.org"
+) -> tuple[MatrixClientMock, Task[None]]:
+    fake_client = MatrixClientMock(server_name)
     bot.matrix_client = fake_client
     bot.callbacks.matrix_client = fake_client
 
