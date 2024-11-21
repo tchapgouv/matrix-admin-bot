@@ -24,7 +24,12 @@ class ConfirmValidatedCommand(SimpleValidatedCommand):
         matrix_client: MatrixClient,
         extra_config: Mapping[str, Any],
     ) -> None:
+        self._should_execute = extra_config.get("should_execute", True)
         super().__init__(room, message, matrix_client, ConfirmValidator(), extra_config)
+
+    @override
+    async def should_execute(self) -> bool:
+        return self._should_execute
 
     @override
     async def simple_execute(self) -> bool:
