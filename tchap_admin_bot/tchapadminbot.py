@@ -6,6 +6,7 @@ import unpaddedbase64
 from nio import GetOpenIDTokenResponse
 
 from matrix_admin_bot.adminbot import AdminBot, AdminBotConfig
+from matrix_command_bot.command import ICommand
 from matrix_command_bot.util import get_server_name
 
 logger = structlog.getLogger(__name__)
@@ -22,16 +23,18 @@ class TchapAdminBot(AdminBot):
         **extra_config: Any,  # noqa: ANN401
     ) -> None:
         self.identity_server = config.identity_server
-        if "get_matrix_ids_fct" not in extra_config:
-            extra_config["get_matrix_ids_fct"] = self.get_matrix_ids
+        if "transform_cmd_input_fct" not in extra_config:
+            extra_config["transform_cmd_input_fct"] = self.transform_cmd_input
         super().__init__(config, **extra_config)
 
         self.identity_server_access_token: str | None = None
 
-    async def get_matrix_ids(self, user_ids: list[str]) -> list[str]:
+    async def transform_cmd_input(
+        self, _command: type[ICommand], cmd_input: list[str]
+    ) -> list[str]:
         potential_emails = filter(
             lambda user_id: not (user_id.startswith("@") and get_server_name(user_id)),
-            user_ids,
+            cmd_input,
         )
 
         email_to_mxid_map: dict[str | None, Any] = {}
@@ -74,7 +77,7 @@ class TchapAdminBot(AdminBot):
                     "Error when doing the lookup", emails=potential_emails, result=res
                 )
 
-        return [email_to_mxid_map.get(user_id, user_id) for user_id in user_ids]
+        return [email_to_mxid_map.get(user_id, user_id) for user_id in cmd_input]
 
     async def get_hash_pepper(self) -> str | None:
         if self.matrix_client.client_session and self.identity_server_access_token:

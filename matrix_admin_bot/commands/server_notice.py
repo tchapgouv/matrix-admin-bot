@@ -1,6 +1,6 @@
 import asyncio
 import json
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 import structlog
@@ -24,9 +24,10 @@ logger = structlog.getLogger(__name__)
 
 
 class ServerNoticeState:
-    notice_content: Mapping[str, Any] | None = None
-    recipients: list[str] | None = None
-    notice_original_event_id: str | None = None
+    def __init__(self) -> None:
+        self.notice_content: Mapping[str, Any] = {}
+        self.recipients: list[str] = []
+        self.notice_original_event_id: str | None = None
 
 
 class ServerNoticeAskRecipientsStep(ICommandStep):
@@ -80,6 +81,16 @@ class ServerNoticeGetRecipientsStep(ICommandStep):
         self.command_state.recipients = (
             reply.source.get("content", {}).get("body", "").split()
         )
+
+        self.transform_cmd_input_fct: (
+            Callable[[type[ICommand], list[str]], Awaitable[list[str]]] | None
+        ) = self.command.extra_config.get("transform_cmd_input_fct")  # pyright: ignore[reportAttributeAccessIssue]
+
+        if self.transform_cmd_input_fct:
+            self.command_state.recipients = await self.transform_cmd_input_fct(
+                self.command.__class__, self.command_state.recipients
+            )
+
         if self.command.extra_config.get("is_coordinator", True):
             message = "Type your notice"
             await self.command.matrix_client.send_markdown_message(

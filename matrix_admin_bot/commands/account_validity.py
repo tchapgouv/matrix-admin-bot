@@ -1,6 +1,6 @@
 import asyncio
 import json
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Mapping
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -27,10 +27,6 @@ class AccountValidityCommand(UserRelatedCommand):
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
-
-        self.get_matrix_ids_fct: Callable[[list[str]], Awaitable[list[str]]] | None = (
-            extra_config.get("get_matrix_ids_fct")
-        )  # pyright: ignore[reportAttributeAccessIssue]
 
         self.json_report["command"] = self.KEYWORD
         self.json_report.setdefault("summary", {})

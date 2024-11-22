@@ -7,6 +7,7 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
+from matrix_command_bot.command import ICommand
 from matrix_command_bot.util import get_server_name, is_local_user, send_report
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
@@ -29,9 +30,9 @@ class UserRelatedCommand(SimpleValidatedCommand):
 
         self.keyword = keyword
 
-        self.get_matrix_ids_fct: Callable[[list[str]], Awaitable[list[str]]] | None = (
-            extra_config.get("get_matrix_ids_fct")
-        )  # pyright: ignore[reportAttributeAccessIssue]
+        self.transform_cmd_input_fct: (
+            Callable[[type[ICommand], list[str]], Awaitable[list[str]]] | None
+        ) = extra_config.get("transform_cmd_input_fct")  # pyright: ignore[reportAttributeAccessIssue]
 
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client
@@ -45,8 +46,10 @@ class UserRelatedCommand(SimpleValidatedCommand):
 
     @override
     async def should_execute(self) -> bool:
-        if self.get_matrix_ids_fct:
-            self.user_ids = await self.get_matrix_ids_fct(self.user_ids)
+        if self.transform_cmd_input_fct:
+            self.user_ids = await self.transform_cmd_input_fct(
+                self.__class__, self.user_ids
+            )
         return any(
             is_local_user(user_id, self.server_name) for user_id in self.user_ids
         )
