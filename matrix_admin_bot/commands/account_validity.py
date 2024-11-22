@@ -36,7 +36,6 @@ class AccountValidityCommand(UserRelatedCommand):
         self.json_report.setdefault("failed_users", "")
 
     async def account_validity(self, user_id: str, expiration_ts: int) -> bool:
-        # TODO check coordinator config
         if get_server_name(user_id) != self.server_name:
             return True
 

@@ -28,7 +28,6 @@ class ResetPasswordCommand(UserRelatedCommand):
     async def reset_password(
         self, user_id: str, password: str, *, logout_devices: bool = True
     ) -> bool:
-        # TODO check coordinator config
         if get_server_name(user_id) != self.server_name:
             return True
 
