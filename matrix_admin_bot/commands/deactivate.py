@@ -1,6 +1,4 @@
 import json
-import secrets
-import string
 from collections.abc import Mapping
 from typing import Any
 
@@ -12,8 +10,8 @@ from matrix_admin_bot import UserRelatedCommand
 from matrix_command_bot.util import get_server_name
 
 
-class ResetPasswordCommand(UserRelatedCommand):
-    KEYWORD = "reset_password"
+class DeactivateCommand(UserRelatedCommand):
+    KEYWORD = "deactivate"
 
     def __init__(
         self,
@@ -25,9 +23,7 @@ class ResetPasswordCommand(UserRelatedCommand):
         super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
         self.failed_user_ids: list[str] = []
 
-    async def reset_password(
-        self, user_id: str, password: str, *, logout_devices: bool = True
-    ) -> bool:
+    async def deactivate_user(self, user_id: str) -> bool:
         if get_server_name(user_id) != self.server_name:
             return True
 
@@ -46,14 +42,9 @@ class ResetPasswordCommand(UserRelatedCommand):
 
         resp = await self.matrix_client.send(
             "POST",
-            f"/_synapse/admin/v1/reset_password/{user_id}",
+            f"/_synapse/admin/v1/deactivate/{user_id}",
             headers={"Authorization": f"Bearer {self.matrix_client.access_token}"},
-            data=json.dumps(
-                {
-                    "new_password": password,
-                    "logout_devices": logout_devices,
-                }
-            ),
+            data=json.dumps({"erase": False}),
         )
         if not resp.ok:
             json_body = await resp.json()
@@ -65,12 +56,8 @@ class ResetPasswordCommand(UserRelatedCommand):
 
     @override
     async def simple_execute(self) -> bool:
-        def randomword(length: int) -> str:
-            characters = string.ascii_lowercase + string.digits
-            return "".join(secrets.choice(characters) for _ in range(length))
-
         for user_id in self.user_ids:
-            await self.reset_password(user_id, randomword(32))
+            await self.deactivate_user(user_id)
 
         if self.json_report:
             self.json_report["command"] = self.KEYWORD
@@ -79,7 +66,7 @@ class ResetPasswordCommand(UserRelatedCommand):
         if self.failed_user_ids:
             text = "\n".join(
                 [
-                    "Couldn't reset the password of the following users:",
+                    "Couldn't deactivate the following users:",
                     "",
                     *[f"- {user_id}" for user_id in self.failed_user_ids],
                 ]
