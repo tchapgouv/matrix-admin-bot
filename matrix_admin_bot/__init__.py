@@ -15,7 +15,24 @@ from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 logger = structlog.getLogger(__name__)
 
 
-class UserRelatedCommand(SimpleValidatedCommand):
+class SingleUserValidatedCommand(SimpleValidatedCommand):
+    def __init__(
+        self,
+        room: MatrixRoom,
+        message: RoomMessage,
+        matrix_client: MatrixClient,
+        secure_validator: IValidator,
+        extra_config: Mapping[str, Any],
+    ) -> None:
+        super().__init__(room, message, matrix_client, secure_validator, extra_config)
+
+    @override
+    async def reply_received(self, reply: RoomMessage) -> None:
+        if reply.sender == self.message.sender:
+            await self.resume_execute(reply)
+
+
+class UserRelatedCommand(SingleUserValidatedCommand):
     def __init__(
         self,
         room: MatrixRoom,

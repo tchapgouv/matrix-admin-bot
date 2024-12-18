@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from typing import Any
 
 import cachetools
@@ -12,6 +13,13 @@ from matrix_command_bot.command import ICommand
 logger = structlog.getLogger(__name__)
 
 
+@dataclass
+class Role:
+    name: str
+    all_commands: bool = False
+    allowed_commands: list[type[ICommand]] = field(default_factory=list)
+
+
 class CommandBot(MatrixBot):
     def __init__(
         self,
@@ -20,10 +28,12 @@ class CommandBot(MatrixBot):
         username: str,
         password: str,
         commands: list[type[ICommand]],
+        roles: dict[str, list[Role]] | None = None,
         **extra_config: Any,  # noqa: ANN401
     ) -> None:
         super().__init__(homeserver, username, password)
         self.commands = commands
+        self.roles = roles
         self.extra_config = {}
         if extra_config:
             self.extra_config = extra_config
@@ -119,10 +129,11 @@ class CommandBot(MatrixBot):
                 command = command_type(
                     room, message, self.matrix_client, self.extra_config
                 )
-                self.commands_cache[message.event_id] = command
-                # Run the command in a separate task so it doesn't block the event loop
-                asyncio.create_task(command.execute(), name=f"ExecuteCommand-{command}")
-                break
+                if await self.can_execute(command):
+                    self.commands_cache[message.event_id] = command
+                    # Run the command in a separate task so it doesn't block the event loop
+                    asyncio.create_task(command.execute(), name=f"ExecuteCommand-{command}")
+                    break
             except EventNotConcerned:
                 pass
             except Exception as e:  # noqa: BLE001
@@ -132,3 +143,12 @@ class CommandBot(MatrixBot):
                     e=e,
                     message=message,
                 )
+
+    async def can_execute(self, command: ICommand) -> bool:
+        if not self.roles:
+            return True
+        user_roles = self.roles.get(command.message.sender, [])
+        for role in user_roles:
+            if role.all_commands or command.__class__ in role.allowed_commands:
+                return True
+        return False

@@ -12,7 +12,7 @@ from typing_extensions import override
 
 from matrix_admin_bot.adminbot import AdminBot, AdminBotConfig
 from matrix_command_bot.command import ICommand
-from matrix_command_bot.commandbot import CommandBot
+from matrix_command_bot.commandbot import CommandBot, Role
 from matrix_command_bot.validation import IValidator
 from tchap_admin_bot.tchapadminbot import TchapAdminBot, TchapAdminBotConfig
 
@@ -156,6 +156,7 @@ async def fake_synced_text_message(
 async def create_fake_command_bot(
     commands: list[type[ICommand]],
     server_name: str = "example.org",
+    roles: dict[str, list[Role]] | None = None,
     **extra_config: Any,
 ) -> tuple[MatrixClientMock, Task[None]]:
     bot = CommandBot(
@@ -163,6 +164,7 @@ async def create_fake_command_bot(
         username="",
         password="",
         commands=commands,
+        roles=roles,
         **extra_config,
     )
     return await mock_client_and_run(bot, server_name)

@@ -1,6 +1,7 @@
 from typing import Any
 
 from matrix_bot.bot import bot_lib_config
+from pydantic import BaseModel
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -14,7 +15,7 @@ from matrix_admin_bot.commands.deactivate import DeactivateCommand
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
 from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 from matrix_command_bot.command import ICommand
-from matrix_command_bot.commandbot import CommandBot
+from matrix_command_bot.commandbot import CommandBot, Role
 from matrix_command_bot.validation.validators.totp import TOTPValidator
 
 COMMANDS: list[type[ICommand]] = [
@@ -23,6 +24,12 @@ COMMANDS: list[type[ICommand]] = [
     AccountValidityCommand,
     DeactivateCommand,
 ]
+
+
+class RoleModel(BaseModel):
+    all_commands: bool = False
+    allowed_commands: list[str] = []
+    user_ids: list[str] = []
 
 
 class AdminBotConfig(BaseSettings):
@@ -34,6 +41,7 @@ class AdminBotConfig(BaseSettings):
     allowed_room_ids: list[str] = []
     totps: dict[str, str] = {}
     is_coordinator: bool = True
+    roles: dict[str, RoleModel] = {}
 
     @classmethod
     @override
@@ -63,11 +71,27 @@ class AdminBot(CommandBot):
         if "secure_validator" not in extra_config:
             extra_config["secure_validator"] = TOTPValidator(config.totps)
         bot_lib_config.allowed_room_ids = config.allowed_room_ids
+
+        roles: dict[str, list[Role]] = {}
+
+        commands_dict = {c.__name__: c for c in COMMANDS}
+        for role_name, role_model in config.roles.items():
+            allowed_commands: list[type[ICommand]] = []
+            for allowed_command_str in role_model.allowed_commands:
+                allowed_cmd = commands_dict.get(allowed_command_str)
+                if allowed_cmd:
+                    allowed_commands.append(allowed_cmd)
+
+            role = Role(role_name, role_model.all_commands, allowed_commands)
+
+            for user_id in role_model.user_ids:
+                roles.get(user_id, []).append(role)
         super().__init__(
             homeserver=config.homeserver,
             username=config.bot_username,
             password=config.bot_password,
             commands=COMMANDS,
+            roles=roles,
             is_coordinator=config.is_coordinator,
             **extra_config,
         )
