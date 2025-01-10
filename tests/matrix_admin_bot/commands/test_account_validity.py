@@ -1,3 +1,4 @@
+from unittest import mock
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -41,9 +42,10 @@ async def test_failed_account_validity_with_error_500() -> None:
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
-    await mocked_client.fake_synced_text_message(
-        room, USER1_ID, "!account_validity @user_to_reset:example.org"
-    )
+    with mock.patch("asyncio.sleep", new_callable=AsyncMock):
+        await mocked_client.fake_synced_text_message(
+            room, USER1_ID, "!account_validity @user_to_reset:example.org"
+        )
 
     # send the report a result
     mocked_client.send_file_message.assert_awaited_once()
