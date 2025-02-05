@@ -85,7 +85,7 @@ class DeactivateCommand(UserRelatedCommand):
     def confirm_message(self) -> str | None:
         return "\n".join(
             [
-                "You are about to reset password of the following users:",
+                "You are about to deactivate of the following users:",
                 "",
                 *[f"- {user_id}" for user_id in self.user_ids],
                 "",
