@@ -5,6 +5,7 @@ import structlog
 from matrix_bot.bot import MatrixBot
 from matrix_bot.eventparser import EventNotConcerned
 from nio import MatrixRoom, RoomMessage
+import asyncio
 
 from matrix_command_bot.command import ICommand
 
@@ -119,7 +120,8 @@ class CommandBot(MatrixBot):
                     room, message, self.matrix_client, self.extra_config
                 )
                 self.commands_cache[message.event_id] = command
-                await command.execute()
+                # Run the command in a separate task so it doesn't block the event loop
+                asyncio.create_task(command.execute(), name=f"ExecuteCommand-{command}")
                 break
             except EventNotConcerned:
                 pass

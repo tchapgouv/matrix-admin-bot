@@ -64,11 +64,18 @@ class MatrixClientMock:
     ) -> None:
         self.callbacks[callback] = event_filter
 
-    async def fake_synced_message(self, room: MatrixRoom, message: RoomMessage) -> None:
+    async def fake_synced_message(
+        self,
+        room: MatrixRoom,
+        message: RoomMessage,
+        wait_for_commands_execution: bool = True,
+    ) -> None:
         for callback in self.callbacks:
             event_filter = self.callbacks[callback]
             if event_filter is None or isinstance(message, event_filter):
                 await callback(room, message)
+        if wait_for_commands_execution:
+            await wait_for_command_tasks()
 
     async def fake_synced_text_message(
         self,
@@ -80,6 +87,7 @@ class MatrixClientMock:
         *,
         extra_content: Mapping[str, Any] | None = None,
         event_id: str | None = None,
+        wait_for_commands_execution: bool = True,
     ) -> str:
         if not event_id:
             event_id = generate_event_id()
@@ -101,7 +109,7 @@ class MatrixClientMock:
             source["content"]["formatted_body"] = formatted_body
         message = RoomMessageText.parse_event(source)
         assert isinstance(message, RoomMessageText)
-        await self.fake_synced_message(room, message)
+        await self.fake_synced_message(room, message, wait_for_commands_execution)
         return event_id
 
     async def sync_forever(self, *_args: Any, **_kwargs: Any) -> NoReturn:
@@ -245,3 +253,19 @@ class OkValidator(IValidator):
         command: ICommand,
     ) -> bool:
         return True
+
+
+async def wait_for_command_tasks() -> None:
+    # Run all pending command tasks in the event loop except current one
+    await asyncio.gather(
+        *[
+            task
+            for task in asyncio.all_tasks()
+            if task is not asyncio.current_task()
+            and not task.done()
+            and task.get_name().startswith("ExecuteCommand-")
+        ],
+        return_exceptions=True,
+    )
+    # Let the event loop process one more cycle
+    await asyncio.sleep(0)
