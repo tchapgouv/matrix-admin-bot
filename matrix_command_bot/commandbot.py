@@ -1,11 +1,14 @@
 from typing import Any
 
 import cachetools
+import structlog
 from matrix_bot.bot import MatrixBot
 from matrix_bot.eventparser import EventNotConcerned
 from nio import MatrixRoom, RoomMessage
 
 from matrix_command_bot.command import ICommand
+
+logger = structlog.getLogger(__name__)
 
 
 class CommandBot(MatrixBot):
@@ -91,11 +94,22 @@ class CommandBot(MatrixBot):
             related_command = self.get_related_command(replaced_event)
             if related_command:
                 new_content = message.source.get("content", {}).get("m.new_content")
+                logger.debug(
+                    "A message related to a command has been replaced",
+                    new_content=new_content,
+                    related_command=related_command,
+                    replaced_event=replaced_event,
+                )
                 await related_command.replace_received(new_content, replaced_event)
                 return
         else:
             related_command = self.get_related_command(message)
             if related_command:
+                logger.debug(
+                    "A reply to a command has been received",
+                    related_command=related_command,
+                    reply=message,
+                )
                 await related_command.reply_received(message)
                 return
 
@@ -109,3 +123,10 @@ class CommandBot(MatrixBot):
                 break
             except EventNotConcerned:
                 pass
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "Unexpected exception when trying to parse a message as %s",
+                    command_type.__name__,
+                    e=e,
+                    message=message,
+                )
