@@ -1,7 +1,7 @@
 ARG PYTHON_VERSION=3.11
 
 # Use a Python image with uv pre-installed
-FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim as builder
+FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm as builder
 
 
 # Enable bytecode compilation
