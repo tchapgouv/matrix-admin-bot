@@ -2,14 +2,15 @@ import asyncio
 from collections.abc import Mapping
 from typing import Any
 
-from matrix_bot.bot import MatrixClient
-from matrix_bot.eventparser import MessageEventParser
-from matrix_command_bot.simple_command import SimpleCommand
-from nio import MatrixRoom, RoomMessage
 import pytest
 import structlog
-from tests import USER1_ID, create_fake_command_bot
+from matrix_bot.bot import MatrixClient
+from matrix_bot.eventparser import MessageEventParser
+from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
+
+from matrix_command_bot.simple_command import SimpleCommand
+from tests import USER1_ID, create_fake_command_bot
 
 logger = structlog.get_logger(__name__)
 
@@ -79,8 +80,9 @@ async def test_long_running_command() -> None:
         room, USER1_ID, "!success", wait_for_commands_execution=False
     )
 
-    # We can't wait for the command tasks to finish here, because the long running command will not finish
-    # So we just wait a bit for the success command to be executed
+    # We can't wait for the command tasks to finish here,
+    # because the long running command will not finish
+    # so we just wait a bit for the success command to be executed
     await asyncio.sleep(0.1)
 
     assert mocked_client.success_executed

@@ -68,6 +68,7 @@ class MatrixClientMock:
         self,
         room: MatrixRoom,
         message: RoomMessage,
+        *,
         wait_for_commands_execution: bool = True,
     ) -> None:
         for callback in self.callbacks:
@@ -109,7 +110,9 @@ class MatrixClientMock:
             source["content"]["formatted_body"] = formatted_body
         message = RoomMessageText.parse_event(source)
         assert isinstance(message, RoomMessageText)
-        await self.fake_synced_message(room, message, wait_for_commands_execution)
+        await self.fake_synced_message(
+            room, message, wait_for_commands_execution=wait_for_commands_execution
+        )
         return event_id
 
     async def sync_forever(self, *_args: Any, **_kwargs: Any) -> NoReturn:

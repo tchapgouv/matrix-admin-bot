@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -6,7 +7,6 @@ import structlog
 from matrix_bot.bot import MatrixBot
 from matrix_bot.eventparser import EventNotConcerned
 from nio import MatrixRoom, RoomMessage
-import asyncio
 
 from matrix_command_bot.command import ICommand
 
@@ -44,6 +44,8 @@ class CommandBot(MatrixBot):
         self.commands_cache: cachetools.TTLCache[str, ICommand] = cachetools.TTLCache(
             maxsize=5120, ttl=24 * 60 * 60
         )
+
+        self.background_tasks: set[asyncio.Task[Any]] = set()
 
         self.callbacks.register_on_message_event(self.store_event_in_cache)
         self.callbacks.register_on_message_event(self.handle_events)
@@ -131,10 +133,14 @@ class CommandBot(MatrixBot):
                 )
                 if await self.can_execute(command):
                     self.commands_cache[message.event_id] = command
-                    # Run the command in a separate task so it doesn't block the event loop
-                    asyncio.create_task(
+                    # Run the command in a separate task
+                    # so it doesn't block the event loop
+                    task = asyncio.create_task(
                         command.execute(), name=f"ExecuteCommand-{command}"
                     )
+                    # cf https://docs.astral.sh/ruff/rules/asyncio-dangling-task/
+                    self.background_tasks.add(task)
+                    task.add_done_callback(self.background_tasks.discard)
                     break
             except EventNotConcerned:
                 pass
