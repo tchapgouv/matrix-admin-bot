@@ -132,7 +132,9 @@ class CommandBot(MatrixBot):
                 if await self.can_execute(command):
                     self.commands_cache[message.event_id] = command
                     # Run the command in a separate task so it doesn't block the event loop
-                    asyncio.create_task(command.execute(), name=f"ExecuteCommand-{command}")
+                    asyncio.create_task(
+                        command.execute(), name=f"ExecuteCommand-{command}"
+                    )
                     break
             except EventNotConcerned:
                 pass
