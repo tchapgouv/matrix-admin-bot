@@ -1,32 +1,44 @@
 ARG PYTHON_VERSION=3.11
 
-FROM python:${PYTHON_VERSION}-bookworm as builder
+# Use a Python image with uv pre-installed
+FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim as builder
 
-ENV POETRY_VERSION=2.1.1
 
-RUN pip install poetry==$POETRY_VERSION poetry-dynamic-versioning[plugin]
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
 
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=1 \
-    POETRY_VIRTUALENVS_CREATE=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
 
-WORKDIR /app
+# Disable Python downloads, because we want to use the system interpreter
+# across both images. If using a managed Python version, it needs to be
+# copied from the build image into the final image; see `standalone.Dockerfile`
+# for an example.
+ENV UV_PYTHON_DOWNLOADS=0
 
-COPY pyproject.toml poetry.lock ./
-COPY matrix_admin_bot ./matrix_admin_bot
-COPY matrix_command_bot ./matrix_command_bot
-COPY tchap_admin_bot ./tchap_admin_bot
 # Needed to derivate version from git tag
 COPY .git ./.git
 
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --compile
+# Install the project into `/app`
+WORKDIR /app
+
+# Install the project's dependencies using the lockfile and settings
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-dev
+
+# Then, add the rest of the project source code and install it
+# Installing separately from its dependencies allows optimal layer caching
+ADD . /app
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 RUN rm -rf .git
 
 FROM python:${PYTHON_VERSION}-slim-bookworm as runtime
 
-COPY --from=builder /app /app
+COPY --from=builder --chown=app:app /app /app
 
 WORKDIR /data
 ENTRYPOINT ["/app/.venv/bin/tchap-admin-bot"]

@@ -21,13 +21,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Poetry
-        uses: matrix-org/setup-python-poetry@v1
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
         with:
-          groups: dev
+          enable-cache: true
 
       - name: Run tests
-        run: poetry run pytest
+        run: uv run --frozen pytest
 
   lint:
     runs-on: ubuntu-latest
@@ -37,16 +37,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Poetry
-        uses: matrix-org/setup-python-poetry@v1
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
         with:
-          groups: dev
+          enable-cache: true
 
       - name: Code style (ruff)
-        run: poetry run ruff format --diff
+        run: uv run --frozen ruff format --diff
 
       - name: Semantic checks (ruff)
-        run: poetry run ruff check
+        run: uv run --frozen ruff check
 
   types:
     runs-on: ubuntu-latest
@@ -56,13 +56,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Poetry
-        uses: matrix-org/setup-python-poetry@v1
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
         with:
-          groups: dev
+          enable-cache: true
 
       - name: Type checks
-        run: poetry run basedpyright
+        run: uv run --frozen basedpyright
 
   coverage:
     runs-on: ubuntu-latest
@@ -72,13 +72,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Poetry
-        uses: matrix-org/setup-python-poetry@v1
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
         with:
-          groups: dev
+          enable-cache: true
 
       - name: Run tests & generate coverage
-        run: poetry run coverage run -m pytest
+        run: uv run --frozen coverage run -m pytest
 
       - name: Display coverage report
-        run: poetry run coverage report --omit="tests/*"
+        run: uv run --frozen coverage report --omit="tests/*"
