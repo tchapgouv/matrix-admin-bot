@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Poetry
-        uses: MatMaul/setup-python-poetry@v1
+        uses: matrix-org/setup-python-poetry@v1
         with:
           groups: dev
 
@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Poetry
-        uses: MatMaul/setup-python-poetry@v1
+        uses: matrix-org/setup-python-poetry@v1
         with:
           groups: dev
 
@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Poetry
-        uses: MatMaul/setup-python-poetry@v1
+        uses: matrix-org/setup-python-poetry@v1
         with:
           groups: dev
 
@@ -73,7 +73,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Poetry
-        uses: MatMaul/setup-python-poetry@v1
+        uses: matrix-org/setup-python-poetry@v1
         with:
           groups: dev
 

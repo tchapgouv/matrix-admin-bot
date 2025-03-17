@@ -2,7 +2,7 @@ ARG PYTHON_VERSION=3.11
 
 FROM python:${PYTHON_VERSION}-bookworm as builder
 
-ENV POETRY_VERSION=1.8.3
+ENV POETRY_VERSION=2.1.1
 
 RUN pip install poetry==$POETRY_VERSION poetry-dynamic-versioning[plugin]
 
