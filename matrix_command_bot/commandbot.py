@@ -142,12 +142,13 @@ class CommandBot(MatrixBot):
                     self.background_tasks.add(task)
                     task.add_done_callback(self.background_tasks.discard)
                 else:
-                    await self.matrix_client.send_markdown_message(
-                        room.room_id,
-                        "You are not allowed to execute this command",
-                        reply_to=message.event_id,
-                        thread_root=message.event_id,
-                    )
+                    if self.extra_config.get("is_coordinator", True):
+                        await self.matrix_client.send_markdown_message(
+                            room.room_id,
+                            "You are not allowed to execute this command",
+                            reply_to=message.event_id,
+                            thread_root=message.event_id,
+                        )
                     logger.warning(
                         "Command not allowed to be executed",
                         command=command,
