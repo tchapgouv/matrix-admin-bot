@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from matrix_bot.bot import bot_lib_config
@@ -17,6 +18,8 @@ from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
 from matrix_command_bot.validation.validators.totp import TOTPValidator
+
+logger = logging.getLogger(__name__)
 
 COMMANDS: list[type[ICommand]] = [
     ServerNoticeCommand,
@@ -75,6 +78,7 @@ class AdminBot(CommandBot):
         roles: dict[str, list[Role]] = {}
 
         commands_dict = {c.__name__: c for c in COMMANDS}
+        logger.warning(config.roles)
         for role_name, role_model in config.roles.items():
             allowed_commands: list[type[ICommand]] = []
             for allowed_command_str in role_model.allowed_commands:
@@ -86,6 +90,7 @@ class AdminBot(CommandBot):
 
             for user_id in role_model.user_ids:
                 roles.get(user_id, []).append(role)
+        logger.warning(roles)
         super().__init__(
             homeserver=config.homeserver,
             username=config.bot_username,
