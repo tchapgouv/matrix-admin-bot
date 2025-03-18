@@ -1,0 +1,24 @@
+homeserver = "http://127.0.0.1"
+identity_server = "http://127.0.0.1"
+
+bot_username = "admin"
+bot_password = "***"
+
+is_coordinator = true # default, should be `false` for all but one if you have several bots (one per server instance) in a single admin room
+
+allowed_room_ids = [
+  "!tBprUmUcgXAdErtpA:example.org",
+]
+
+[totps]
+"@john:example.org" = "AAAAAAAABBBBBBBBCCCCCCCCDDDDDDDD"
+"@jack:example.org" = "EEEEEEEEFFFFFFFFGGGGGGGGHHHHHHHH"
+
+# If no roles is defined, all people in `totps` have access to all commands
+[roles.admin]
+all_commands = true
+user_ids = ["@john:example.org"]
+
+[roles.resetpwdonly]
+allowed_commands = ["ResetPasswordCommand"]
+user_ids = ["@jack:example.org"]
