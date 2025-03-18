@@ -85,7 +85,7 @@ class AdminBot(CommandBot):
             role = Role(role_name, role_model.all_commands, allowed_commands)
 
             for user_id in role_model.user_ids:
-                roles.get(user_id, []).append(role)
+                roles.setdefault(user_id, []).append(role)
         super().__init__(
             homeserver=config.homeserver,
             username=config.bot_username,
