@@ -141,7 +141,19 @@ class CommandBot(MatrixBot):
                     # cf https://docs.astral.sh/ruff/rules/asyncio-dangling-task/
                     self.background_tasks.add(task)
                     task.add_done_callback(self.background_tasks.discard)
-                    break
+                else:
+                    await self.matrix_client.send_markdown_message(
+                        room.room_id,
+                        "You are not allowed to execute this command",
+                        reply_to=message.event_id,
+                        thread_root=message.event_id,
+                    )
+                    logger.warning(
+                        "Command not allowed to be executed",
+                        command=command,
+                        message=message,
+                    )
+                break
             except EventNotConcerned:
                 pass
             except Exception as e:  # noqa: BLE001
