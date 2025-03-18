@@ -80,15 +80,18 @@ class AdminBot(CommandBot):
         commands_dict = {c.__name__: c for c in COMMANDS}
         logger.warning(config.roles)
         for role_name, role_model in config.roles.items():
+            logger.warning("role ", role_name, role_model)
             allowed_commands: list[type[ICommand]] = []
             for allowed_command_str in role_model.allowed_commands:
                 allowed_cmd = commands_dict.get(allowed_command_str)
                 if allowed_cmd:
                     allowed_commands.append(allowed_cmd)
+            logger.warning("allowed commands ", allowed_commands)
 
             role = Role(role_name, role_model.all_commands, allowed_commands)
 
             for user_id in role_model.user_ids:
+                logger.warning("user_id ", user_id)
                 roles.get(user_id, []).append(role)
         logger.warning(roles)
         super().__init__(
