@@ -1,9 +1,8 @@
 # Setup your environment
 ```
-python -m venv .env
+uv venv .env
 source .env/bin/activate
-python install poetry
-poetry install
+uv sync
 ```
 
 # In Development
