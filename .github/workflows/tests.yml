@@ -2,20 +2,32 @@ name: Tests
 
 on:
   push:
-    # Publish semver tags as releases.
-    tags: [ 'v*.*.*' ]
   pull_request:
   merge_group:
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
+  define-matrix:
+    runs-on: ubuntu-latest
+
+    outputs:
+      python-versions: ${{ steps.python-versions.outputs.python-versions }}
+
+    steps:
+      - name: Define supported Python versions
+        id: python-versions
+        run: |
+          echo 'python-versions=["3.11", "3.12", "3.13"]' >> "$GITHUB_OUTPUT"
+
   tests:
     runs-on: ubuntu-latest
     name: Testing
+    needs: define-matrix
+    strategy:
+      matrix:
+        python-version: ${{ fromJSON(needs.define-matrix.outputs.python-versions) }}
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
 
     steps:
       - name: Checkout repository
@@ -32,6 +44,12 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     name: Formatting and linting
+    needs: define-matrix
+    strategy:
+      matrix:
+        python-version: ${{ fromJSON(needs.define-matrix.outputs.python-versions) }}
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
 
     steps:
       - name: Checkout repository
@@ -51,6 +69,12 @@ jobs:
   types:
     runs-on: ubuntu-latest
     name: Typechecking
+    needs: define-matrix
+    strategy:
+      matrix:
+        python-version: ${{ fromJSON(needs.define-matrix.outputs.python-versions) }}
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
 
     steps:
       - name: Checkout repository
@@ -67,6 +91,12 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     name: Calculating coverage
+    needs: define-matrix
+    strategy:
+      matrix:
+        python-version: ${{ fromJSON(needs.define-matrix.outputs.python-versions) }}
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
 
     steps:
       - name: Checkout repository
