@@ -1,8 +1,7 @@
-ARG PYTHON_VERSION=3.11
+ARG PYTHON_VERSION=3.13
 
 # Use a Python image with uv pre-installed
 FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm as builder
-
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
@@ -11,10 +10,9 @@ ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
 # Disable Python downloads, because we want to use the system interpreter
-# across both images. If using a managed Python version, it needs to be
-# copied from the build image into the final image; see `standalone.Dockerfile`
-# for an example.
+# across both images.
 ENV UV_PYTHON_DOWNLOADS=0
+ENV UV_SYSTEM_PYTHON=1
 
 # Needed to derivate version from git tag
 COPY .git ./.git
