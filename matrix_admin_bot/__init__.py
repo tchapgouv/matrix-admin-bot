@@ -88,8 +88,6 @@ class UserRelatedCommand(SingleUserValidatedCommand):
             await self.matrix_client.send_markdown_message(
                 self.room.room_id,
                 self.help_message,
-                reply_to=self.message.event_id,
-                thread_root=self.message.event_id,
             )
 
     async def send_report(self) -> None:

@@ -173,8 +173,6 @@ class ServerNoticeHelpStep(ICommandStep):
             await self.command.matrix_client.send_markdown_message(
                 self.command.room.room_id,
                 self.help_message,
-                reply_to=self.command.message.event_id,
-                thread_root=self.command.message.event_id,
             )
         return True, CommandAction.ABORT
 
