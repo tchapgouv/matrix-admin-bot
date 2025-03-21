@@ -158,6 +158,52 @@ class ShouldExecuteStep(ICommandStep):
         return True, CommandAction.ABORT
 
 
+class ServerNoticeHelpStep(ICommandStep):
+    def __init__(
+        self,
+        command: ICommand,
+    ) -> None:
+        super().__init__(command)
+
+    @override
+    async def execute(
+        self, reply: RoomMessage | None = None
+    ) -> tuple[bool, CommandAction]:
+        await self.command.matrix_client.send_markdown_message(
+            self.command.room.room_id,
+            self.help_message,
+            reply_to=self.command.message.event_id,
+            thread_root=self.command.message.event_id,
+        )
+        return True, CommandAction.ABORT
+
+    @property
+    def help_message(self) -> str:
+        return """
+## Server Notice Command Help
+
+**Usage**: `!server_notice`
+
+**Purpose**: Sends server notices to users through an interactive, step-by-step process.
+
+**Steps**:
+1. The command will first ask you to specify recipients
+2. Then you'll be asked to provide the message content
+3. The command will then confirm and send the notices
+
+**Recipients can be specified as**:
+- `all` - sends to all users on the server(s)
+- `server1.org server2.org` - sends to all users on the specified servers
+- `@user1:server1.org user2@server2.org` - sends to specific users
+
+**Notes**:
+- Server notices appear as system messages to users
+- Use this feature responsibly for important announcements
+- The message is entered in a second step after specifying recipients
+- You can edit your message before confirming
+"""
+
+
 class ServerNoticeCommand(CommandWithSteps):
     KEYWORD = "server_notice"
 
@@ -177,7 +223,12 @@ class ServerNoticeCommand(CommandWithSteps):
             room=room, event=message, matrix_client=matrix_client
         )
         event_parser.do_not_accept_own_message()
-        self.user_ids = event_parser.command(self.KEYWORD).split()
+
+        # Check if this is a help request
+        command_text = event_parser.command(self.KEYWORD).strip()
+        self.is_help_request = command_text == "help"
+
+        self.user_ids = [] if self.is_help_request else command_text.split()
 
         self.json_report: dict[str, Any] = {"command": self.KEYWORD}
         self.json_report.setdefault("summary", {})
@@ -190,6 +241,11 @@ class ServerNoticeCommand(CommandWithSteps):
 
     @override
     async def create_steps(self) -> list[ICommandStep]:
+        if self.is_help_request:
+            return [
+                ServerNoticeHelpStep(self),
+            ]
+
         return [
             ServerNoticeAskRecipientsStep(self),
             ServerNoticeGetRecipientsStep(self, self.state),

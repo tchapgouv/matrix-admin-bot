@@ -55,7 +55,14 @@ class UserRelatedCommand(SingleUserValidatedCommand):
             room=room, event=message, matrix_client=matrix_client
         )
         event_parser.do_not_accept_own_message()
-        self.user_ids = event_parser.command(keyword).split()
+        self.input_text = event_parser.command(keyword)
+
+        # Check if this is a help request
+        if self.input_text.strip() == "help":
+            self.is_help_request = True
+        else:
+            self.is_help_request = False
+            self.user_ids = self.input_text.split()
 
         self.server_name = get_server_name(self.matrix_client.user_id)
 
@@ -63,6 +70,10 @@ class UserRelatedCommand(SingleUserValidatedCommand):
 
     @override
     async def should_execute(self) -> bool:
+        if self.is_help_request:
+            await self.send_help()
+            return False
+
         if self.transform_cmd_input_fct:
             self.user_ids = await self.transform_cmd_input_fct(
                 self.__class__, self.user_ids
@@ -70,6 +81,16 @@ class UserRelatedCommand(SingleUserValidatedCommand):
         return any(
             is_local_user(user_id, self.server_name) for user_id in self.user_ids
         )
+
+    async def send_help(self) -> None:
+        """Send the command's help message."""
+        if self.help_message:
+            await self.matrix_client.send_markdown_message(
+                self.room.room_id,
+                self.help_message,
+                reply_to=self.message.event_id,
+                thread_root=self.message.event_id,
+            )
 
     async def send_report(self) -> None:
         await send_report(
@@ -79,3 +100,11 @@ class UserRelatedCommand(SingleUserValidatedCommand):
             room_id=self.room.room_id,
             replied_event_id=self.message.event_id,
         )
+
+    @property
+    def help_message(self) -> str | None:
+        """Return the help message for this command.
+
+        This should be overridden by subclasses to provide specific help text.
+        """
+        return f"Usage: !{self.keyword} <user1> [user2] ...\n\nYou can also use: !{self.keyword} help"

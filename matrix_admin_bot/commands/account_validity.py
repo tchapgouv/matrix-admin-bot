@@ -125,3 +125,21 @@ class AccountValidityCommand(UserRelatedCommand):
                 *[f"- {user_id}" for user_id in self.user_ids],
             ]
         )
+
+    @property
+    @override
+    def help_message(self) -> str | None:
+        return """
+## Account Validity Command Help
+
+**Usage**: `!account_validity <user1> [user2] ...`
+
+**Purpose**: Extends the validity period of user accounts.
+
+**Effects**:
+- Sets the account expiration timestamp to 180 days (6 months) from now
+
+**Examples**:
+- `!account_validity @user:example.com`
+- `!account_validity @user1:example.com user2@example.com`
+"""

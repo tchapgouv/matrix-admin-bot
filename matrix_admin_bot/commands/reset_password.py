@@ -105,3 +105,22 @@ class ResetPasswordCommand(UserRelatedCommand):
                 "⚠⚠ This will also log-out all of their devices!",
             ]
         )
+
+    @property
+    @override
+    def help_message(self) -> str | None:
+        return """
+## Reset Password Command Help
+
+**Usage**: `!reset_password <user1> [user2] ...`
+
+**Purpose**: Resets a user's password to a new randomly generated one.
+
+**Effects**:
+- Logs out all devices currently logged into the account
+- Displays the new password in the JSON report of the command
+
+**Examples**:
+- `!reset_password @user:example.com`
+- `!reset_password @user1:example.com @user2:example.com`
+"""
