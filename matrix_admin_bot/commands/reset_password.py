@@ -110,11 +110,11 @@ class ResetPasswordCommand(UserRelatedCommand):
     @override
     def help_message(self) -> str:
         return """
-## Reset Password Command Help
+**Usage**:
+`!reset_password <user1> [user2] ...`
 
-**Usage**: `!reset_password <user1> [user2] ...`
-
-**Purpose**: Resets a user's password to a new randomly generated one.
+**Purpose**:
+Resets a user's password to a new randomly generated one.
 
 **Effects**:
 - Logs out all devices currently logged into the account

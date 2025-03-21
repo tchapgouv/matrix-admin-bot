@@ -181,11 +181,11 @@ class ServerNoticeHelpStep(ICommandStep):
     @property
     def help_message(self) -> str:
         return """
-## Server Notice Command Help
+**Usage**:
+`!server_notice`
 
-**Usage**: `!server_notice`
-
-**Purpose**: Sends server notices to users through an interactive, step-by-step process.
+**Purpose**:
+Sends server notices to users through an interactive, step-by-step process.
 
 **Steps**:
 1. The command will first ask you to specify recipients

@@ -1,6 +1,9 @@
+from collections.abc import Mapping
 from typing import Any
 
-from matrix_bot.bot import bot_lib_config
+from matrix_bot.bot import MatrixClient, bot_lib_config
+from matrix_bot.eventparser import MessageEventParser
+from nio import MatrixRoom, RoomMessage
 from pydantic import BaseModel
 from pydantic_settings import (
     BaseSettings,
@@ -16,6 +19,7 @@ from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
 from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
+from matrix_command_bot.simple_command import SimpleCommand
 from matrix_command_bot.validation.validators.totp import TOTPValidator
 
 COMMANDS: list[type[ICommand]] = [
@@ -24,6 +28,38 @@ COMMANDS: list[type[ICommand]] = [
     AccountValidityCommand,
     DeactivateCommand,
 ]
+
+
+class HelpCommand(SimpleCommand):
+    def __init__(
+        self,
+        room: MatrixRoom,
+        message: RoomMessage,
+        matrix_client: MatrixClient,
+        extra_config: Mapping[str, Any],
+    ) -> None:
+        super().__init__(room, message, matrix_client, extra_config)
+        event_parser = MessageEventParser(
+            room=room, event=message, matrix_client=matrix_client
+        )
+        event_parser.do_not_accept_own_message()
+        event_parser.command("help")
+
+    async def simple_execute(self) -> bool:
+        help_message = (
+            "Here are the available commands,"
+            "please use `!<command> help` to get"
+            "more information about a specific command:\n\n"
+        )
+        for command in COMMANDS:
+            keyword = getattr(command, "KEYWORD", None)
+            if keyword:
+                help_message += f"**{keyword}**\n\n"
+        await self.matrix_client.send_markdown_message(
+            self.room.room_id,
+            help_message,
+        )
+        return True
 
 
 class RoleModel(BaseModel):
@@ -90,7 +126,7 @@ class AdminBot(CommandBot):
             homeserver=config.homeserver,
             username=config.bot_username,
             password=config.bot_password,
-            commands=COMMANDS,
+            commands=[*COMMANDS, HelpCommand],
             roles=roles,
             is_coordinator=config.is_coordinator,
             **extra_config,

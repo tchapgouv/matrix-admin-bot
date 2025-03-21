@@ -97,15 +97,15 @@ class DeactivateCommand(UserRelatedCommand):
     @override
     def help_message(self) -> str:
         return """
-## Deactivate Command Help
+**Usage**:
+`!deactivate <user1> [user2] ...`
 
-**Usage**: `!deactivate <user1> [user2] ...`
-
-**Purpose**: Deactivates Matrix accounts, which prevents them from logging in.
+**Purpose**:
+Deactivates Matrix accounts.
 
 **Effects**:
 - Logs out all devices currently logged into the account
-- Prevents the user from logging in again
+- Prevents the user from logging in again byt removing their access token and password
 - Remove the user from all rooms
 - The user ID remains reserved and cannot be registered by someone else
 
