@@ -107,4 +107,8 @@ class UserRelatedCommand(SingleUserValidatedCommand):
 
         This should be overridden by subclasses to provide specific help text.
         """
-        return f"Usage: !{self.keyword} <user1> [user2] ...\n\nYou can also use: !{self.keyword} help"
+        return f"""
+## {self.keyword} Command Help
+
+**Usage**: `!{self.keyword} <user1> [user2] ...`
+"""
