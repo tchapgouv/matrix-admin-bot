@@ -1,7 +1,7 @@
 ARG PYTHON_VERSION=3.13
 
 # Use a Python image with uv pre-installed
-FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm as builder
+FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm AS builder
 
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
@@ -34,7 +34,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 RUN rm -rf .git
 
-FROM python:${PYTHON_VERSION}-slim-bookworm as runtime
+FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
 
 COPY --from=builder --chown=app:app /app /app
 
