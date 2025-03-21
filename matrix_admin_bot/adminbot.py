@@ -44,6 +44,7 @@ class HelpCommand(ICommand):
         event_parser.do_not_accept_own_message()
         event_parser.command("help")
 
+    @override
     async def execute(self) -> bool:
         if self.extra_config.get("is_coordinator", True):
             help_message = (

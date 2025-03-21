@@ -169,7 +169,7 @@ class ServerNoticeHelpStep(ICommandStep):
     async def execute(
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
-        if self.command.extra_config.get("is_coordinator", True):
+        if not reply and self.command.extra_config.get("is_coordinator", True):
             await self.command.matrix_client.send_markdown_message(
                 self.command.room.room_id,
                 self.help_message,
