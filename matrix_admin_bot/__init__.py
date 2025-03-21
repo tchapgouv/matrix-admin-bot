@@ -84,7 +84,7 @@ class UserRelatedCommand(SingleUserValidatedCommand):
 
     async def send_help(self) -> None:
         """Send the command's help message."""
-        if self.help_message:
+        if self.command.extra_config.get("is_coordinator", True):
             await self.matrix_client.send_markdown_message(
                 self.room.room_id,
                 self.help_message,
@@ -102,7 +102,7 @@ class UserRelatedCommand(SingleUserValidatedCommand):
         )
 
     @property
-    def help_message(self) -> str | None:
+    def help_message(self) -> str:
         """Return the help message for this command.
 
         This should be overridden by subclasses to provide specific help text.

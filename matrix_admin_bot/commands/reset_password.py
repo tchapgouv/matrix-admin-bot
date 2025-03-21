@@ -108,7 +108,7 @@ class ResetPasswordCommand(UserRelatedCommand):
 
     @property
     @override
-    def help_message(self) -> str | None:
+    def help_message(self) -> str:
         return """
 ## Reset Password Command Help
 

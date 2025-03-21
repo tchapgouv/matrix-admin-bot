@@ -169,12 +169,13 @@ class ServerNoticeHelpStep(ICommandStep):
     async def execute(
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
-        await self.command.matrix_client.send_markdown_message(
-            self.command.room.room_id,
-            self.help_message,
-            reply_to=self.command.message.event_id,
-            thread_root=self.command.message.event_id,
-        )
+        if self.command.extra_config.get("is_coordinator", True):
+            await self.command.matrix_client.send_markdown_message(
+                self.command.room.room_id,
+                self.help_message,
+                reply_to=self.command.message.event_id,
+                thread_root=self.command.message.event_id,
+            )
         return True, CommandAction.ABORT
 
     @property
