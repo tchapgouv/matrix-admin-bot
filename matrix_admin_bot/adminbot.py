@@ -19,7 +19,6 @@ from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
 from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
-from matrix_command_bot.simple_command import SimpleCommand
 from matrix_command_bot.validation.validators.totp import TOTPValidator
 
 COMMANDS: list[type[ICommand]] = [
@@ -30,7 +29,7 @@ COMMANDS: list[type[ICommand]] = [
 ]
 
 
-class HelpCommand(SimpleCommand):
+class HelpCommand(ICommand):
     def __init__(
         self,
         room: MatrixRoom,
@@ -45,20 +44,21 @@ class HelpCommand(SimpleCommand):
         event_parser.do_not_accept_own_message()
         event_parser.command("help")
 
-    async def simple_execute(self) -> bool:
-        help_message = (
-            "Here are the available commands,"
-            "please use `!<command> help` to get"
-            "more information about a specific command:\n\n"
-        )
-        for command in COMMANDS:
-            keyword = getattr(command, "KEYWORD", None)
-            if keyword:
-                help_message += f"**{keyword}**\n\n"
-        await self.matrix_client.send_markdown_message(
-            self.room.room_id,
-            help_message,
-        )
+    async def execute(self) -> bool:
+        if self.extra_config.get("is_coordinator", True):
+            help_message = (
+                "Here are the available commands, "
+                "please use `!<command> help` to get "
+                "more information about a specific command:\n\n"
+            )
+            for command in COMMANDS:
+                keyword = getattr(command, "KEYWORD", None)
+                if keyword:
+                    help_message += f"- **!{keyword}**\n"
+            await self.matrix_client.send_markdown_message(
+                self.room.room_id,
+                help_message,
+            )
         return True
 
 
