@@ -1,0 +1,27 @@
+[Unit]
+Description="Matrix Admin Bot (matrix_admin_bot)"
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+Environment=NAME=%N
+Environment=IMG=ghcr.io/tchapgouv/matrix-admin-bot:v0.3.7
+
+ExecStartPre=-/bin/bash -c '/usr/bin/docker stop ${NAME} 2>/dev/null || true'
+ExecStartPre=-/bin/bash -c '/usr/bin/docker rm ${NAME} 2>/dev/null || true'
+ExecStartPre=/bin/bash -c '/usr/bin/docker pull ${IMG} 2>/dev/null || true'
+
+ExecStart=/usr/bin/docker run --rm --name ${NAME} \
+                        --mount type=bind,src="/opt/matrix_admin_bot",dst="/data" \
+                        --network=host \
+                        --user 1001 \
+                        ${IMG}
+
+ExecStop=-/bin/bash -c '/usr/bin/docker stop ${NAME} 2>/dev/null || true'
+ExecStop=-/bin/bash -c '/usr/bin/docker rm ${NAME} 2>/dev/null || true'
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
