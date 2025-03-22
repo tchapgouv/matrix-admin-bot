@@ -102,7 +102,7 @@ class AccountValidityCommand(UserRelatedCommand):
         result = len(self.user_ids) > 0
         if result:
             now_plus_6months_datetime = datetime.now() + timedelta(days=180)  # noqa: DTZ005
-            now_plus_6months = int(round(now_plus_6months_datetime.timestamp() * 1000))
+            now_plus_6months = round(now_plus_6months_datetime.timestamp() * 1000)
             for user_id in self.user_ids:
                 result = result and await self.account_validity(
                     user_id, now_plus_6months
