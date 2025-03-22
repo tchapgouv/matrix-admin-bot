@@ -24,7 +24,7 @@ dev = [
     "basedpyright>=1.28.3,<2",
     "pytest>=8.3.5,<9",
     "pytest-asyncio>=0.25.3,<0.26",
-    "coverage>=7.7.1,<8",
+    "pytest-cov>=6.0.0,<7",
 ]
 
 [build-system]
@@ -98,4 +98,11 @@ ignore = [
     "PLW0603", # Using the global statement to update variable is discouraged
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned
+]
+
+[tool.coverage.run]
+source = [
+    "matrix_admin_bot",
+    "matrix_command_bot",
+    "tchap_admin_bot"
 ]

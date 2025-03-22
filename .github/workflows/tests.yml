@@ -39,7 +39,7 @@ jobs:
           enable-cache: true
 
       - name: Run tests
-        run: uv run --frozen pytest
+        run: uv run --frozen pytest --cov
 
   lint:
     runs-on: ubuntu-latest
@@ -87,28 +87,3 @@ jobs:
 
       - name: Type checks
         run: uv run --frozen basedpyright
-
-  coverage:
-    runs-on: ubuntu-latest
-    name: Calculating coverage
-    needs: define-matrix
-    strategy:
-      matrix:
-        python-version: ${{ fromJSON(needs.define-matrix.outputs.python-versions) }}
-    env:
-      UV_PYTHON: ${{ matrix.python-version }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
-      - name: Run tests & generate coverage
-        run: uv run --frozen coverage run -m pytest
-
-      - name: Display coverage report
-        run: uv run --frozen coverage report --omit="tests/*"
