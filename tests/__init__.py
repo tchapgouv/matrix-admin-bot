@@ -126,6 +126,10 @@ class MatrixClientMock:
             assert self.send_reaction.await_args_list[i][0][2] == expected_reactions[i]
         self.send_reaction.reset_mock()
 
+    def check_redactions(self, expected_redactions: int) -> None:
+        assert len(self.room_redact.await_args_list) == expected_redactions
+        self.room_redact.reset_mock()
+
     def check_no_sent_message(self) -> None:
         for send_mock in self.send_text_message_mocks:
             assert send_mock.await_count == 0

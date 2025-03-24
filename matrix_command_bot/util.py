@@ -6,6 +6,8 @@ import aiofiles
 from matrix_bot.bot import MatrixClient
 from nio import RoomMessageText
 
+from matrix_command_bot.command import ICommand
+
 
 def get_fallback_stripped_body(reply: RoomMessageText) -> str:
     stripped_body_lines: list[str] = []
@@ -55,3 +57,24 @@ async def send_report(
             reply_to=replied_event_id,
             thread_root=replied_event_id,
         )
+
+
+async def set_status_reaction(
+    command: ICommand,
+    key: str | None,
+    current_reaction_event_id: str | None,
+) -> str | None:
+    if key is None:
+        return None
+
+    if current_reaction_event_id:
+        await command.matrix_client.room_redact(
+            command.room.room_id, current_reaction_event_id
+        )
+
+    if key:
+        return await command.matrix_client.send_reaction(
+            command.room.room_id, command.message, key
+        )
+
+    return None

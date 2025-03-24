@@ -30,10 +30,6 @@ class ICommandStep:
     ) -> tuple[bool, CommandAction]:
         return True, CommandAction.CONTINUE
 
-    @property
-    def status_reaction(self) -> str | None:
-        return None
-
 
 class CommandWithSteps(ICommand, ABC):
     def __init__(
@@ -79,7 +75,6 @@ class CommandWithSteps(ICommand, ABC):
     async def execute_step(
         self, step: ICommandStep, reply: RoomMessage | None
     ) -> tuple[bool, CommandAction]:
-        await self.set_status_reaction(step.status_reaction)
         return await step.execute(reply)
 
     @override

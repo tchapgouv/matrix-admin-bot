@@ -15,24 +15,7 @@ from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 logger = structlog.getLogger(__name__)
 
 
-class SingleUserValidatedCommand(SimpleValidatedCommand):
-    def __init__(
-        self,
-        room: MatrixRoom,
-        message: RoomMessage,
-        matrix_client: MatrixClient,
-        secure_validator: IValidator,
-        extra_config: Mapping[str, Any],
-    ) -> None:
-        super().__init__(room, message, matrix_client, secure_validator, extra_config)
-
-    @override
-    async def reply_received(self, reply: RoomMessage) -> None:
-        if reply.sender == self.message.sender:
-            await self.resume_execute(reply)
-
-
-class UserRelatedCommand(SingleUserValidatedCommand):
+class UserRelatedCommand(SimpleValidatedCommand):
     def __init__(
         self,
         room: MatrixRoom,
@@ -55,24 +38,22 @@ class UserRelatedCommand(SingleUserValidatedCommand):
             room=room, event=message, matrix_client=matrix_client
         )
         event_parser.do_not_accept_own_message()
-        self.input_text = event_parser.command(keyword)
-
-        # Check if this is a help request
-        if self.input_text.strip() == "help":
-            self.is_help_request = True
-        else:
-            self.is_help_request = False
-            self.user_ids = self.input_text.split()
+        self.command_text = event_parser.command(keyword).strip()
 
         self.server_name = get_server_name(self.matrix_client.user_id)
 
         self.json_report: dict[str, Any] = {}
 
+    async def execute(self) -> bool:
+        if self.command_text == "help":
+            await self.send_help()
+            return True
+
+        return await super().execute()
+
     @override
     async def should_execute(self) -> bool:
-        if self.is_help_request:
-            await self.send_help()
-            return False
+        self.user_ids = self.command_text.split()
 
         if self.transform_cmd_input_fct:
             self.user_ids = await self.transform_cmd_input_fct(

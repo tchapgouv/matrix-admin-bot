@@ -13,8 +13,17 @@ from typing_extensions import override
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.simple_command import SimpleExecuteStep
 from matrix_command_bot.step import CommandAction, CommandWithSteps, ICommandStep
-from matrix_command_bot.step.simple_steps import ReactionStep, ResultReactionStep
-from matrix_command_bot.util import get_server_name, is_local_user, send_report
+from matrix_command_bot.step.reaction_steps import (
+    ReactionCommandState,
+    ReactionStep,
+    ResultReactionStep,
+)
+from matrix_command_bot.util import (
+    get_server_name,
+    is_local_user,
+    send_report,
+    set_status_reaction,
+)
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.steps import ValidateStep
 
@@ -23,8 +32,9 @@ USER_ALL = "all"
 logger = structlog.getLogger(__name__)
 
 
-class ServerNoticeState:
+class ServerNoticeState(ReactionCommandState):
     def __init__(self) -> None:
+        super().__init__()
         self.notice_content: Mapping[str, Any] = {}
         self.recipients: list[str] = []
         self.notice_original_event_id: str | None = None
@@ -154,53 +164,10 @@ class ShouldExecuteStep(ICommandStep):
                 if is_local_user(user_id, self.server_name):
                     return True, CommandAction.CONTINUE
 
-        await self.command.set_status_reaction("")
+        await set_status_reaction(
+            self.command, "", self.command_state.current_reaction_event_id
+        )
         return True, CommandAction.ABORT
-
-
-class ServerNoticeHelpStep(ICommandStep):
-    def __init__(
-        self,
-        command: ICommand,
-    ) -> None:
-        super().__init__(command)
-
-    @override
-    async def execute(
-        self, reply: RoomMessage | None = None
-    ) -> tuple[bool, CommandAction]:
-        if not reply and self.command.extra_config.get("is_coordinator", True):
-            await self.command.matrix_client.send_markdown_message(
-                self.command.room.room_id,
-                self.help_message,
-            )
-        return True, CommandAction.ABORT
-
-    @property
-    def help_message(self) -> str:
-        return """
-**Usage**:
-`!server_notice`
-
-**Purpose**:
-Sends server notices to users through an interactive, step-by-step process.
-
-**Steps**:
-1. The command will first ask you to specify recipients
-2. Then you'll be asked to provide the message content
-3. The command will then confirm and send the notices
-
-**Recipients can be specified as**:
-- `all` - sends to all users on the server(s)
-- `server1.org server2.org` - sends to all users on the specified servers
-- `@user1:server1.org user2@server2.org` - sends to specific users
-
-**Notes**:
-- Server notices appear as system messages to users
-- Use this feature responsibly for important announcements
-- The message is entered in a second step after specifying recipients
-- You can edit your message before confirming
-"""
 
 
 class ServerNoticeCommand(CommandWithSteps):
@@ -223,11 +190,7 @@ class ServerNoticeCommand(CommandWithSteps):
         )
         event_parser.do_not_accept_own_message()
 
-        # Check if this is a help request
-        command_text = event_parser.command(self.KEYWORD).strip()
-        self.is_help_request = command_text == "help"
-
-        self.user_ids = [] if self.is_help_request else command_text.split()
+        self.command_text = event_parser.command(self.KEYWORD).strip()
 
         self.json_report: dict[str, Any] = {"command": self.KEYWORD}
         self.json_report.setdefault("summary", {})
@@ -238,19 +201,22 @@ class ServerNoticeCommand(CommandWithSteps):
 
         self.server_name = get_server_name(self.matrix_client.user_id)
 
+    async def execute(self) -> bool:
+        if self.command_text == "help":
+            await self.send_help()
+            return True
+
+        return await super().execute()
+
     @override
     async def create_steps(self) -> list[ICommandStep]:
-        if self.is_help_request:
-            return [
-                ServerNoticeHelpStep(self),
-            ]
-
         return [
             ServerNoticeAskRecipientsStep(self),
             ServerNoticeGetRecipientsStep(self, self.state),
             ServerNoticeGetNoticeStep(self, self.state),
             ValidateStep(
                 self,
+                self.state,
                 self.secure_validator,
                 (
                     "Please verify the previous message, "
@@ -259,9 +225,9 @@ class ServerNoticeCommand(CommandWithSteps):
                 ),
             ),
             ShouldExecuteStep(self, self.state, self.server_name),
-            ReactionStep(self, "🚀"),
-            SimpleExecuteStep(self, self.simple_execute),
-            ResultReactionStep(self),
+            ReactionStep(self, self.state, "🚀"),
+            SimpleExecuteStep(self, self.state, self.simple_execute),
+            ResultReactionStep(self, self.state),
         ]
 
     async def simple_execute(self) -> bool:
@@ -391,6 +357,40 @@ class ServerNoticeCommand(CommandWithSteps):
 
         return True
 
+    async def send_help(self) -> None:
+        """Send the command's help message."""
+        if self.extra_config.get("is_coordinator", True):
+            await self.matrix_client.send_markdown_message(
+                self.room.room_id,
+                self.help_message,
+            )
+
+    @property
+    def help_message(self) -> str:
+        return """
+**Usage**:
+`!server_notice`
+
+**Purpose**:
+Sends server notices to users through an interactive, step-by-step process.
+
+**Steps**:
+1. The command will first ask you to specify recipients
+2. Then you'll be asked to provide the message content
+3. The command will then confirm and send the notices
+
+**Recipients can be specified as**:
+- `all` - sends to all users on the server(s)
+- `server1.org server2.org` - sends to all users on the specified servers
+- `@user1:server1.org user2@server2.org` - sends to specific users
+
+**Notes**:
+- Server notices appear as system messages to users
+- Use this feature responsibly for important announcements
+- The message is entered in a second step after specifying recipients
+- You can edit your message before confirming
+"""
+
     @override
     async def replace_received(
         self,
@@ -402,3 +402,8 @@ class ServerNoticeCommand(CommandWithSteps):
             and self.state.notice_original_event_id == original_event.event_id
         ):
             self.state.notice_content = new_content
+
+    @override
+    async def reply_received(self, reply: RoomMessage) -> None:
+        if reply.sender == self.message.sender:
+            await super().reply_received(reply)

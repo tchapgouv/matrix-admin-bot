@@ -3,6 +3,8 @@ from typing_extensions import override
 
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.step import CommandAction, ICommandStep
+from matrix_command_bot.step.reaction_steps import ReactionCommandState
+from matrix_command_bot.util import set_status_reaction
 from matrix_command_bot.validation import IValidator
 
 
@@ -10,6 +12,7 @@ class ValidateStep(ICommandStep):
     def __init__(
         self,
         command: ICommand,
+        state: ReactionCommandState,
         validator: IValidator,
         message: str | None = None,
     ) -> None:
@@ -17,6 +20,7 @@ class ValidateStep(ICommandStep):
         self.validator = validator
         self.prompting_done = False
         self.message = message
+        self.state = state
 
     @override
     async def execute(
@@ -53,4 +57,8 @@ class ValidateStep(ICommandStep):
                     thread_root=self.command.message.event_id,
                 )
 
-            await self.command.set_status_reaction(self.validator.reaction)
+            self.state.current_reaction_event_id = await set_status_reaction(
+                self.command,
+                self.validator.reaction,
+                self.state.current_reaction_event_id,
+            )

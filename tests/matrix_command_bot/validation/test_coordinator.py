@@ -56,8 +56,11 @@ async def test_with_single_coordinator() -> None:
     assert not mocked_client3.executed
 
     mocked_client1.check_sent_reactions("✏️", "🚀", "✅")
+    mocked_client1.check_redactions(2)
     mocked_client2.check_sent_reactions("🚀", "✅")
+    mocked_client2.check_redactions(1)
     mocked_client3.check_sent_reactions()
+    mocked_client3.check_redactions(0)
 
     t1.cancel()
     t2.cancel()
@@ -98,8 +101,9 @@ async def test_with_non_executing_coordinator() -> None:
     assert mocked_client2.executed
 
     mocked_client1.check_sent_reactions("✏️")
-    assert len(mocked_client1.room_redact.await_args_list) == 1
+    mocked_client1.check_redactions(1)
     mocked_client2.check_sent_reactions("🚀", "✅")
+    mocked_client2.check_redactions(1)
 
     t1.cancel()
     t2.cancel()

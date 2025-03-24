@@ -18,7 +18,6 @@ class ICommand(ABC):
         self.message = message
         self.matrix_client = matrix_client
         self.extra_config = extra_config
-        self.current_status_reaction: str | None = None
 
     @abstractmethod
     async def execute(self) -> bool: ...
@@ -32,15 +31,3 @@ class ICommand(ABC):
         original_event: RoomMessage,  # noqa: ARG002
     ) -> None:
         return
-
-    async def set_status_reaction(self, key: str | None) -> None:
-        if key is None:
-            return
-        if self.current_status_reaction:
-            await self.matrix_client.room_redact(
-                self.room.room_id, self.current_status_reaction
-            )
-        if key:
-            self.current_status_reaction = await self.matrix_client.send_reaction(
-                self.room.room_id, self.message, key
-            )
