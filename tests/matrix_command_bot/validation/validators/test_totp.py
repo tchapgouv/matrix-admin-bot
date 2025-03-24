@@ -1,3 +1,4 @@
+import datetime
 from collections.abc import Mapping
 from typing import Any
 
@@ -90,5 +91,43 @@ async def test_failures() -> None:
     mocked_client.check_sent_message("Wrong authentication code")
 
     assert not mocked_client.executed
+
+    t.cancel()
+
+
+@pytest.mark.asyncio
+async def test_totp_window() -> None:
+    mocked_client, t = await create_fake_command_bot([ConfirmValidatedCommand])
+    mocked_client.executed = False
+
+    room = MatrixRoom("!roomid:example.org", USER1_ID)
+
+    command_event_id = await mocked_client.fake_synced_text_message(
+        room, USER1_ID, "!test"
+    )
+
+    mocked_client.check_sent_reactions("🔢")
+    mocked_client.check_sent_message("authentication code")
+
+    code = pyotp.TOTP(TOTP_SEED).at(datetime.datetime.now(), counter_offset=-2)
+    await mocked_client.fake_synced_text_message(
+        room, USER1_ID, code, extra_content=create_thread_relation(command_event_id)
+    )
+
+    assert not mocked_client.executed
+
+    code = pyotp.TOTP(TOTP_SEED).at(datetime.datetime.now(), counter_offset=2)
+    await mocked_client.fake_synced_text_message(
+        room, USER1_ID, code, extra_content=create_thread_relation(command_event_id)
+    )
+
+    assert not mocked_client.executed
+
+    code = pyotp.TOTP(TOTP_SEED).at(datetime.datetime.now(), counter_offset=1)
+    await mocked_client.fake_synced_text_message(
+        room, USER1_ID, code, extra_content=create_thread_relation(command_event_id)
+    )
+
+    assert mocked_client.executed
 
     t.cancel()

@@ -98,6 +98,7 @@ ignore = [
     "PLW0603", # Using the global statement to update variable is discouraged
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned
+    "DTZ005",  # `datetime.datetime.now()` called without a `tz` argument
 ]
 
 [tool.coverage.run]

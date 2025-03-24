@@ -41,7 +41,7 @@ class TOTPValidator(IValidator):
                 totp_checker = self.totps.get(command.message.sender)
                 if not totp_checker:
                     error_msg = "You are not allowed to execute secure commands, sorry."
-                elif not totp_checker.verify(totp_code):
+                elif not totp_checker.verify(totp_code, valid_window=1):
                     error_msg = "Wrong authentication code."
             else:
                 error_msg = (
