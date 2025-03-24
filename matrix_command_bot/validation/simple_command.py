@@ -54,18 +54,6 @@ class SimpleValidatedCommand(SimpleCommand, ABC):
     def confirm_message(self) -> str | None:
         return None
 
-    async def set_status_reaction(self, key: str | None) -> None:
-        if key is None:
-            return
-        if self.current_status_reaction:
-            await self.matrix_client.room_redact(
-                self.room.room_id, self.current_status_reaction
-            )
-        if key:
-            self.current_status_reaction = await self.matrix_client.send_reaction(
-                self.room.room_id, self.message, key
-            )
-
     @override
     async def reply_received(self, reply: RoomMessage) -> None:
         # do not allow other users to interact with the command
