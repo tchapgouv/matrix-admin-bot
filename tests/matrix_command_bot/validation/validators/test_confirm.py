@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 from matrix_bot.client import MatrixClient
+from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
@@ -24,6 +25,12 @@ class ConfirmValidatedCommand(SimpleValidatedCommand):
         matrix_client: MatrixClient,
         extra_config: Mapping[str, Any],
     ) -> None:
+        event_parser = MessageEventParser(
+            room=room, event=message, matrix_client=matrix_client
+        )
+        event_parser.do_not_accept_own_message()
+        event_parser.command("test")
+
         self._should_execute = extra_config.get("should_execute", True)
         super().__init__(room, message, matrix_client, ConfirmValidator(), extra_config)
 

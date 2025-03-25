@@ -1,12 +1,32 @@
+from collections.abc import Mapping
+from typing import Any
+
 import pytest
-from nio import MatrixRoom
+from matrix_bot.client import MatrixClient
+from matrix_bot.eventparser import MessageEventParser
+from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
 from matrix_command_bot.simple_command import SimpleCommand
 from tests import USER1_ID, create_fake_command_bot
 
 
-class SuccessCommand(SimpleCommand):
+class SimpleTestCommand(SimpleCommand):
+    def __init__(
+        self,
+        room: MatrixRoom,
+        message: RoomMessage,
+        matrix_client: MatrixClient,
+        extra_config: Mapping[str, Any],
+    ) -> None:
+        event_parser = MessageEventParser(
+            room=room, event=message, matrix_client=matrix_client
+        )
+        event_parser.do_not_accept_own_message()
+        event_parser.command("test")
+
+        super().__init__(room, message, matrix_client, extra_config)
+
     @override
     async def simple_execute(self) -> bool:
         self.matrix_client.executed = True
@@ -15,7 +35,7 @@ class SuccessCommand(SimpleCommand):
 
 @pytest.mark.asyncio
 async def test_success() -> None:
-    mocked_client, t = await create_fake_command_bot([SuccessCommand])
+    mocked_client, t = await create_fake_command_bot([SimpleTestCommand])
     mocked_client.executed = False
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
@@ -29,7 +49,7 @@ async def test_success() -> None:
     t.cancel()
 
 
-class FailureCommand(SimpleCommand):
+class SimpleFailingTestCommand(SimpleTestCommand):
     @override
     async def simple_execute(self) -> bool:
         self.matrix_client.executed = True
@@ -38,7 +58,7 @@ class FailureCommand(SimpleCommand):
 
 @pytest.mark.asyncio
 async def test_failure() -> None:
-    mocked_client, t = await create_fake_command_bot([FailureCommand])
+    mocked_client, t = await create_fake_command_bot([SimpleFailingTestCommand])
     mocked_client.executed = False
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)

@@ -30,6 +30,17 @@ def generate_event_id(*_args: Any, **_kwargs: Any) -> str:
     return f"$eventid{event_id_counter}"
 
 
+class SendMock(AsyncMock):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.last_handled_await_args_index = 0
+
+    def new_await_args_list(self):  # noqa: ANN201
+        current_index = self.last_handled_await_args_index
+        self.last_handled_await_args_index = len(self.await_args_list)
+        return self.await_args_list[current_index:]
+
+
 class MatrixClientMock:
     def __init__(self, server_name: str = "example.org") -> None:
         self.user_id = f"@admin:{server_name}"
@@ -41,9 +52,9 @@ class MatrixClientMock:
 
         self.automatic_login = AsyncMock()
         self.sync = AsyncMock()
-        self.send_text_message = AsyncMock(side_effect=generate_event_id)
-        self.send_markdown_message = AsyncMock(side_effect=generate_event_id)
-        self.send_html_message = AsyncMock(side_effect=generate_event_id)
+        self.send_text_message = SendMock(side_effect=generate_event_id)
+        self.send_markdown_message = SendMock(side_effect=generate_event_id)
+        self.send_html_message = SendMock(side_effect=generate_event_id)
         self.send_image_message = AsyncMock(side_effect=generate_event_id)
         self.send_video_message = AsyncMock(side_effect=generate_event_id)
         self.send_file_message = AsyncMock(side_effect=generate_event_id)
@@ -75,6 +86,23 @@ class MatrixClientMock:
             event_filter = self.callbacks[callback]
             if event_filter is None or isinstance(message, event_filter):
                 await callback(room, message)
+
+        if wait_for_commands_execution:
+            await wait_for_command_tasks()
+
+        # Inject events produced by the bot into the bot loop
+        # This is useful to test the bot's reaction to its own events, including
+        # potential infinite loops
+        for send_mock in self.send_text_message_mocks:
+            for args in send_mock.new_await_args_list():
+                # TODO: deal with extra_content for thread and reply relation,
+                # also we should use formatted_body for html and markdown messages
+                await self.fake_synced_text_message(
+                    room,
+                    sender=self.user_id,
+                    text=args[0][1],
+                )
+
         if wait_for_commands_execution:
             await wait_for_command_tasks()
 
