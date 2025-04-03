@@ -51,7 +51,7 @@ include = [
 [tool.uv]
 
 [tool.uv.sources]
-tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", branch = "tchapadmin" }
+tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", rev = "617568c9fdf470a23697aec9b4287a9b22014762" }
 matrix-nio = { git = "https://github.com/matrix-nio/matrix-nio.git", rev = "37be73e987de7edbe5ec9fd2bcffc31565be0598" }
 
 [tool.pyright]
