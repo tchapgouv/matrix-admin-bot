@@ -23,7 +23,7 @@ dev = [
     "ruff>=0.11.2,<0.12",
     "basedpyright>=1.28.3,<2",
     "pytest>=8.3.5,<9",
-    "pytest-asyncio>=0.25.3,<0.26",
+    "pytest-asyncio>=0.26.0,<0.27",
     "pytest-cov>=6.0.0,<7",
 ]
 
@@ -51,8 +51,8 @@ include = [
 [tool.uv]
 
 [tool.uv.sources]
-tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", rev = "617568c9fdf470a23697aec9b4287a9b22014762" }
-matrix-nio = { git = "https://github.com/matrix-nio/matrix-nio.git", rev = "37be73e987de7edbe5ec9fd2bcffc31565be0598" }
+tchap-bot = { git = "https://code.peren.fr/open-source/tchapbot.git", rev = "8cbfab64d956cc4c79d9e2e86926c4c98576327a" }
+matrix-nio = { git = "https://github.com/matrix-nio/matrix-nio.git", rev = "f1c927a0bb4af9a49fe85accce07ddeb23a49cef" }
 
 [tool.pyright]
 pythonVersion = "3.11"
