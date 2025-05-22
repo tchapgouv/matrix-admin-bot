@@ -10,6 +10,9 @@ from matrix_admin_bot.adminbot import AdminBot, AdminBotConfig
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.util import get_server_name
 
+structlog.configure(
+    wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG)
+)
 logger = structlog.getLogger(__name__)
 
 
@@ -130,7 +133,6 @@ class TchapAdminBot(AdminBot):
 
 def main() -> None:
     config = TchapAdminBotConfig()
-    logging.basicConfig(level=config.log_level)
     bot = TchapAdminBot(config)
     bot.run()
 
