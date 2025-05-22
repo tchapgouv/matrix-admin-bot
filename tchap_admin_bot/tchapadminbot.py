@@ -1,3 +1,4 @@
+import logging
 from hashlib import sha256
 from typing import Any
 
@@ -13,6 +14,7 @@ logger = structlog.getLogger(__name__)
 
 
 class TchapAdminBotConfig(AdminBotConfig):
+    log_level: str = "INFO"
     identity_server: str = "http://localhost:8090"
 
 
@@ -128,6 +130,7 @@ class TchapAdminBot(AdminBot):
 
 def main() -> None:
     config = TchapAdminBotConfig()
+    logging.basicConfig(level=config.log_level)
     bot = TchapAdminBot(config)
     bot.run()
 

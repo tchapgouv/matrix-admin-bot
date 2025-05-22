@@ -24,6 +24,9 @@ class UserRelatedCommand(SimpleValidatedCommand):
         keyword: str,
         extra_config: Mapping[str, Any],
     ) -> None:
+        logger.debug(
+            "Initializing UserRelatedCommand", keyword=keyword, room_id=room.room_id
+        )
         secure_validator: IValidator = extra_config.get("secure_validator")  # pyright: ignore[reportAssignmentType]
 
         super().__init__(room, message, matrix_client, secure_validator, extra_config)
@@ -41,11 +44,20 @@ class UserRelatedCommand(SimpleValidatedCommand):
         self.command_text = event_parser.command(keyword).strip()
 
         self.server_name = get_server_name(self.matrix_client.user_id)
+        logger.debug(
+            "Command initialized",
+            server_name=self.server_name,
+            command_text=self.command_text,
+        )
 
         self.json_report: dict[str, Any] = {}
 
     async def execute(self) -> bool:
+        logger.info(
+            "Executing command", keyword=self.keyword, room_id=self.room.room_id
+        )
         if self.command_text == "help":
+            logger.debug("Help command detected, sending help message")
             await self.send_help()
             return True
 
@@ -53,18 +65,29 @@ class UserRelatedCommand(SimpleValidatedCommand):
 
     @override
     async def should_execute(self) -> bool:
+        logger.debug("Checking if command should execute", keyword=self.keyword)
         self.user_ids = self.command_text.split()
+        logger.debug("Parsed user IDs", user_ids=self.user_ids)
 
         if self.transform_cmd_input_fct:
+            logger.debug("Applying input transformation function")
             self.user_ids = await self.transform_cmd_input_fct(
                 self.__class__, self.user_ids
             )
-        return any(
+            logger.debug("Transformed user IDs", user_ids=self.user_ids)
+
+        should_exec = any(
             is_local_user(user_id, self.server_name) for user_id in self.user_ids
         )
+        logger.info("Command execution decision", should_execute=should_exec)
+        return should_exec
 
     async def send_help(self) -> None:
         """Send the command's help message."""
+        logger.debug(
+            "Sending help message",
+            is_coordinator=self.extra_config.get("is_coordinator", True),
+        )
         if self.extra_config.get("is_coordinator", True):
             await self.matrix_client.send_markdown_message(
                 self.room.room_id,
@@ -72,6 +95,9 @@ class UserRelatedCommand(SimpleValidatedCommand):
             )
 
     async def send_report(self) -> None:
+        logger.info(
+            "Sending command report", keyword=self.keyword, room_id=self.room.room_id
+        )
         await send_report(
             json_report=self.json_report,
             report_name=self.keyword,

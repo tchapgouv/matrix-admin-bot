@@ -2,12 +2,15 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
+import structlog
 from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
 from matrix_admin_bot import UserRelatedCommand
 from matrix_command_bot.util import get_server_name
+
+logger = structlog.getLogger(__name__)
 
 
 class DeactivateCommand(UserRelatedCommand):
@@ -20,13 +23,21 @@ class DeactivateCommand(UserRelatedCommand):
         matrix_client: MatrixClient,
         extra_config: Mapping[str, Any],
     ) -> None:
+        logger.debug(
+            "Initializing DeactivateCommand",
+            room_id=room.room_id,
+            message_id=message.event_id,
+        )
         super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
         self.failed_user_ids: list[str] = []
 
     async def deactivate_user(self, user_id: str) -> bool:
+        logger.debug("Deactivating user", user_id=user_id)
         if get_server_name(user_id) != self.server_name:
+            logger.debug("User is not on local server, skipping", user_id=user_id)
             return True
 
+        logger.debug("Getting user devices", user_id=user_id)
         resp = await self.matrix_client.send(
             "GET",
             f"/_synapse/admin/v2/users/{user_id}/devices",
@@ -39,7 +50,17 @@ class DeactivateCommand(UserRelatedCommand):
         if resp.ok:
             json_body = await resp.json()
             self.json_report[user_id]["devices"] = json_body.get("devices", [])
+            logger.debug(
+                "Retrieved user devices",
+                user_id=user_id,
+                device_count=len(self.json_report[user_id]["devices"]),
+            )
+        else:
+            logger.warning(
+                "Failed to get user devices", user_id=user_id, status=resp.status
+            )
 
+        logger.debug("Sending deactivation request", user_id=user_id)
         resp = await self.matrix_client.send(
             "POST",
             f"/_synapse/admin/v1/deactivate/{user_id}",
@@ -50,20 +71,32 @@ class DeactivateCommand(UserRelatedCommand):
             json_body = await resp.json()
             self.json_report[user_id].update(json_body)
             self.failed_user_ids.append(user_id)
+            logger.error(
+                "Failed to deactivate user",
+                user_id=user_id,
+                status=resp.status,
+                error=json_body,
+            )
             return False
 
+        logger.info("Successfully deactivated user", user_id=user_id)
         return True
 
     @override
     async def simple_execute(self) -> bool:
+        logger.debug("Executing deactivate command", user_ids=self.user_ids)
         for user_id in self.user_ids:
             await self.deactivate_user(user_id)
 
         if self.json_report:
+            logger.debug("Preparing report", report=self.json_report)
             self.json_report["command"] = self.KEYWORD
             await self.send_report()
 
         if self.failed_user_ids:
+            logger.warning(
+                "Some deactivations failed", failed_users=self.failed_user_ids
+            )
             text = "\n".join(
                 [
                     "Couldn't deactivate the following users:",
@@ -78,7 +111,9 @@ class DeactivateCommand(UserRelatedCommand):
                 thread_root=self.message.event_id,
             )
 
-        return not self.failed_user_ids
+        success = not self.failed_user_ids
+        logger.debug("Deactivate command completed", success=success)
+        return success
 
     @property
     @override
