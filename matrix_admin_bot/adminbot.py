@@ -1,7 +1,6 @@
 from collections.abc import Mapping
 from typing import Any
 
-import structlog
 from matrix_bot.bot import MatrixClient, bot_lib_config
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
@@ -28,8 +27,6 @@ COMMANDS: list[type[ICommand]] = [
     AccountValidityCommand,
     DeactivateCommand,
 ]
-
-logger = structlog.getLogger(__name__)
 
 
 class HelpCommand(ICommand):
@@ -108,9 +105,7 @@ class AdminBot(CommandBot):
         config: AdminBotConfig,
         **extra_config: Any,  # noqa: ANN401
     ) -> None:
-        logger.debug("Initializing AdminBot", config=config)
         if "secure_validator" not in extra_config:
-            logger.debug("Adding TOTP validator to extra_config")
             extra_config["secure_validator"] = TOTPValidator(config.totps)
         bot_lib_config.allowed_room_ids = config.allowed_room_ids
 
@@ -118,26 +113,16 @@ class AdminBot(CommandBot):
 
         commands_dict = {c.__name__: c for c in COMMANDS}
         for role_name, role_model in config.roles.items():
-            logger.debug("Processing role", role_name=role_name, role_model=role_model)
             allowed_commands: list[type[ICommand]] = []
             for allowed_command_str in role_model.allowed_commands:
                 allowed_cmd = commands_dict.get(allowed_command_str)
                 if allowed_cmd:
                     allowed_commands.append(allowed_cmd)
-                else:
-                    logger.warning(
-                        "Command not found for role",
-                        command=allowed_command_str,
-                        role=role_name,
-                    )
 
             role = Role(role_name, role_model.all_commands, allowed_commands)
 
             for user_id in role_model.user_ids:
                 roles.setdefault(user_id, []).append(role)
-                logger.debug("Added role to user", user_id=user_id, role=role_name)
-
-        logger.debug("Initializing CommandBot with roles", roles=roles)
         super().__init__(
             homeserver=config.homeserver,
             username=config.bot_username,
@@ -150,12 +135,9 @@ class AdminBot(CommandBot):
 
 
 def main() -> None:
-    logger.info("Starting AdminBot")
     config = AdminBotConfig()
-    logger.debug("Loaded config", config=config)
     bot_lib_config.allowed_room_ids = config.allowed_room_ids
     bot = AdminBot(config)
-    logger.info("Running bot")
     bot.run()
 
 

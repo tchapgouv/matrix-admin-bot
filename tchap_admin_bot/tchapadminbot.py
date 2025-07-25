@@ -1,4 +1,3 @@
-import logging
 from hashlib import sha256
 from typing import Any
 
@@ -10,14 +9,10 @@ from matrix_admin_bot.adminbot import AdminBot, AdminBotConfig
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.util import get_server_name
 
-structlog.configure(
-    wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG)
-)
 logger = structlog.getLogger(__name__)
 
 
 class TchapAdminBotConfig(AdminBotConfig):
-    log_level: str = "INFO"
     identity_server: str = "http://localhost:8090"
 
 

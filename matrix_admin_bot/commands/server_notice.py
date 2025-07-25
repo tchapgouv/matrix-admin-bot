@@ -51,7 +51,6 @@ class ServerNoticeAskRecipientsStep(ICommandStep):
     async def execute(
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
-        logger.debug("Executing ServerNoticeAskRecipientsStep")
         if self.command.extra_config.get("is_coordinator", True):
             message = """Type your recipients with space separated :
                       - `all`
@@ -84,34 +83,22 @@ class ServerNoticeGetRecipientsStep(ICommandStep):
     async def execute(
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
-        logger.debug("Executing ServerNoticeGetRecipientsStep", reply=reply)
         if not reply:
-            logger.debug("No reply received, waiting for next reply")
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
         if reply and self.command.message.sender != reply.sender:
-            logger.debug(
-                "Reply from different sender, waiting for next reply",
-                reply_sender=reply.sender,
-                original_sender=self.command.message.sender,
-            )
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
         self.command_state.recipients = (
             reply.source.get("content", {}).get("body", "").split()
         )
-        logger.debug("Parsed recipients", recipients=self.command_state.recipients)
 
         self.transform_cmd_input_fct: (
             Callable[[type[ICommand], list[str]], Awaitable[list[str]]] | None
         ) = self.command.extra_config.get("transform_cmd_input_fct")  # pyright: ignore[reportAttributeAccessIssue]
 
         if self.transform_cmd_input_fct:
-            logger.debug("Transforming command input")
             self.command_state.recipients = await self.transform_cmd_input_fct(
                 self.command.__class__, self.command_state.recipients
-            )
-            logger.debug(
-                "Transformed recipients", recipients=self.command_state.recipients
             )
 
         if self.command.extra_config.get("is_coordinator", True):
@@ -141,25 +128,13 @@ class ServerNoticeGetNoticeStep(ICommandStep):
     async def execute(
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
-        logger.debug("Executing ServerNoticeGetNoticeStep", reply=reply)
         if not reply:
-            logger.debug("No reply received, waiting for next reply")
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
         if reply and self.command.message.sender != reply.sender:
-            logger.debug(
-                "Reply from different sender, waiting for next reply",
-                reply_sender=reply.sender,
-                original_sender=self.command.message.sender,
-            )
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
         self.command_state.notice_content = reply.source["content"]
         self.command_state.notice_original_event_id = reply.event_id
-        logger.debug(
-            "Stored notice content",
-            event_id=reply.event_id,
-            content_type=reply.source["content"].get("msgtype"),
-        )
         return True, CommandAction.CONTINUE
 
 
@@ -178,27 +153,17 @@ class ShouldExecuteStep(ICommandStep):
     async def execute(
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
-        logger.debug(
-            "Executing ShouldExecuteStep",
-            recipients=self.command_state.recipients,
-            server_name=self.server_name,
-        )
         if self.command_state.recipients:
             if (
                 USER_ALL in self.command_state.recipients
                 and len(self.command_state.recipients) == 1
             ) or (self.server_name in self.command_state.recipients):
-                logger.debug("Execution allowed - all users or server name match")
                 return True, CommandAction.CONTINUE
 
             for user_id in self.command_state.recipients:
                 if is_local_user(user_id, self.server_name):
-                    logger.debug(
-                        "Execution allowed - local user found", user_id=user_id
-                    )
                     return True, CommandAction.CONTINUE
 
-        logger.debug("Execution not allowed - no valid recipients")
         await set_status_reaction(
             self.command, "", self.command_state.current_reaction_event_id
         )
@@ -215,11 +180,6 @@ class ServerNoticeCommand(CommandWithSteps):
         matrix_client: MatrixClient,
         extra_config: Mapping[str, Any],
     ) -> None:
-        logger.debug(
-            "Initializing ServerNoticeCommand",
-            room_id=room.room_id,
-            message_id=message.event_id,
-        )
         super().__init__(room, message, matrix_client, extra_config)
         self.secure_validator: IValidator = extra_config.get("secure_validator")  # pyright: ignore[reportAttributeAccessIssue]
 
@@ -231,7 +191,6 @@ class ServerNoticeCommand(CommandWithSteps):
         event_parser.do_not_accept_own_message()
 
         self.command_text = event_parser.command(self.KEYWORD).strip()
-        logger.debug("Parsed command text", command_text=self.command_text)
 
         self.json_report: dict[str, Any] = {"command": self.KEYWORD}
         self.json_report.setdefault("summary", {})
@@ -241,12 +200,9 @@ class ServerNoticeCommand(CommandWithSteps):
         self.json_report.setdefault("failed_users", "")
 
         self.server_name = get_server_name(self.matrix_client.user_id)
-        logger.debug("Got server name", server_name=self.server_name)
 
     async def execute(self) -> bool:
-        logger.debug("Executing ServerNoticeCommand")
         if self.command_text == "help":
-            logger.debug("Help command requested")
             await self.send_help()
             return True
 
@@ -254,7 +210,6 @@ class ServerNoticeCommand(CommandWithSteps):
 
     @override
     async def create_steps(self) -> list[ICommandStep]:
-        logger.debug("Creating command steps")
         return [
             ServerNoticeAskRecipientsStep(self),
             ServerNoticeGetRecipientsStep(self, self.state),
@@ -276,23 +231,18 @@ class ServerNoticeCommand(CommandWithSteps):
         ]
 
     async def simple_execute(self) -> bool:
-        logger.debug("Executing simple_execute")
         users = await self.get_users()
-        logger.debug("Got users to notify", users=users)
         result = True
         if self.state.notice_content:
             for user_id in users:
-                logger.debug("Sending server notice to user", user_id=user_id)
                 result = result and await self.send_server_notice(
                     self.state.notice_content, user_id
                 )
         else:
-            logger.warning("No notice content to send")
             self.json_report["summary"]["status"] = "FAILED"
             self.json_report["summary"]["reason"] = "There is no notice to send"
 
         if self.json_report and result:
-            logger.debug("Sending report", report=self.json_report)
             await send_report(
                 json_report=self.json_report,
                 report_name=self.KEYWORD,
@@ -303,7 +253,6 @@ class ServerNoticeCommand(CommandWithSteps):
         return result
 
     async def get_users(self) -> set[str]:
-        logger.debug("Getting users to notify")
         users: set[str] = set()
         if self.state.recipients and (
             (USER_ALL in self.state.recipients and len(self.state.recipients) == 1)
@@ -348,12 +297,9 @@ class ServerNoticeCommand(CommandWithSteps):
     async def send_server_notice(
         self, message: Mapping[str, Any], user_id: str
     ) -> bool:
-        logger.debug("Sending server notice", user_id=user_id)
         if user_id.startswith("@_"):
             # Skip appservice users
-            logger.debug("Skipping appservice user", user_id=user_id)
             return True
-
         content: dict[str, Any] = {}
         for key in ["msgtype", "body", "format", "formatted_body"]:
             if key in message:
@@ -455,10 +401,9 @@ Sends server notices to users through an interactive, step-by-step process.
             self.state.notice_original_event_id
             and self.state.notice_original_event_id == original_event.event_id
         ):
-            logger.debug("Replace notice content", reply_id=original_event.event_id)
             self.state.notice_content = new_content
 
     @override
     async def reply_received(self, reply: RoomMessage) -> None:
-        logger.debug("Received reply", reply_id=reply.event_id)
-        await super().reply_received(reply)
+        if reply.sender == self.message.sender:
+            await super().reply_received(reply)
