@@ -139,7 +139,14 @@ class CommandBot(MatrixBot):
                     related_command=related_command,
                     reply=message,
                 )
-                await related_command.reply_received(message)
+                if await self.can_execute(related_command):
+                    await related_command.reply_received(message)
+                else:
+                    logger.debug(
+                        "Command reply not allowed to be executed",
+                        command=related_command,
+                        reply=message,
+                    )
                 return
 
         for command_type in self.commands:

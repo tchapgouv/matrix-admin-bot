@@ -83,6 +83,4 @@ class SimpleValidatedCommand(SimpleCommand, ABC):
             "SimpleValidatedCommand.reply_received called",
             reply_id=getattr(reply, "event_id", None),
         )
-        # do not allow other users to interact with the command
-        if reply.sender == self.message.sender:
-            await super().reply_received(reply)
+        await super().reply_received(reply)
