@@ -15,6 +15,7 @@ from typing_extensions import override
 
 from matrix_admin_bot.commands.account_validity import AccountValidityCommand
 from matrix_admin_bot.commands.deactivate import DeactivateCommand
+from matrix_admin_bot.commands.ping import PingCommand
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
 from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 from matrix_command_bot.command import ICommand
@@ -26,6 +27,7 @@ COMMANDS: list[type[ICommand]] = [
     ResetPasswordCommand,
     AccountValidityCommand,
     DeactivateCommand,
+    PingCommand,
 ]
 
 
