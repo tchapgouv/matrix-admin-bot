@@ -56,4 +56,5 @@ class SimpleValidatedCommand(SimpleCommand, ABC):
 
     @override
     async def reply_received(self, reply: RoomMessage) -> None:
-        await super().reply_received(reply)
+        if reply.sender != self.matrix_client.user_id:
+            await super().reply_received(reply)
