@@ -6,7 +6,7 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_command_bot.util import get_server_name
+from matrix_command_bot.util import get_server_name, send_report
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 
@@ -35,16 +35,23 @@ class PingCommand(SimpleValidatedCommand):
 
         self.server_name = get_server_name(self.matrix_client.user_id)
 
+        self.json_report: dict[str, Any] = {}
+
     @override
     async def simple_execute(self) -> bool:
-        text = f"I am {self.server_name}"
-        await self.matrix_client.send_markdown_message(
-            self.room.room_id,
-            text,
-            reply_to=self.message.event_id,
-            thread_root=self.message.event_id,
-        )
+        self.json_report["command"] = self.KEYWORD
+        self.json_report["description"] = f"I am {self.server_name}"
+        await self.send_report()
         return True
+
+    async def send_report(self) -> None:
+        await send_report(
+            json_report=self.json_report,
+            report_name=self.keyword,
+            matrix_client=self.matrix_client,
+            room_id=self.room.room_id,
+            replied_event_id=self.message.event_id,
+        )
 
     @property
     @override
