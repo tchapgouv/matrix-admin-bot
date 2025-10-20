@@ -2,6 +2,7 @@ import asyncio
 import time
 from asyncio import Task
 from collections.abc import Awaitable, Callable, Mapping
+from functools import wraps
 from typing import Any, NoReturn
 from unittest.mock import AsyncMock
 
@@ -82,8 +83,7 @@ class MatrixClientMock:
         *,
         wait_for_commands_execution: bool = True,
     ) -> None:
-        for callback in self.callbacks:
-            event_filter = self.callbacks[callback]
+        for callback, event_filter in self.callbacks.items():
             if event_filter is None or isinstance(message, event_filter):
                 await callback(room, message)
 
@@ -300,9 +300,21 @@ async def wait_for_command_tasks() -> None:
             for task in asyncio.all_tasks()
             if task is not asyncio.current_task()
             and not task.done()
-            and task.get_name().startswith("ExecuteCommand-")
+            and task.get_name().startswith("HandleEvent-")
         ],
         return_exceptions=True,
     )
     # Let the event loop process one more cycle
     await asyncio.sleep(0)
+
+
+def timeout(delay: Any) -> Any:
+    def decorator(func: Any) -> Any:
+        @wraps(func)
+        async def new_func(*args: Any, **kwargs: Any) -> Any:
+            async with asyncio.timeout(delay):
+                return await func(*args, **kwargs)
+
+        return new_func
+
+    return decorator

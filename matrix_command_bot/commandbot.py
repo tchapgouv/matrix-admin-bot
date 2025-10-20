@@ -48,7 +48,7 @@ class CommandBot(MatrixBot):
         self.background_tasks: set[asyncio.Task[Any]] = set()
 
         self.callbacks.register_on_message_event(self.store_event_in_cache)
-        self.callbacks.register_on_message_event(self.handle_events)
+        self.callbacks.register_on_message_event(self.launch_handle_event_task)
 
     async def store_event_in_cache(
         self,
@@ -97,7 +97,20 @@ class CommandBot(MatrixBot):
                 return self.recent_events_cache.get(replace_event_id)
         return None
 
-    async def handle_events(
+    async def launch_handle_event_task(
+        self,
+        room: MatrixRoom,
+        message: RoomMessage,
+    ) -> None:
+        # Handle event in a separate task so it doesn't block the event loop
+        task = asyncio.create_task(
+            self.handle_event(room, message), name=f"HandleEvent-{message.event_id}"
+        )
+        # cf https://docs.astral.sh/ruff/rules/asyncio-dangling-task/
+        self.background_tasks.add(task)
+        task.add_done_callback(self.background_tasks.discard)
+
+    async def handle_event(
         self,
         room: MatrixRoom,
         message: RoomMessage,
@@ -140,14 +153,7 @@ class CommandBot(MatrixBot):
                 )
                 if await self.can_execute(command):
                     self.commands_cache[message.event_id] = command
-                    # Run the command in a separate task
-                    # so it doesn't block the event loop
-                    task = asyncio.create_task(
-                        command.execute(), name=f"ExecuteCommand-{command}"
-                    )
-                    # cf https://docs.astral.sh/ruff/rules/asyncio-dangling-task/
-                    self.background_tasks.add(task)
-                    task.add_done_callback(self.background_tasks.discard)
+                    await command.execute()
                 else:
                     if self.extra_config.get("is_coordinator", True):
                         await self.matrix_client.send_markdown_message(
