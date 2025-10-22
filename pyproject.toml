@@ -6,10 +6,10 @@ requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
     "tchap-bot",
-    "pydantic>=2.10.6,<3",
-    "pydantic-settings>=2.8.1,<3",
+    "pydantic>=2.12.3,<3",
+    "pydantic-settings>=2.11.0,<3",
     "pyotp>=2.9.0,<3",
-    "structlog>=24.2.0,<25",
+    "structlog>=24.4.0,<25",
     "matrix-nio",
 ]
 dynamic = ["version"]
@@ -20,11 +20,11 @@ tchap-admin-bot = "tchap_admin_bot.tchapadminbot:main"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.11.2,<0.12",
-    "basedpyright>=1.28.3,<2",
-    "pytest>=8.3.5,<9",
-    "pytest-asyncio>=0.26.0,<0.27",
-    "pytest-cov>=6.0.0,<7",
+    "ruff>=0.14.1,<0.15",
+    "basedpyright>=1.32.0,<2",
+    "pytest>=8.4.2,<9",
+    "pytest-asyncio>=1.2.0,<2",
+    "pytest-cov>=7.0.0,<8",
 ]
 
 [build-system]
@@ -52,7 +52,7 @@ include = [
 
 [tool.uv.sources]
 tchap-bot = { git = "https://code.peren.fr/open-source/tchapbot.git", rev = "8cbfab64d956cc4c79d9e2e86926c4c98576327a" }
-matrix-nio = { git = "https://github.com/matrix-nio/matrix-nio.git", rev = "f1c927a0bb4af9a49fe85accce07ddeb23a49cef" }
+matrix-nio = { git = "https://github.com/matrix-nio/matrix-nio.git", rev = "eeace59baa634ab0ee747ba40a7a96a686a9e536" }
 
 [tool.pyright]
 pythonVersion = "3.11"
