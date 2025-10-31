@@ -116,6 +116,10 @@ class CommandBot(MatrixBot):
         room: MatrixRoom,
         message: RoomMessage,
     ) -> None:
+        # Let's ignore bot own messages
+        if message.sender == self.matrix_client.user_id:
+            return
+
         replaced_event = self.get_replaced_event(message)
         if replaced_event:
             related_command = self.get_related_command(replaced_event)
