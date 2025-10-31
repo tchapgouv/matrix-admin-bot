@@ -38,7 +38,7 @@ class TOTPValidator(IValidator):
             totp_code = body.replace(" ", "")
 
             if len(totp_code) == 6 and totp_code.isdigit():
-                totp_checker = self.totps.get(command.message.sender)
+                totp_checker = self.totps.get(user_response.sender)
                 if not totp_checker:
                     error_msg = "You are not allowed to execute secure commands, sorry."
                 elif not totp_checker.verify(totp_code, valid_window=1):
