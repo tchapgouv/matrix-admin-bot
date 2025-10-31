@@ -62,6 +62,13 @@ user_ids = ["@john:example.org"]
 [roles.resetpwdonly]
 allowed_commands = ["ResetPasswordCommand"]
 user_ids = ["@jack:example.org"]
+
+# Limited role where other users can interact with the command
+# Useful for bots
+[roles.bot]
+allowed_commands = ["ResetPasswordCommand"]
+allow_other_users_interaction = true
+user_ids = ["@bot:example.org"]
 ```
 
 ## Docker Deployment

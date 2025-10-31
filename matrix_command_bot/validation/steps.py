@@ -30,12 +30,7 @@ class ValidateStep(ICommandStep):
             await self.send_prompt()
             self.prompting_done = True
 
-        # It should be ignored since it doesn't come from the original command sender
-        # TODO check against SingleUserCommand
-        if reply and self.command.message.sender != reply.sender:
-            res = False
-        else:
-            res = await self.validator.validate(reply, self.command)
+        res = await self.validator.validate(reply, self.command)
 
         return (
             True,
