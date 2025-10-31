@@ -398,8 +398,3 @@ Sends server notices to users through an interactive, step-by-step process.
             and self.state.notice_original_event_id == original_event.event_id
         ):
             self.state.notice_content = new_content
-
-    @override
-    async def reply_received(self, reply: RoomMessage) -> None:
-        if reply.sender == self.message.sender:
-            await super().reply_received(reply)
