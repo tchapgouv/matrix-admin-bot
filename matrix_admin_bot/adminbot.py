@@ -68,6 +68,7 @@ class HelpCommand(ICommand):
 class RoleModel(BaseModel):
     all_commands: bool = False
     allowed_commands: list[str] = []
+    allow_other_users_interaction: bool = False
     user_ids: list[str] = []
 
 
@@ -121,7 +122,12 @@ class AdminBot(CommandBot):
                 if allowed_cmd:
                     allowed_commands.append(allowed_cmd)
 
-            role = Role(role_name, role_model.all_commands, allowed_commands)
+            role = Role(
+                role_name,
+                role_model.all_commands,
+                allowed_commands,
+                role_model.allow_other_users_interaction,
+            )
 
             for user_id in role_model.user_ids:
                 roles.setdefault(user_id, []).append(role)
