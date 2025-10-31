@@ -85,8 +85,6 @@ class ServerNoticeGetRecipientsStep(ICommandStep):
     ) -> tuple[bool, CommandAction]:
         if not reply:
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
-        if reply and self.command.message.sender != reply.sender:
-            return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
         self.command_state.recipients = (
             reply.source.get("content", {}).get("body", "").split()
@@ -129,8 +127,6 @@ class ServerNoticeGetNoticeStep(ICommandStep):
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
         if not reply:
-            return True, CommandAction.WAIT_FOR_NEXT_REPLY
-        if reply and self.command.message.sender != reply.sender:
             return True, CommandAction.WAIT_FOR_NEXT_REPLY
 
         self.command_state.notice_content = reply.source["content"]
@@ -402,8 +398,3 @@ Sends server notices to users through an interactive, step-by-step process.
             and self.state.notice_original_event_id == original_event.event_id
         ):
             self.state.notice_content = new_content
-
-    @override
-    async def reply_received(self, reply: RoomMessage) -> None:
-        if reply.sender == self.message.sender:
-            await super().reply_received(reply)

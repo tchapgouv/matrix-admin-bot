@@ -18,6 +18,7 @@ class Role:
     name: str
     all_commands: bool = False
     allowed_commands: list[type[ICommand]] = field(default_factory=list)
+    allow_other_users_interaction: bool = False
 
 
 class CommandBot(MatrixBot):
@@ -110,7 +111,7 @@ class CommandBot(MatrixBot):
         self.background_tasks.add(task)
         task.add_done_callback(self.background_tasks.discard)
 
-    async def handle_event(
+    async def handle_event(  # noqa: C901,PLR0912 TODO
         self,
         room: MatrixRoom,
         message: RoomMessage,
@@ -126,7 +127,21 @@ class CommandBot(MatrixBot):
                     related_command=related_command,
                     replaced_event=replaced_event,
                 )
-                await related_command.replace_received(new_content, replaced_event)
+                if self.can_interact(message.sender, related_command):
+                    await related_command.replace_received(new_content, replaced_event)
+                else:
+                    if self.extra_config.get("is_coordinator", True):
+                        await self.matrix_client.send_markdown_message(
+                            room.room_id,
+                            "You are not allowed to modify this command",
+                            reply_to=message.event_id,
+                            thread_root=message.event_id,
+                        )
+                    logger.warning(
+                        "Command replacement not allowed to be executed",
+                        command=related_command,
+                        reply=message,
+                    )
                 return
         else:
             related_command = self.get_related_command(message)
@@ -136,10 +151,17 @@ class CommandBot(MatrixBot):
                     related_command=related_command,
                     reply=message,
                 )
-                if await self.can_execute(related_command):
+                if self.can_interact(message.sender, related_command):
                     await related_command.reply_received(message)
                 else:
-                    logger.debug(
+                    if self.extra_config.get("is_coordinator", True):
+                        await self.matrix_client.send_markdown_message(
+                            room.room_id,
+                            "You are not allowed to reply to this command",
+                            reply_to=message.event_id,
+                            thread_root=message.event_id,
+                        )
+                    logger.warning(
                         "Command reply not allowed to be executed",
                         command=related_command,
                         reply=message,
@@ -151,7 +173,7 @@ class CommandBot(MatrixBot):
                 command = command_type(
                     room, message, self.matrix_client, self.extra_config
                 )
-                if await self.can_execute(command):
+                if self.can_execute(message.sender, command):
                     self.commands_cache[message.event_id] = command
                     await command.execute()
                 else:
@@ -178,11 +200,35 @@ class CommandBot(MatrixBot):
                     message=message,
                 )
 
-    async def can_execute(self, command: ICommand) -> bool:
+    def can_execute(self, sender: str, command: ICommand) -> bool:
         if not self.roles:
             return True
-        user_roles = self.roles.get(command.message.sender, [])
+
+        user_roles = self.roles.get(sender, [])
         for role in user_roles:
             if role.all_commands or command.__class__ in role.allowed_commands:
                 return True
+
+        return False
+
+    def can_interact(self, sender: str, original_command: ICommand) -> bool:
+        same_sender = sender == original_command.message.sender
+
+        if not self.roles:
+            return same_sender
+
+        # The person interacting with the command needs to be allowed
+        # to execute this command themself
+        if not self.can_execute(sender, original_command):
+            return False
+
+        if same_sender:
+            return True
+
+        # Let's check if the original command sender role allows other users to interact
+        original_sender_roles = self.roles.get(original_command.message.sender, [])
+        for role in original_sender_roles:  # noqa: SIM110
+            if role.allow_other_users_interaction:
+                return True
+
         return False
