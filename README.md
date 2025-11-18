@@ -103,9 +103,34 @@ For detailed command help, use the `help` parameter (e.g., `!server_notice help`
 
 ## Contributing
 
-Format your code
+
+#### Install uv
+This project is managed by uv.
+
+Please proceed to the installation of uv
+https://docs.astral.sh/uv/getting-started/installation/
+
+#### Install dependencies
+
+```bash
+uv sync
+source .venv/bin/activate
+```
+
+#### Run the tests
+```bash
+uv run --frozen pytest --cov
+```
+
+#### Execute the code analysis
+
+```bash
+uv run --frozen basedpyright
+uv run --frozen ruff check
+```
+
+#### Format your code
 
 ```bash
 uv run --frozen ruff format
-uv run --frozen basedpyright
 ```

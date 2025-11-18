@@ -35,6 +35,13 @@ def get_server_name(user_or_room_id: str) -> str | None:
     return parts[1]
 
 
+def get_localpart_from_id(user_or_room_id: str) -> str | None:
+    idx = user_or_room_id.find(":")
+    if idx == -1:
+        return None
+    return user_or_room_id[1:idx]
+
+
 def is_local_user(user_id: str, server_name: str | None) -> bool:
     return user_id.startswith("@") and get_server_name(user_id) == server_name
 

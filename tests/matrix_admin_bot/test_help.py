@@ -1,7 +1,7 @@
 import pytest
 from nio import MatrixRoom
 
-from matrix_admin_bot.adminbot import COMMANDS
+from matrix_admin_bot.adminbot import get_command_list
 from tests import USER1_ID, create_fake_admin_bot
 
 
@@ -15,7 +15,7 @@ async def test_help_command() -> None:
 
     mocked_client.check_sent_message("Here are the available commands")
 
-    for command in COMMANDS:
+    for command in get_command_list(None):
         await mocked_client.fake_synced_text_message(
             room,
             USER1_ID,

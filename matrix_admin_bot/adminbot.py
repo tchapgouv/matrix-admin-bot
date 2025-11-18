@@ -15,6 +15,10 @@ from typing_extensions import override
 
 from matrix_admin_bot.commands.account_validity import AccountValidityCommand
 from matrix_admin_bot.commands.deactivate import DeactivateCommand
+from matrix_admin_bot.commands.next.admin_client import (
+    check_if_mas_enabled,
+)
+from matrix_admin_bot.commands.next.reset_password_v2 import ResetPasswordCommandV2
 from matrix_admin_bot.commands.ping import PingCommand
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
 from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
@@ -22,13 +26,23 @@ from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
 from matrix_command_bot.validation.validators.totp import TOTPValidator
 
-COMMANDS: list[type[ICommand]] = [
-    ServerNoticeCommand,
-    ResetPasswordCommand,
-    AccountValidityCommand,
-    DeactivateCommand,
-    PingCommand,
-]
+
+def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
+    if check_if_mas_enabled(homeserver):
+        return [
+            ServerNoticeCommand,
+            AccountValidityCommand,
+            DeactivateCommand,
+            PingCommand,
+            ResetPasswordCommandV2,
+        ]
+    return [
+        ServerNoticeCommand,
+        ResetPasswordCommand,
+        AccountValidityCommand,
+        DeactivateCommand,
+        PingCommand,
+    ]
 
 
 class HelpCommand(ICommand):
@@ -54,7 +68,7 @@ class HelpCommand(ICommand):
                 "please use `!<command> help` to get "
                 "more information about a specific command:\n\n"
             )
-            for command in COMMANDS:
+            for command in get_command_list(self.matrix_client.homeserver):
                 keyword = getattr(command, "KEYWORD", None)
                 if keyword:
                     help_message += f"- **!{keyword}**\n"
@@ -78,6 +92,8 @@ class AdminBotConfig(BaseSettings):
     homeserver: str = "http://localhost:8008"
     bot_username: str = ""
     bot_password: str = ""
+    mas_base_url: str = ""
+    mas_access_token: str = ""
     allowed_room_ids: list[str] = []
     totps: dict[str, str] = {}
     is_coordinator: bool = True
@@ -110,11 +126,13 @@ class AdminBot(CommandBot):
     ) -> None:
         if "secure_validator" not in extra_config:
             extra_config["secure_validator"] = TOTPValidator(config.totps)
+
         bot_lib_config.allowed_room_ids = config.allowed_room_ids
 
         roles: dict[str, list[Role]] = {}
 
-        commands_dict = {c.__name__: c for c in COMMANDS}
+        command_list = get_command_list(config.homeserver)
+        commands_dict = {c.__name__: c for c in command_list}
         for role_name, role_model in config.roles.items():
             allowed_commands: list[type[ICommand]] = []
             for allowed_command_str in role_model.allowed_commands:
@@ -135,7 +153,9 @@ class AdminBot(CommandBot):
             homeserver=config.homeserver,
             username=config.bot_username,
             password=config.bot_password,
-            commands=[*COMMANDS, HelpCommand],
+            mas_base_url=config.mas_base_url,
+            mas_access_token=config.mas_access_token,
+            commands=[*command_list, HelpCommand],
             roles=roles,
             is_coordinator=config.is_coordinator,
             **extra_config,
