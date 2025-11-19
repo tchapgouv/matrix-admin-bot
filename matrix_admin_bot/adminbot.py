@@ -31,7 +31,6 @@ def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
     if check_if_mas_enabled(homeserver):
         return [
             ServerNoticeCommand,
-            AccountValidityCommand,
             DeactivateCommand,
             PingCommand,
             ResetPasswordCommandV2,
