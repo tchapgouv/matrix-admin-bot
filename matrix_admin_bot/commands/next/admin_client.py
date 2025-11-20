@@ -6,6 +6,8 @@ from aiohttp import ClientResponse
 from matrix_bot.client import MatrixClient
 from requests import Response
 
+from matrix_command_bot.util import get_localpart_from_id
+
 logger = structlog.getLogger(__name__)
 
 VERIFY_SSL_CERT = True
@@ -59,6 +61,153 @@ class AdminClient:
         return await self.synapse_client.send(
             method, endpoint, headers=headers, **kwargs
         )
+
+    async def get_mas_user_id(
+        self, json_report: dict[str, Any], failed_user_ids: list[str], user_id: str
+    ) -> str | None:
+        username = get_localpart_from_id(user_id)
+        endpoint = f"/api/admin/v1/users/by-username/{username}"
+        resp = self.send_to_mas("GET", endpoint=endpoint)
+        json_body = resp.json()
+        if not resp.ok:
+            error = f"Cannot get user in MAS from localpart {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return None
+        return json_body["data"]["id"]
+
+    async def get_devices_from_synapse(
+        self, json_report: dict[str, Any], user_id: str
+    ) -> None:
+        endpoint = f"/_synapse/admin/v2/users/{user_id}/devices"
+        resp = await self.send_to_synapse(
+            "GET",
+            endpoint=endpoint,
+        )
+        if resp.ok:
+            json_body = await resp.json()
+            json_report[user_id]["devices"] = json_body.get("devices", [])
+            logger.info("Devices : %s", json_report[user_id]["devices"])
+
+    async def get_compat_sessions(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        mas_user_id: str,
+        user_id: str,
+    ) -> None:
+        params = {"filter[user]": mas_user_id, "filter[status]": "active"}
+        endpoint = "/api/admin/v1/compat-sessions"
+        resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
+        json_body = resp.json()
+        if resp.ok:
+            count = json_body["meta"]["count"]
+            if count > 0:
+                sessions = json_body["data"]
+                json_report[user_id]["compat-sessions"] = sessions
+                logger.debug(
+                    "Compat-Sessions : %s", json_report[user_id]["compat-sessions"]
+                )
+        else:
+            error = f"Cannot get compat session in MAS from localpart {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+
+    async def get_user_sessions(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        mas_user_id: str,
+        user_id: str,
+    ) -> None:
+        params = {"filter[user]": mas_user_id, "filter[status]": "active"}
+        endpoint = "/api/admin/v1/user-sessions"
+        resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
+        json_body = resp.json()
+        if resp.ok:
+            count = json_body["meta"]["count"]
+            if count > 0:
+                sessions = json_body["data"]
+                json_report[user_id]["user-sessions"] = sessions
+                logger.debug(
+                    "User-Sessions : %s", json_report[user_id]["user-sessions"]
+                )
+        else:
+            error = f"Cannot get user session in MAS for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+
+    async def get_oauth2_sessions(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        mas_user_id: str,
+        user_id: str,
+    ) -> None:
+        params = {"filter[user]": mas_user_id, "filter[status]": "active"}
+        endpoint = "/api/admin/v1/oauth2-sessions"
+        resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
+        json_body = resp.json()
+        if resp.ok:
+            count = json_body["meta"]["count"]
+            if count > 0:
+                sessions = json_body["data"]
+                json_report[user_id]["oauth2-sessions"] = sessions
+                logger.debug(
+                    "OAuth2-Sessions : %s", json_report[user_id]["oauth2-sessions"]
+                )
+        else:
+            error = f"Cannot get oauth2 session in MAS for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+
+    async def set_password(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        mas_user_id: str,
+        password: str,
+        user_id: str,
+    ) -> bool:
+        endpoint = f"/api/admin/v1/users/{mas_user_id}/set-password"
+        data = {"password": password, "skip_password_check": True}
+        resp = self.send_to_mas("POST", endpoint=endpoint, json=data)
+        if not resp.ok:
+            json_body = resp.json()
+            error = f"Cannot reset password in MAS for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return False
+        return True
+
+    async def kill_all_sessions(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        mas_user_id: str,
+        user_id: str,
+    ) -> bool:
+        endpoint = f"/api/admin/v1/users/{mas_user_id}/kill-sessions"
+        resp = self.send_to_mas("POST", endpoint=endpoint)
+        json_body = resp.json()
+        if not resp.ok:
+            error = f"Cannot kill all sessions in MAS {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return False
+        return True
 
 
 def check_if_mas_enabled(homeserver: str | None) -> bool:

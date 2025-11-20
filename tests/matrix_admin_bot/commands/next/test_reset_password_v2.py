@@ -6,6 +6,14 @@ from nio import MatrixRoom
 
 from matrix_admin_bot.commands.next.admin_client import check_if_mas_enabled
 from tests import USER1_ID, OkValidator, create_fake_admin_bot_with_mas_enabled
+from tests.matrix_admin_bot.commands.next import (
+    COMPAT_SESSIONS_LIST,
+    OAUTH2_SESSIONS_LIST,
+    USER,
+    USER_SESSIONS_LIST,
+    mock_response_error,
+    mock_response_with_json,
+)
 
 
 @pytest.mark.asyncio
@@ -19,6 +27,27 @@ async def test_check_if_mas_enabled(monkeypatch: MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 async def test_reset_password_v2(monkeypatch: MonkeyPatch) -> None:
+    def request_side_effect(method: str, url: str) -> Mock:  # noqa: PLR0911
+        if method == "GET" and url.endswith(
+            "/api/admin/v1/users/by-username/user_to_reset"
+        ):
+            return mock_response_with_json(USER)
+        if method == "POST" and url.endswith(
+            "/api/admin/v1/users/01040G2081040G2081040G2081/set-password"
+        ):
+            return mock_response_with_json(USER)
+        if method == "POST" and url.endswith(
+            "/api/admin/v1/users/01040G2081040G2081040G2081/kill-sessions"
+        ):
+            return mock_response_with_json(USER)
+        if method == "GET" and url.endswith("/api/admin/v1/compat-sessions"):
+            return mock_response_with_json(COMPAT_SESSIONS_LIST)
+        if method == "GET" and url.endswith("/api/admin/v1/oauth2-sessions"):
+            return mock_response_with_json(OAUTH2_SESSIONS_LIST)
+        if method == "GET" and url.endswith("/api/admin/v1/user-sessions"):
+            return mock_response_with_json(USER_SESSIONS_LIST)
+        return mock_response_error(403, "Forbidden")
+
     (
         mocked_matrix_client,
         mock_admin_client,
@@ -29,9 +58,8 @@ async def test_reset_password_v2(monkeypatch: MonkeyPatch) -> None:
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
-    mock_admin_client.session.request.return_value = Mock(
-        ok=True,
-        json=Mock(return_value={"meta": {"count": 1}, "data": {"id": "MAS_ID"}}),
+    mock_admin_client.session.request.side_effect = Mock(
+        side_effect=request_side_effect
     )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
@@ -72,6 +100,13 @@ async def test_reset_password_v2(monkeypatch: MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 async def test_failed_reset_password_v2(monkeypatch: MonkeyPatch) -> None:
+    def request_side_effect(method: str, url: str) -> Mock:
+        if method == "GET" and url.endswith(
+            "/api/admin/v1/users/by-username/user_to_reset"
+        ):
+            return mock_response_error(404, "Not found")
+        return mock_response_error(403, "Forbidden")
+
     (
         mocked_matrix_client,
         mock_admin_client,
@@ -82,9 +117,7 @@ async def test_failed_reset_password_v2(monkeypatch: MonkeyPatch) -> None:
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
-    mock_admin_client.session.request.return_value = Mock(
-        ok=False, json=Mock(return_value={"data": {"id": "MAS_ID"}})
-    )
+    mock_admin_client.session.request = Mock(side_effect=request_side_effect)
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -108,9 +141,6 @@ async def test_non_local_user_reset_password_v2(monkeypatch: MonkeyPatch) -> Non
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
-    mock_admin_client.session.request.return_value = Mock(
-        ok=True, json=Mock(return_value={"data": {"id": "MAS_ID"}})
     )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
