@@ -10,7 +10,7 @@ from matrix_command_bot.util import get_localpart_from_id
 
 logger = structlog.getLogger(__name__)
 
-VERIFY_SSL_CERT = True
+VERIFY_SSL_CERT = False
 
 
 class AdminClient:
@@ -247,6 +247,27 @@ class AdminClient:
         json_body = await self.decode_response(resp)
         if not resp.ok:
             error = f"Cannot unlock for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return False
+        json_report[user_id]["description"] = json_body["data"]
+        return True
+
+    async def deactivate(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        mas_user_id: str,
+        user_id: str,
+    ) -> bool:
+        endpoint = f"/api/admin/v1/users/{mas_user_id}/deactivate"
+        data = {"skip_erase": True}
+        resp = self.send_to_mas("POST", endpoint=endpoint, json=data)
+        json_body = await self.decode_response(resp)
+        if not resp.ok:
+            error = f"Cannot deactivate for {user_id}"
             json_report[user_id]["errors"].append(
                 {"error": error, "description": json_body}
             )
