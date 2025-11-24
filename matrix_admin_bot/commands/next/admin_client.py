@@ -10,7 +10,7 @@ from matrix_command_bot.util import get_localpart_from_id
 
 logger = structlog.getLogger(__name__)
 
-VERIFY_SSL_CERT = False
+VERIFY_SSL_CERT = True
 
 
 class AdminClient:
@@ -335,6 +335,28 @@ class AdminClient:
             )
             failed_user_ids.append(user_id)
             return False
+        return True
+
+    async def add_email(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        mas_user_id: str,
+        user_id: str,
+        email: str,
+    ) -> bool:
+        endpoint = "/api/admin/v1/user-emails"
+        data = {"user_id": mas_user_id, "email": email}
+        resp = self.send_to_mas("POST", endpoint=endpoint, json=data)
+        json_body = await self.decode_response(resp)
+        if not resp.ok:
+            error = f"Cannot add email {email} for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return False
+        json_report[user_id]["description"] = json_body["data"]
         return True
 
 def check_if_mas_enabled(homeserver: str | None) -> bool:
