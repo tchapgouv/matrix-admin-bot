@@ -15,10 +15,16 @@ from typing_extensions import override
 
 from matrix_admin_bot.commands.account_validity import AccountValidityCommand
 from matrix_admin_bot.commands.deactivate import DeactivateCommand
+from matrix_admin_bot.commands.next.add_email_v2 import AddEmailCommandV2
 from matrix_admin_bot.commands.next.admin_client import (
     check_if_mas_enabled,
 )
+from matrix_admin_bot.commands.next.deactivate_v2 import DeactivateCommandV2
+from matrix_admin_bot.commands.next.lock_v2 import LockCommandV2
+from matrix_admin_bot.commands.next.reactivate_v2 import ReactivateCommandV2
+from matrix_admin_bot.commands.next.remove_email_v2 import RemoveEmailCommandV2
 from matrix_admin_bot.commands.next.reset_password_v2 import ResetPasswordCommandV2
+from matrix_admin_bot.commands.next.unlock_v2 import UnlockCommandV2
 from matrix_admin_bot.commands.ping import PingCommand
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
 from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
@@ -31,9 +37,14 @@ def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
     if check_if_mas_enabled(homeserver):
         return [
             ServerNoticeCommand,
-            DeactivateCommand,
+            DeactivateCommandV2,
+            ReactivateCommandV2,
             PingCommand,
             ResetPasswordCommandV2,
+            LockCommandV2,
+            UnlockCommandV2,
+            AddEmailCommandV2,
+            RemoveEmailCommandV2,
         ]
     return [
         ServerNoticeCommand,
