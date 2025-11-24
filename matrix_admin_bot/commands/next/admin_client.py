@@ -359,6 +359,7 @@ class AdminClient:
         json_report[user_id]["description"] = json_body["data"]
         return True
 
+
 def check_if_mas_enabled(homeserver: str | None) -> bool:
     if homeserver:
         url = f"{homeserver}/.well-known/matrix/client"
