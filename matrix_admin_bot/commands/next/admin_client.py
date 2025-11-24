@@ -68,15 +68,21 @@ class AdminClient:
         username = get_localpart_from_id(user_id)
         endpoint = f"/api/admin/v1/users/by-username/{username}"
         resp = self.send_to_mas("GET", endpoint=endpoint)
-        json_body = resp.json()
+
+        json_body = await self.decode_response(resp)
         if not resp.ok:
-            error = f"Cannot get user in MAS from localpart {user_id}"
+            error = f"Cannot get user from localpart {user_id}"
             json_report[user_id]["errors"].append(
                 {"error": error, "description": json_body}
             )
             failed_user_ids.append(user_id)
             return None
         return json_body["data"]["id"]
+
+    async def decode_response(self, resp: Response) -> Any:  # noqa: ANN401
+        if resp.headers.get("Content-Type", "").startswith("application/json") is True:
+            return resp.json()
+        return resp.text
 
     async def get_devices_from_synapse(
         self, json_report: dict[str, Any], user_id: str
@@ -101,7 +107,7 @@ class AdminClient:
         params = {"filter[user]": mas_user_id, "filter[status]": "active"}
         endpoint = "/api/admin/v1/compat-sessions"
         resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = resp.json()
+        json_body = await self.decode_response(resp)
         if resp.ok:
             count = json_body["meta"]["count"]
             if count > 0:
@@ -111,7 +117,7 @@ class AdminClient:
                     "Compat-Sessions : %s", json_report[user_id]["compat-sessions"]
                 )
         else:
-            error = f"Cannot get compat session in MAS from localpart {user_id}"
+            error = f"Cannot get compat session  from localpart {user_id}"
             json_report[user_id]["errors"].append(
                 {"error": error, "description": json_body}
             )
@@ -127,7 +133,7 @@ class AdminClient:
         params = {"filter[user]": mas_user_id, "filter[status]": "active"}
         endpoint = "/api/admin/v1/user-sessions"
         resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = resp.json()
+        json_body = await self.decode_response(resp)
         if resp.ok:
             count = json_body["meta"]["count"]
             if count > 0:
@@ -137,7 +143,7 @@ class AdminClient:
                     "User-Sessions : %s", json_report[user_id]["user-sessions"]
                 )
         else:
-            error = f"Cannot get user session in MAS for {user_id}"
+            error = f"Cannot get user session for {user_id}"
             json_report[user_id]["errors"].append(
                 {"error": error, "description": json_body}
             )
@@ -153,7 +159,7 @@ class AdminClient:
         params = {"filter[user]": mas_user_id, "filter[status]": "active"}
         endpoint = "/api/admin/v1/oauth2-sessions"
         resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = resp.json()
+        json_body = await self.decode_response(resp)
         if resp.ok:
             count = json_body["meta"]["count"]
             if count > 0:
@@ -163,7 +169,7 @@ class AdminClient:
                     "OAuth2-Sessions : %s", json_report[user_id]["oauth2-sessions"]
                 )
         else:
-            error = f"Cannot get oauth2 session in MAS for {user_id}"
+            error = f"Cannot get oauth2 session for {user_id}"
             json_report[user_id]["errors"].append(
                 {"error": error, "description": json_body}
             )
@@ -181,8 +187,8 @@ class AdminClient:
         data = {"password": password, "skip_password_check": True}
         resp = self.send_to_mas("POST", endpoint=endpoint, json=data)
         if not resp.ok:
-            json_body = resp.json()
-            error = f"Cannot reset password in MAS for {user_id}"
+            json_body = await self.decode_response(resp)
+            error = f"Cannot reset password for {user_id}"
             json_report[user_id]["errors"].append(
                 {"error": error, "description": json_body}
             )
@@ -199,9 +205,9 @@ class AdminClient:
     ) -> bool:
         endpoint = f"/api/admin/v1/users/{mas_user_id}/kill-sessions"
         resp = self.send_to_mas("POST", endpoint=endpoint)
-        json_body = resp.json()
+        json_body = await self.decode_response(resp)
         if not resp.ok:
-            error = f"Cannot kill all sessions in MAS {user_id}"
+            error = f"Cannot kill all sessions {user_id}"
             json_report[user_id]["errors"].append(
                 {"error": error, "description": json_body}
             )
@@ -209,6 +215,25 @@ class AdminClient:
             return False
         return True
 
+    async def lock(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        mas_user_id: str,
+        user_id: str,
+    ) -> bool:
+        endpoint = f"/api/admin/v1/users/{mas_user_id}/lock"
+        resp = self.send_to_mas("POST", endpoint=endpoint)
+        json_body = await self.decode_response(resp)
+        if not resp.ok:
+            error = f"Cannot lock for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return False
+        json_report[user_id]["description"] = json_body["data"]
+        return True
 
 def check_if_mas_enabled(homeserver: str | None) -> bool:
     if homeserver:
