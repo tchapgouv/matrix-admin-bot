@@ -296,6 +296,47 @@ class AdminClient:
         json_report[user_id]["description"] = json_body["data"]
         return True
 
+    async def find_emails(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        user_id: str,
+        params: dict[str, Any],
+    ) -> list[dict[str, Any]] | None:
+        endpoint = "/api/admin/v1/user-emails"
+        resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
+        json_body = await self.decode_response(resp)
+        if not resp.ok:
+            if resp.status_code == 404:
+                return []
+            error = f"Cannot find emails with {params} for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return None
+        json_report[user_id]["description"] = json_body["data"]
+        return json_body["data"]
+
+    async def remove_email(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        user_email_id: str,
+        user_id: str,
+    ) -> bool:
+        endpoint = f"/api/admin/v1/user-emails/{user_email_id}"
+        resp = self.send_to_mas("DELETE", endpoint=endpoint)
+        json_body = await self.decode_response(resp)
+        if not resp.ok:
+            error = f"Cannot remove email {user_email_id} for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return False
+        return True
+
 def check_if_mas_enabled(homeserver: str | None) -> bool:
     if homeserver:
         url = f"{homeserver}/.well-known/matrix/client"
