@@ -28,7 +28,6 @@ class RemoveEmailCommandV2(UserRelatedCommand):
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
         self.failed_user_ids: list[str] = []
         self.user_id: str | None = None
-        self.email: str | None = None
 
     async def remove_email(self, user_id: str) -> bool:
         if get_server_name(user_id) != self.server_name:
@@ -91,7 +90,7 @@ class RemoveEmailCommandV2(UserRelatedCommand):
 
     @override
     async def simple_execute(self) -> bool:
-        if self.user_id is None or self.email is None:
+        if self.user_id is None:
             return False
         await self.remove_email(self.user_id)
 

@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -22,7 +23,7 @@ from tests.matrix_admin_bot.commands.next import (
 
 @pytest.mark.asyncio
 async def test_reactivate(monkeypatch: MonkeyPatch) -> None:
-    def request_side_effect(method: str, url: str) -> Mock:  # noqa: PLR0911
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001,PLR0911
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
         ):

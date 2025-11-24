@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -20,7 +21,7 @@ from tests.matrix_admin_bot.commands.next import (
 
 @pytest.mark.asyncio
 async def test_remove_email(monkeypatch: MonkeyPatch) -> None:
-    def request_side_effect(method: str, url: str) -> Mock:
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
         ):
@@ -76,7 +77,7 @@ async def test_remove_email(monkeypatch: MonkeyPatch) -> None:
 async def test_failed_remove_email_when_user_has_no_email(
     monkeypatch: MonkeyPatch,
 ) -> None:
-    def request_side_effect(method: str, url: str) -> Mock:
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
         ):
@@ -120,7 +121,7 @@ async def test_failed_remove_email_when_user_has_no_email(
 
 @pytest.mark.asyncio
 async def test_failed_remove_email_when_api_in_error(monkeypatch: MonkeyPatch) -> None:
-    def request_side_effect() -> Mock:
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         return mock_response_error(403, "Forbidden")
 
     (

@@ -21,7 +21,7 @@ from tests.matrix_admin_bot.commands.next import (
 
 @pytest.mark.asyncio
 async def test_add_email(monkeypatch: MonkeyPatch) -> None:
-    def request_side_effect(method: str, url: str) -> Mock:
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
         ):
