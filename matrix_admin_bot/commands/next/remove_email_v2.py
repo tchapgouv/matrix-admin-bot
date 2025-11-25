@@ -131,7 +131,7 @@ class RemoveEmailCommandV2(UserRelatedCommand):
     def help_message(self) -> str:
         return """
 **Usage**:
-`!remove_email @user1 user1@domain.tld`
+`!remove_email @user1`
 
 **Purpose**:
 Remove an email for a user.
