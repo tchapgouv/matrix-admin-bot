@@ -21,8 +21,6 @@ class RoomStateCommand(InteractiveValidatedCommand):
     ) -> None:
         super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
 
-        self.room_ids = self.command_text.split()
-
         self.failed_room_ids: list[str] = []
 
     async def room_details(self, room_id: str) -> bool:
@@ -47,6 +45,14 @@ class RoomStateCommand(InteractiveValidatedCommand):
             return False
 
         return True
+
+    @override
+    async def should_execute(self) -> bool:
+        self.room_ids = self.command_text.split()
+
+        return any(
+            get_server_name(room_id) == self.server_name for room_id in self.room_ids
+        )
 
     @override
     async def simple_execute(self) -> bool:
