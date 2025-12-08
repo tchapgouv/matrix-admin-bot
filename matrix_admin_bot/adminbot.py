@@ -108,8 +108,8 @@ class AdminBot(CommandBot):
         config: AdminBotConfig,
         **extra_config: Any,  # noqa: ANN401
     ) -> None:
-        if "secure_validator" not in extra_config:
-            extra_config["secure_validator"] = TOTPValidator(config.totps)
+        if "validator" not in extra_config:
+            extra_config["validator"] = TOTPValidator(config.totps)
         bot_lib_config.allowed_room_ids = config.allowed_room_ids
 
         roles: dict[str, list[Role]] = {}

@@ -8,7 +8,6 @@ from typing_extensions import override
 
 from matrix_admin_bot.commands.server_notice import USER_ALL
 from matrix_command_bot.util import get_server_name, send_report
-from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 
 
@@ -22,9 +21,7 @@ class PingCommand(SimpleValidatedCommand):
         matrix_client: MatrixClient,
         extra_config: Mapping[str, Any],
     ) -> None:
-        secure_validator: IValidator = extra_config.get("secure_validator")  # pyright: ignore[reportAssignmentType]
-
-        super().__init__(room, message, matrix_client, secure_validator, extra_config)
+        super().__init__(room, message, matrix_client, extra_config)
 
         self.keyword = self.KEYWORD
 
