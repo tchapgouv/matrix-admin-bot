@@ -9,6 +9,8 @@ Matrix Admin Bot is a command-line bot for Matrix server administration tasks.
 - `!deactivate` - Deactivate user accounts
 - `!ping` - Ask all bots to reply to this command
 - `!account_validity` - Manage account validity periods (needs [`email_account_validity` module](https://github.com/tchapgouv/synapse-email-account-validity))
+- `!room_details` - Return the details of a room
+- `!room_state` - Return the state of a room
 
 ## Configuration
 
