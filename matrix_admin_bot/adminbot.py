@@ -18,6 +18,7 @@ from matrix_admin_bot.commands.deactivate import DeactivateCommand
 from matrix_admin_bot.commands.ping import PingCommand
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
 from matrix_admin_bot.commands.room_details import RoomDetailsCommand
+from matrix_admin_bot.commands.room_state import RoomStateCommand
 from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
@@ -30,6 +31,7 @@ COMMANDS: list[type[ICommand]] = [
     DeactivateCommand,
     PingCommand,
     RoomDetailsCommand,
+    RoomStateCommand,
 ]
 
 
