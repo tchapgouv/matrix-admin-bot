@@ -9,7 +9,6 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 from matrix_command_bot.validation.validators.confirm import ConfirmValidator
 from tests import (
@@ -32,8 +31,7 @@ class KeywordCommand(SimpleValidatedCommand):
         keyword: str,
         extra_config: Mapping[str, Any],
     ) -> None:
-        secure_validator: IValidator = extra_config.get("secure_validator")  # pyright: ignore[reportAssignmentType]
-        super().__init__(room, message, matrix_client, secure_validator, extra_config)
+        super().__init__(room, message, matrix_client, extra_config)
         self.keyword = keyword
 
         MessageEventParser(
@@ -77,7 +75,7 @@ class LongRunningCommand(KeywordCommand):
 @timeout(2)
 async def test_command_concurrency() -> None:
     mocked_client, t = await create_fake_command_bot(
-        [SuccessCommand, LongRunningCommand], secure_validator=OkValidator()
+        [SuccessCommand, LongRunningCommand], validator=OkValidator()
     )
     mocked_client.success_executed = False
 
@@ -104,7 +102,7 @@ async def test_command_concurrency() -> None:
 @timeout(2)
 async def test_command_with_confirm_concurrency() -> None:
     mocked_client, t = await create_fake_command_bot(
-        [SuccessCommand, LongRunningCommand], secure_validator=ConfirmValidator()
+        [SuccessCommand, LongRunningCommand], validator=ConfirmValidator()
     )
     mocked_client.success_executed = False
 

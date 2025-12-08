@@ -11,7 +11,7 @@ from tests import USER1_ID, OkValidator, create_fake_tchap_admin_bot
 
 @pytest.mark.asyncio
 async def test_mail_address() -> None:
-    mocked_client, t = await create_fake_tchap_admin_bot(secure_validator=OkValidator())
+    mocked_client, t = await create_fake_tchap_admin_bot(validator=OkValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )

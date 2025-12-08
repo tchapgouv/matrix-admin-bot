@@ -89,7 +89,7 @@ TEXT_DATA = "Some simple server notice"
 
 @pytest.mark.asyncio
 async def test_server_notice_to_all_recipients() -> None:
-    mocked_client, t = await create_fake_admin_bot(secure_validator=ConfirmValidator())
+    mocked_client, t = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -143,7 +143,7 @@ async def test_server_notice_to_all_recipients() -> None:
 
 @pytest.mark.asyncio
 async def test_html_server_notice_to_one_recipient() -> None:
-    mocked_client, t = await create_fake_admin_bot(secure_validator=ConfirmValidator())
+    mocked_client, t = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -206,7 +206,7 @@ async def test_html_server_notice_to_one_recipient() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_server_notice_with_no_matrix_id() -> None:
-    mocked_client, t = await create_fake_admin_bot(secure_validator=ConfirmValidator())
+    mocked_client, t = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -257,7 +257,7 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
 
 @pytest.mark.asyncio
 async def test_server_notice_with_edit() -> None:
-    mocked_client, t = await create_fake_admin_bot(secure_validator=ConfirmValidator())
+    mocked_client, t = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -339,13 +339,13 @@ async def test_server_notice_with_edit() -> None:
 @pytest.mark.asyncio
 async def test_to_one_recipient_with_coordinator() -> None:
     mocked_client1, t1 = await create_fake_admin_bot(
-        "example.org", secure_validator=ConfirmValidator()
+        "example.org", validator=ConfirmValidator()
     )
     mocked_client1.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
     mocked_client2, t2 = await create_fake_admin_bot(
-        "example2.org", secure_validator=ConfirmValidator(), is_coordinator=False
+        "example2.org", validator=ConfirmValidator(), is_coordinator=False
     )
     mocked_client2.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))

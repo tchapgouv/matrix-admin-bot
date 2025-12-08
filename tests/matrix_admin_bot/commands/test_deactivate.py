@@ -8,7 +8,7 @@ from tests import USER1_ID, OkValidator, create_fake_admin_bot
 
 @pytest.mark.asyncio
 async def test_deactivate() -> None:
-    mocked_client, t = await create_fake_admin_bot(secure_validator=OkValidator())
+    mocked_client, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -33,7 +33,7 @@ async def test_deactivate() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_deactivate() -> None:
-    mocked_client, t = await create_fake_admin_bot(secure_validator=OkValidator())
+    mocked_client, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=False, json=AsyncMock(return_value={}))
     )
@@ -51,7 +51,7 @@ async def test_failed_deactivate() -> None:
 
 @pytest.mark.asyncio
 async def test_non_local_user_deactivate() -> None:
-    mocked_client, t = await create_fake_admin_bot(secure_validator=OkValidator())
+    mocked_client, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_client.send = AsyncMock(
         return_value=Mock(ok=False, json=AsyncMock(return_value={}))
     )
