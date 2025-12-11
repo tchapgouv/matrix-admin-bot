@@ -1,5 +1,4 @@
 import datetime
-from collections.abc import Mapping
 from typing import Any
 
 import pyotp
@@ -29,7 +28,7 @@ class ConfirmValidatedCommand(SimpleValidatedCommand):
         room: MatrixRoom,
         message: RoomMessage,
         matrix_client: MatrixClient,
-        extra_config: Mapping[str, Any],
+        extra_config: dict[str, Any],
     ) -> None:
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client
@@ -37,11 +36,12 @@ class ConfirmValidatedCommand(SimpleValidatedCommand):
         event_parser.do_not_accept_own_message()
         event_parser.command("test")
 
+        extra_config["validator"] = TOTPValidator({USER1_ID: TOTP_SEED})
+
         super().__init__(
             room,
             message,
             matrix_client,
-            TOTPValidator({USER1_ID: TOTP_SEED}),
             extra_config,
         )
 

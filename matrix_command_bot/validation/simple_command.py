@@ -26,11 +26,10 @@ class SimpleValidatedCommand(SimpleCommand, ABC):
         room: MatrixRoom,
         message: RoomMessage,
         matrix_client: MatrixClient,
-        validator: IValidator,
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, extra_config)
-        self.validator = validator
+        self.validator: IValidator = extra_config.get("validator")  # pyright: ignore[reportAssignmentType, reportAttributeAccessIssue]
         self.state = ReactionCommandState()
 
     @override

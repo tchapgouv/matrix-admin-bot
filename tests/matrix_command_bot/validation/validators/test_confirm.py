@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from typing import Any
 
 import pytest
@@ -23,7 +22,7 @@ class ConfirmValidatedCommand(SimpleValidatedCommand):
         room: MatrixRoom,
         message: RoomMessage,
         matrix_client: MatrixClient,
-        extra_config: Mapping[str, Any],
+        extra_config: dict[str, Any],
     ) -> None:
         event_parser = MessageEventParser(
             room=room, event=message, matrix_client=matrix_client
@@ -32,7 +31,8 @@ class ConfirmValidatedCommand(SimpleValidatedCommand):
         event_parser.command("test")
 
         self._should_execute = extra_config.get("should_execute", True)
-        super().__init__(room, message, matrix_client, ConfirmValidator(), extra_config)
+        extra_config["validator"] = ConfirmValidator()
+        super().__init__(room, message, matrix_client, extra_config)
 
     @override
     async def should_execute(self) -> bool:

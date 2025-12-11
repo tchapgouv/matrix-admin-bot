@@ -28,6 +28,8 @@ from matrix_admin_bot.commands.next.server_notice_v2 import ServerNoticeCommandV
 from matrix_admin_bot.commands.next.unlock_v2 import UnlockCommandV2
 from matrix_admin_bot.commands.ping import PingCommand
 from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
+from matrix_admin_bot.commands.room_details import RoomDetailsCommand
+from matrix_admin_bot.commands.room_state import RoomStateCommand
 from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
@@ -54,6 +56,8 @@ def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
         AccountValidityCommand,
         DeactivateCommand,
         PingCommand,
+        RoomDetailsCommand,
+        RoomStateCommand,
     ]
 
 
@@ -136,9 +140,8 @@ class AdminBot(CommandBot):
         config: AdminBotConfig,
         **extra_config: Any,  # noqa: ANN401
     ) -> None:
-        if "secure_validator" not in extra_config:
-            extra_config["secure_validator"] = TOTPValidator(config.totps)
-
+        if "validator" not in extra_config:
+            extra_config["validator"] = TOTPValidator(config.totps)
         bot_lib_config.allowed_room_ids = config.allowed_room_ids
 
         roles: dict[str, list[Role]] = {}
