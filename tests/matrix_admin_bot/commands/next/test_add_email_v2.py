@@ -37,7 +37,7 @@ async def test_add_email(monkeypatch: MonkeyPatch) -> None:
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
@@ -96,7 +96,7 @@ async def test_failed_add_email_when_email_already_used(
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
@@ -140,7 +140,7 @@ async def test_failed_add_email_when_user_has_email(monkeypatch: MonkeyPatch) ->
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
@@ -165,7 +165,7 @@ async def test_failed_add_email_when_api_in_error(monkeypatch: MonkeyPatch) -> N
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
@@ -192,7 +192,7 @@ async def test_non_local_user_add_email(monkeypatch: MonkeyPatch) -> None:
         _,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))

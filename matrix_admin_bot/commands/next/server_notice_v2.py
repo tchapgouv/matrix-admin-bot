@@ -178,7 +178,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, extra_config)
-        self.secure_validator: IValidator = extra_config.get("secure_validator")  # pyright: ignore[reportAttributeAccessIssue]
+        self.validator: IValidator = extra_config.get("validator")  # pyright: ignore[reportAttributeAccessIssue]
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
 
         self.state = ServerNoticeState()
@@ -215,7 +215,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
             ValidateStep(
                 self,
                 self.state,
-                self.secure_validator,
+                self.validator,
                 (
                     "Please verify the previous message, "
                     "it will be sent as this to the users.\n"

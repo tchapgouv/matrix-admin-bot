@@ -19,9 +19,7 @@ from tests.matrix_admin_bot.commands.next import (
 
 @pytest.mark.asyncio
 async def test_check_if_mas_enabled(monkeypatch: MonkeyPatch) -> None:
-    await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
-    )
+    await create_fake_admin_bot_with_mas_enabled(monkeypatch, validator=OkValidator())
 
     assert check_if_mas_enabled("https://example.org") is True
 
@@ -54,7 +52,7 @@ async def test_reset_password_v2(monkeypatch: MonkeyPatch) -> None:
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
@@ -113,7 +111,7 @@ async def test_failed_reset_password_v2(monkeypatch: MonkeyPatch) -> None:
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
@@ -138,7 +136,7 @@ async def test_non_local_user_reset_password_v2(monkeypatch: MonkeyPatch) -> Non
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))

@@ -42,7 +42,7 @@ async def test_remove_email(monkeypatch: MonkeyPatch) -> None:
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
@@ -99,7 +99,7 @@ async def test_failed_remove_email_when_user_has_no_email(
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
@@ -129,7 +129,7 @@ async def test_failed_remove_email_when_api_in_error(monkeypatch: MonkeyPatch) -
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
@@ -156,7 +156,7 @@ async def test_non_local_user_remove_email(monkeypatch: MonkeyPatch) -> None:
         _,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=OkValidator()
+        monkeypatch, validator=OkValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))

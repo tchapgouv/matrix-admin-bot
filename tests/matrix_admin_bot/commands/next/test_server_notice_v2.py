@@ -95,7 +95,7 @@ async def test_server_notice_to_all_recipients(monkeypatch: MonkeyPatch) -> None
         _,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=ConfirmValidator()
+        monkeypatch, validator=ConfirmValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
@@ -155,7 +155,7 @@ async def test_html_server_notice_to_one_recipient(monkeypatch: MonkeyPatch) -> 
         _,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=ConfirmValidator()
+        monkeypatch, validator=ConfirmValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
@@ -224,7 +224,7 @@ async def test_failed_server_notice_with_no_matrix_id(monkeypatch: MonkeyPatch) 
         _,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=ConfirmValidator()
+        monkeypatch, validator=ConfirmValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
@@ -281,7 +281,7 @@ async def test_server_notice_with_edit(monkeypatch: MonkeyPatch) -> None:
         _,
         t,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, secure_validator=ConfirmValidator()
+        monkeypatch, validator=ConfirmValidator()
     )
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
@@ -368,7 +368,7 @@ async def test_to_one_recipient_with_coordinator(monkeypatch: MonkeyPatch) -> No
         _,
         t1,
     ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, "example.org", secure_validator=ConfirmValidator()
+        monkeypatch, "example.org", validator=ConfirmValidator()
     )
     mocked_matrix_client1.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
@@ -380,7 +380,7 @@ async def test_to_one_recipient_with_coordinator(monkeypatch: MonkeyPatch) -> No
     ) = await create_fake_admin_bot_with_mas_enabled(
         monkeypatch,
         "example2.org",
-        secure_validator=ConfirmValidator(),
+        validator=ConfirmValidator(),
         is_coordinator=False,
     )
     mocked_matrix_client2.send = AsyncMock(
