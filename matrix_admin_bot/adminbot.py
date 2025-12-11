@@ -24,6 +24,8 @@ from matrix_admin_bot.commands.next.lock_v2 import LockCommandV2
 from matrix_admin_bot.commands.next.reactivate_v2 import ReactivateCommandV2
 from matrix_admin_bot.commands.next.remove_email_v2 import RemoveEmailCommandV2
 from matrix_admin_bot.commands.next.reset_password_v2 import ResetPasswordCommandV2
+from matrix_admin_bot.commands.next.room_details_v2 import RoomDetailsCommandV2
+from matrix_admin_bot.commands.next.room_state_v2 import RoomStateCommandV2
 from matrix_admin_bot.commands.next.server_notice_v2 import ServerNoticeCommandV2
 from matrix_admin_bot.commands.next.unlock_v2 import UnlockCommandV2
 from matrix_admin_bot.commands.ping import PingCommand
@@ -49,6 +51,8 @@ def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
             AddEmailCommandV2,
             RemoveEmailCommandV2,
             ServerNoticeCommandV2,
+            RoomDetailsCommandV2,
+            RoomStateCommandV2,
         ]
     return [
         ServerNoticeCommand,
