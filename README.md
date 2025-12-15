@@ -7,10 +7,16 @@ Matrix Admin Bot is a command-line bot for Matrix server administration tasks.
 - `!server_notice` - Send server notices to users
 - `!reset_password` - Reset user passwords
 - `!deactivate` - Deactivate user accounts
+- `!reactivate` - Reactivate user accounts
 - `!ping` - Ask all bots to reply to this command
 - `!account_validity` - Manage account validity periods (needs [`email_account_validity` module](https://github.com/tchapgouv/synapse-email-account-validity))
 - `!room_details` - Return the details of a room
 - `!room_state` - Return the state of a room
+- `!lock` - Locks a user
+- `!unlock` - Unlocks a user 
+- `!add_email` - Adds an email to user with mxid
+- `!remove_email` - Removes an email from a user
+- 
 
 ## Configuration
 
@@ -23,6 +29,8 @@ homeserver = "http://127.0.0.1:8008"    # Matrix homeserver URL
 identity_server = "http://127.0.0.1"     # Identity server URL
 bot_username = "admin"                   # Bot username
 bot_password = "***"                     # Bot password
+mas_base_url = "http://127.0.0.1:8080"   # Matrix Authentication Service URL
+mas_access_token = "***"                 # Matrix Authentication Service PAT to access Admin API
 
 # Set to true for the primary bot instance
 # Set to false for secondary instances if you have multiple bots in one admin room
@@ -105,9 +113,34 @@ For detailed command help, use the `help` parameter (e.g., `!server_notice help`
 
 ## Contributing
 
-Format your code
+
+#### Install uv
+This project is managed by uv.
+
+Please proceed to the installation of uv
+https://docs.astral.sh/uv/getting-started/installation/
+
+#### Install dependencies
+
+```bash
+uv sync
+source .venv/bin/activate
+```
+
+#### Run the tests
+```bash
+uv run --frozen pytest --cov
+```
+
+#### Execute the code analysis
+
+```bash
+uv run --frozen basedpyright
+uv run --frozen ruff check
+```
+
+#### Format your code
 
 ```bash
 uv run --frozen ruff format
-uv run --frozen basedpyright
 ```

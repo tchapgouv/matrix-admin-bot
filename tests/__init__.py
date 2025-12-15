@@ -4,14 +4,16 @@ from asyncio import Task
 from collections.abc import Awaitable, Callable, Mapping
 from functools import wraps
 from typing import Any, NoReturn
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from matrix_bot.bot import MatrixBot
 from nio import Event, MatrixRoom, RoomMessage, RoomMessageText
 from typing_extensions import override
 
 from matrix_admin_bot.adminbot import AdminBot, AdminBotConfig
+from matrix_admin_bot.commands.next.admin_client import AdminClient
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
 from matrix_command_bot.validation import IValidator
@@ -62,6 +64,7 @@ class MatrixClientMock:
         self.send_reaction = AsyncMock(side_effect=generate_event_id)
         self.room_redact = AsyncMock()
         self.sync_forever_called = False
+        self.homeserver = server_name
 
         self.send_text_message_mocks = [
             self.send_text_message,
@@ -172,6 +175,13 @@ class MatrixClientMock:
         pytest.fail("No matching sent message")
 
 
+class FakeWellKnownResponse:
+    ok = True
+
+    def json(self) -> dict[str, Any]:
+        return {"org.matrix.msc2965.authentication": {}}
+
+
 async def fake_synced_text_message(
     mocked_clients: list[MatrixClientMock],
     room: MatrixRoom,
@@ -198,6 +208,8 @@ async def create_fake_command_bot(
         homeserver="http://localhost:8008",
         username="",
         password="",
+        mas_base_url="",
+        mas_access_token="",
         commands=commands,
         roles=roles,
         **extra_config,
@@ -216,6 +228,8 @@ async def create_fake_admin_bot(
             homeserver="http://localhost:8008",
             bot_username="",
             bot_password="",
+            mas_base_url="",
+            mas_access_token="",
             is_coordinator=is_coordinator,
             allowed_room_ids=[],
             totps={},
@@ -223,6 +237,54 @@ async def create_fake_admin_bot(
         **extra_config,
     )
     return await mock_client_and_run(bot, server_name)
+
+
+async def create_fake_admin_bot_with_mas_enabled(
+    monkeypatch: MonkeyPatch,
+    server_name: str = "example.org",
+    *,
+    is_coordinator: bool = True,
+    **extra_config: Any,
+) -> tuple[MatrixClientMock, AdminClient, Task[None]]:
+    # Request to Well-known says that MAS is enabled
+    def fake_request_metadata(
+        method: str,  # noqa: ARG001
+        url: str,  # noqa: ARG001
+        verify: bool,  # noqa :FBT001,ARG001
+        timeout: int,  # noqa: ARG001
+    ) -> FakeWellKnownResponse:
+        return FakeWellKnownResponse()
+
+    monkeypatch.setattr(
+        "matrix_admin_bot.commands.next.admin_client.requests.request",
+        fake_request_metadata,
+    )
+
+    # Initialize the bot and the matrix client
+    bot = AdminBot(
+        AdminBotConfig(
+            homeserver="http://localhost:8008",
+            bot_username="",
+            bot_password="",
+            mas_base_url="test",
+            mas_access_token="test",  # noqa: S106
+            is_coordinator=is_coordinator,
+            allowed_room_ids=[],
+            totps={},
+        ),
+        **extra_config,
+    )
+    # Mock the matrix client and run the bot
+    fake_client, t = await mock_client_and_run(bot, server_name)
+
+    # Mock admin client with mocked matrix client and mocked session
+    admin_client = AdminClient(Mock(), "", "")
+    fake_session = Mock()
+    admin_client.synapse_client = fake_client
+    admin_client.session = fake_session
+    bot.extra_config["admin_client"] = admin_client
+
+    return fake_client, admin_client, t
 
 
 async def create_fake_tchap_admin_bot(
@@ -237,6 +299,8 @@ async def create_fake_tchap_admin_bot(
             identity_server="http://localhost:8090",
             bot_username="",
             bot_password="",
+            mas_base_url="",
+            mas_access_token="",
             is_coordinator=is_coordinator,
             allowed_room_ids=[],
             totps={},
