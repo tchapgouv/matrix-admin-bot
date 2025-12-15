@@ -17,6 +17,7 @@ from matrix_admin_bot.commands.account_validity import AccountValidityCommand
 from matrix_admin_bot.commands.deactivate import DeactivateCommand
 from matrix_admin_bot.commands.next.add_email_v2 import AddEmailCommandV2
 from matrix_admin_bot.commands.next.admin_client import (
+    AdminClient,
     check_if_mas_enabled,
 )
 from matrix_admin_bot.commands.next.deactivate_v2 import DeactivateCommandV2
@@ -179,6 +180,18 @@ class AdminBot(CommandBot):
             is_coordinator=config.is_coordinator,
             **extra_config,
         )
+
+        # Initialize new admin client (admin is optional for command)
+        if (
+            "admin_client" not in extra_config
+            and config.mas_base_url
+            and config.mas_access_token
+        ):
+            extra_config["admin_client"] = AdminClient(
+                synapse_client=self.matrix_client,
+                mas_base_url=config.mas_base_url,
+                mas_access_token=config.mas_access_token,
+            )
 
 
 def main() -> None:

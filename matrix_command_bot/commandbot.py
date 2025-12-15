@@ -8,7 +8,6 @@ from matrix_bot.bot import MatrixBot
 from matrix_bot.eventparser import EventNotConcerned
 from nio import MatrixRoom, RoomMessage
 
-from matrix_admin_bot.commands.next.admin_client import AdminClient
 from matrix_command_bot.command import ICommand
 
 logger = structlog.getLogger(__name__)
@@ -29,8 +28,6 @@ class CommandBot(MatrixBot):
         homeserver: str,
         username: str,
         password: str,
-        mas_base_url: str | None,
-        mas_access_token: str | None,
         commands: list[type[ICommand]],
         roles: dict[str, list[Role]] | None = None,
         **extra_config: Any,  # noqa: ANN401
@@ -41,14 +38,6 @@ class CommandBot(MatrixBot):
         self.extra_config = {}
         if extra_config:
             self.extra_config = extra_config
-
-        # Initialize new admin client (admin is optional for command)
-        if "admin_client" not in extra_config and mas_base_url and mas_access_token:
-            extra_config["admin_client"] = AdminClient(
-                synapse_client=self.matrix_client,
-                mas_base_url=mas_base_url,
-                mas_access_token=mas_access_token,
-            )
 
         self.recent_events_cache: cachetools.TTLCache[str, RoomMessage] = (
             cachetools.TTLCache(maxsize=5120, ttl=24 * 60 * 60)
