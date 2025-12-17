@@ -187,7 +187,7 @@ class AdminBot(CommandBot):
             and config.mas_base_url
             and config.mas_access_token
         ):
-            extra_config["admin_client"] = AdminClient(
+            self.extra_config["admin_client"] = AdminClient(
                 synapse_client=self.matrix_client,
                 mas_base_url=config.mas_base_url,
                 mas_access_token=config.mas_access_token,
