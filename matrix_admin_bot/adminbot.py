@@ -42,7 +42,6 @@ from matrix_command_bot.validation.validators.totp import TOTPValidator
 def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
     if check_if_mas_enabled(homeserver):
         return [
-            ServerNoticeCommand,
             DeactivateCommandV2,
             ReactivateCommandV2,
             PingCommand,
