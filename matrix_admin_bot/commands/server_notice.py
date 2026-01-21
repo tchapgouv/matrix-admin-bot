@@ -4,7 +4,6 @@ from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 import structlog
-from aiohttp import ClientConnectionError
 from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
@@ -318,7 +317,7 @@ class ServerNoticeCommand(CommandWithSteps):
                 # is not a rate limit.
                 if resp.status < 500 and resp.status != 429:
                     break
-            except ClientConnectionError as e:
+            except Exception as e:  # noqa: BLE001
                 logger.warning("Bot Admin has lost connection for %s: %s", user_id, e)
 
             # use some backoff
