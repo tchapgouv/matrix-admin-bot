@@ -1,0 +1,99 @@
+from collections.abc import Mapping
+from typing import Any
+
+from matrix_bot.bot import MatrixClient
+from nio import MatrixRoom, RoomMessage
+from typing_extensions import override
+
+from matrix_admin_bot import UserRelatedCommand
+from matrix_admin_bot.commands.next.admin_client import AdminClient
+from matrix_command_bot.util import get_server_name
+
+
+class MembershipsCommandV2(UserRelatedCommand):
+    KEYWORD = "memberships"
+
+    def __init__(
+        self,
+        room: MatrixRoom,
+        message: RoomMessage,
+        matrix_client: MatrixClient,
+        extra_config: Mapping[str, Any],
+    ) -> None:
+        super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
+        self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
+        self.failed_user_ids: list[str] = []
+
+    async def memberships(self, user_id: str) -> bool:
+        if get_server_name(user_id) != self.server_name:
+            return True
+
+        resp = await self.admin_client.send_to_synapse(
+            "GET",
+            f"/_synapse/admin/v1/users/{user_id}/memberships",
+            headers={"Authorization": f"Bearer {self.matrix_client.access_token}"},
+        )
+
+        self.json_report.setdefault(user_id, [])
+
+        if resp.ok:
+            memberships = (await resp.json())["memberships"]
+            for room_id, membership in memberships.items():
+                room_details = {}
+                resp = await self.admin_client.send_to_synapse(
+                    "GET",
+                    f"/_synapse/admin/v1/rooms/{room_id}",
+                    headers={
+                        "Authorization": f"Bearer {self.matrix_client.access_token}"
+                    },
+                )
+                if resp.ok:
+                    json = await resp.json()
+                    room_details.update(json)
+
+                room_details["room_id"] = room_id
+                room_details["membership"] = membership
+                self.json_report[user_id].append(room_details)
+        else:
+            return False
+
+        return True
+
+    @override
+    async def simple_execute(self) -> bool:
+        for user_id in self.user_ids:
+            res = await self.memberships(user_id)
+            if not res:
+                self.failed_user_ids.append(user_id)
+
+        if self.json_report:
+            self.json_report["command"] = self.KEYWORD
+            await self.send_report()
+
+        if self.failed_user_ids:
+            text = "\n".join(
+                [
+                    "Couldn't get room memberships for the following users:",
+                    "",
+                    *[f"- {user_id}" for user_id in self.failed_user_ids],
+                ]
+            )
+            await self.matrix_client.send_markdown_message(
+                self.room.room_id,
+                text,
+                reply_to=self.message.event_id,
+                thread_root=self.message.event_id,
+            )
+
+        return not self.failed_user_ids
+
+    @property
+    @override
+    def help_message(self) -> str:
+        return """
+**Usage**:
+`!memberships <user1> [user2] ...`
+
+**Purpose**:
+Gets the room memberships of users.
+"""
