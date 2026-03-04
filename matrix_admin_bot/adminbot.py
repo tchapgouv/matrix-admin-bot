@@ -15,6 +15,7 @@ from typing_extensions import override
 
 from matrix_admin_bot.commands.account_validity import AccountValidityCommand
 from matrix_admin_bot.commands.deactivate import DeactivateCommand
+from matrix_admin_bot.commands.memberships import MembershipsCommand
 from matrix_admin_bot.commands.next.add_email_v2 import AddEmailCommandV2
 from matrix_admin_bot.commands.next.admin_client import (
     AdminClient,
@@ -22,6 +23,7 @@ from matrix_admin_bot.commands.next.admin_client import (
 )
 from matrix_admin_bot.commands.next.deactivate_v2 import DeactivateCommandV2
 from matrix_admin_bot.commands.next.lock_v2 import LockCommandV2
+from matrix_admin_bot.commands.next.memberships_v2 import MembershipsCommandV2
 from matrix_admin_bot.commands.next.reactivate_v2 import ReactivateCommandV2
 from matrix_admin_bot.commands.next.remove_email_v2 import RemoveEmailCommandV2
 from matrix_admin_bot.commands.next.reset_password_v2 import ResetPasswordCommandV2
@@ -53,6 +55,7 @@ def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
             ServerNoticeCommandV2,
             RoomDetailsCommandV2,
             RoomStateCommandV2,
+            MembershipsCommandV2,
         ]
     return [
         ServerNoticeCommand,
@@ -62,6 +65,7 @@ def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
         PingCommand,
         RoomDetailsCommand,
         RoomStateCommand,
+        MembershipsCommand,
     ]
 
 
