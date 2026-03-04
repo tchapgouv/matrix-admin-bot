@@ -15,6 +15,7 @@ from typing_extensions import override
 
 from matrix_admin_bot.commands.account_validity import AccountValidityCommand
 from matrix_admin_bot.commands.deactivate import DeactivateCommand
+from matrix_admin_bot.commands.memberships import MembershipsCommand
 from matrix_admin_bot.commands.next.add_email_v2 import AddEmailCommandV2
 from matrix_admin_bot.commands.next.admin_client import (
     AdminClient,
@@ -62,6 +63,7 @@ def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
         PingCommand,
         RoomDetailsCommand,
         RoomStateCommand,
+        MembershipsCommand,
     ]
 
 
