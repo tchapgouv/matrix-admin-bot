@@ -135,7 +135,7 @@ class AddEmailCommandV2(UserRelatedCommand):
     def confirm_message(self) -> str | None:
         return "\n".join(
             [
-                "You are about to reactivate the following users:",
+                "You are about to add an email to user:",
                 "",
                 *[f"- {self.user_id}"],
             ]
