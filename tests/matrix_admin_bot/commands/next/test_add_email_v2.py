@@ -109,7 +109,7 @@ async def test_failed_add_email_when_email_already_used(
         room, USER1_ID, "!add_email @user_to_reset:example.org user@domain.tld"
     )
 
-    mocked_matrix_client.check_sent_message("Couldn't add email the following users:")
+    mocked_matrix_client.check_sent_message("Couldn't add email of the following users:")
 
     t.cancel()
 
@@ -153,7 +153,7 @@ async def test_failed_add_email_when_user_has_email(monkeypatch: MonkeyPatch) ->
         room, USER1_ID, "!add_email @user_to_reset:example.org user@domain.tld"
     )
 
-    mocked_matrix_client.check_sent_message("Couldn't add email the following users:")
+    mocked_matrix_client.check_sent_message("Couldn't add email of the following users:")
 
     t.cancel()
 
@@ -180,7 +180,7 @@ async def test_failed_add_email_when_api_in_error(monkeypatch: MonkeyPatch) -> N
         room, USER1_ID, "!add_email @user_to_reset:example.org user@domain.tld"
     )
 
-    mocked_matrix_client.check_sent_message("Couldn't add email the following users:")
+    mocked_matrix_client.check_sent_message("Couldn't add email of the following users:")
 
     t.cancel()
 

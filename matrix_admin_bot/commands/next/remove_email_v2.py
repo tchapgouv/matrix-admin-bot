@@ -101,7 +101,7 @@ class RemoveEmailCommandV2(UserRelatedCommand):
         if self.failed_user_ids:
             text = "\n".join(
                 [
-                    "Couldn't remove email the following users:",
+                    "Couldn't remove email of the following users:",
                     "",
                     *[f"- {user_id}" for user_id in self.failed_user_ids],
                 ]

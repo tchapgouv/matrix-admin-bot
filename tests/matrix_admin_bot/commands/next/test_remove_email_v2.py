@@ -113,7 +113,7 @@ async def test_failed_remove_email_when_user_has_no_email(
     )
 
     mocked_matrix_client.check_sent_message(
-        "Couldn't remove email the following users:"
+        "Couldn't remove email of the following users:"
     )
 
     t.cancel()
@@ -143,7 +143,7 @@ async def test_failed_remove_email_when_api_in_error(monkeypatch: MonkeyPatch) -
     )
 
     mocked_matrix_client.check_sent_message(
-        "Couldn't remove email the following users:"
+        "Couldn't remove email of the following users:"
     )
 
     t.cancel()
