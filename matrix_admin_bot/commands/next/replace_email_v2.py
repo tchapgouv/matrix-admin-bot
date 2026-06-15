@@ -13,8 +13,8 @@ from matrix_command_bot.util import get_server_name, is_local_user
 logger = structlog.getLogger(__name__)
 
 
-class RemoveEmailCommandV2(UserRelatedCommand):
-    KEYWORD = "remove_email"
+class ReplaceEmailCommandV2(UserRelatedCommand):
+    KEYWORD = "replace_email"
 
     def __init__(
         self,
@@ -28,8 +28,9 @@ class RemoveEmailCommandV2(UserRelatedCommand):
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
         self.failed_user_ids: list[str] = []
         self.user_id: str | None = None
+        self.email: str | None = None
 
-    async def remove_email(self, user_id: str) -> bool:
+    async def replace_email(self, user_id: str, email: str) -> bool:
         if get_server_name(user_id) != self.server_name:
             return True
 
@@ -44,55 +45,37 @@ class RemoveEmailCommandV2(UserRelatedCommand):
         if mas_user_id is None:
             return False
 
-        # Check if user has already an email
-        params = {
-            "filter[user]": mas_user_id,
-        }
+        params = {"filter[user]": mas_user_id}
+
+        # Get user emails
         user_emails = await self.admin_client.find_emails(
             self.json_report, self.failed_user_ids, user_id, params
         )
-        if user_emails is None:
-            return False
-        if len(user_emails) != 1:
-            self.json_report[user_id]["errors"].append(
-                {
-                    "error": f"The user [mxid={user_id}/mas_user_id={mas_user_id}] "
-                    f"has no emails or have many emails : "
-                    f"number of emails={len(user_emails)}.",
-                    "description": user_emails,
-                }
-            )
-            self.failed_user_ids.append(user_id)
-            return False
 
-        # Remove email for the user
-        user_email_id = user_emails[0]["id"]
-        email = user_emails[0]["attributes"]["email"]
-        result = await self.admin_client.remove_email(
-            self.json_report, self.failed_user_ids, user_email_id, user_id
+        # Remove all emails for the user
+        if user_emails:
+            for user_email in user_emails:
+                user_email_id = user_email["id"]
+                old_email = user_email["attributes"]["email"]
+                result = await self.admin_client.remove_email(
+                    self.json_report, self.failed_user_ids, user_email_id, user_id
+                )
+                if result:
+                    self.json_report[user_id]["description"] = (
+                        f"{old_email} has been removed"
+                    )
+
+        # Add email for the user
+        return await self.admin_client.add_email(
+            self.json_report, self.failed_user_ids, mas_user_id, user_id, email
         )
-        if result:
-            self.json_report[user_id]["description"] = (
-                f"{email} has been removed for {user_id}"
-            )
-        return result
-
-    @override
-    async def should_execute(self) -> bool:
-        args = self.command_text.split()
-        if len(args) != 1:
-            return False
-
-        self.user_id = args[0]
-        # TODO: validate user_id
-
-        return is_local_user(self.user_id, self.server_name)
 
     @override
     async def simple_execute(self) -> bool:
-        if self.user_id is None:
+        if self.user_id is None or self.email is None:
             return False
-        await self.remove_email(self.user_id)
+
+        await self.replace_email(self.user_id, self.email)
 
         if self.json_report:
             self.json_report["command"] = self.KEYWORD
@@ -101,7 +84,7 @@ class RemoveEmailCommandV2(UserRelatedCommand):
         if self.failed_user_ids:
             text = "\n".join(
                 [
-                    "Couldn't remove email of the following users:",
+                    "Couldn't replace email of the following users:",
                     "",
                     *[f"- {user_id}" for user_id in self.failed_user_ids],
                 ]
@@ -115,12 +98,24 @@ class RemoveEmailCommandV2(UserRelatedCommand):
 
         return not self.failed_user_ids
 
+    @override
+    async def should_execute(self) -> bool:
+        args = self.command_text.split()
+        if len(args) != 2:
+            return False
+
+        self.user_id = args[0]
+        # TODO: validate user_id
+        self.email = args[1]
+        # TODO: validate email
+        return is_local_user(self.user_id, self.server_name)
+
     @property
     @override
     def confirm_message(self) -> str | None:
         return "\n".join(
             [
-                "You are about to remove an email:",
+                "You are about to replace an email to user:",
                 "",
                 *[f"- {self.user_id}"],
             ]
@@ -131,17 +126,14 @@ class RemoveEmailCommandV2(UserRelatedCommand):
     def help_message(self) -> str:
         return """
 **Usage**:
-`!remove_email @user1`
+`!replace_email @user1 user1@domain.tld`
 
 **Purpose**:
-Remove an email for a user.
+Replace an email for a user.
 
 **Effects**:
-- remove an email for a user
-- cheks if the user has only one email
+- Remove all existing emails and add a new email for a user
 
 **Examples**:
-- `!remove_email @user-domain.tld:example.com`
-
-NOTE : you want to use replace_email command if you want to replace an email on a user
+- `!replace_email @user-domain.tld:example.com user@domain.tld`
 """

@@ -116,7 +116,7 @@ class AddEmailCommandV2(UserRelatedCommand):
         if self.failed_user_ids:
             text = "\n".join(
                 [
-                    "Couldn't add email the following users:",
+                    "Couldn't add email of the following users:",
                     "",
                     *[f"- {user_id}" for user_id in self.failed_user_ids],
                 ]
@@ -135,7 +135,7 @@ class AddEmailCommandV2(UserRelatedCommand):
     def confirm_message(self) -> str | None:
         return "\n".join(
             [
-                "You are about to reactivate the following users:",
+                "You are about to add an email to user:",
                 "",
                 *[f"- {self.user_id}"],
             ]
