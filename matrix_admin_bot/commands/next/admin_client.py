@@ -1,4 +1,6 @@
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import requests
 import structlog
@@ -96,6 +98,29 @@ class AdminClient:
             json_body = await resp.json()
             json_report[user_id]["devices"] = json_body.get("devices", [])
             logger.info("Devices : %s", json_report[user_id]["devices"])
+
+    async def get_user_from_synapse(
+        self, json_report: dict[str, Any], failed_user_ids: list[str], user_id: str
+    ) -> bool:
+        endpoint = f"/_synapse/admin/v2/users/{user_id}"
+        resp = await self.send_to_synapse(
+            "GET",
+            endpoint=endpoint,
+        )
+        if resp.ok:
+            json_body = await resp.json()
+            json_report[user_id]["user"] = json_body
+            json_report[user_id]["user"]["creation_ts_formatted"] = format_timestamp(
+                json_report[user_id]["user"]["creation_ts"]
+            )
+            json_report[user_id]["user"]["last_seen_ts_formatted"] = format_timestamp(
+                json_report[user_id]["user"]["last_seen_ts"]
+            )
+            return True
+        json_body = await resp.json()
+        json_report[user_id]["errors"]["user"] = json_body
+        failed_user_ids.append(user_id)
+        return False
 
     async def get_compat_sessions(
         self,
@@ -376,3 +401,12 @@ def check_if_mas_enabled(homeserver: str | None) -> bool:
         except Exception:
             logger.exception("Cannot request %s", url)
     return True
+
+
+def format_timestamp(ts: int) -> str:
+    # Si le timestamp est en millisecondes (> 1e10), on convertit en secondes
+    if ts > 1e10:
+        ts = int(ts / 1000)
+    return datetime.fromtimestamp(ts, tz=ZoneInfo("Europe/Paris")).strftime(
+        "%d/%m/%Y %H:%M:%S",
+    )

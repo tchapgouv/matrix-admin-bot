@@ -19,6 +19,7 @@ Matrix Admin Bot is a command-line bot for Matrix server administration tasks.
 - `!memberships` - Gets the room memberships of users
 - `!replace_email` - Replace an email for a user
 - `!replace_displayname` - Replace the displayname for a user
+- `!user` - Get sessions and information on users
 
 ## Configuration
 

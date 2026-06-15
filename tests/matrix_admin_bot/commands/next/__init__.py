@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 USER_EMAIL = {
     "data": {
@@ -269,6 +269,44 @@ USER_SESSIONS_LIST = {
     },
 }
 
+USER_SYNAPSE = {
+    "name": "@user:example.com",
+    "displayname": "User",
+    "threepids": [
+        {
+            "medium": "email",
+            "address": "<user_mail_1>",
+            "added_at": 1586458409743,
+            "validated_at": 1586458409743,
+        },
+        {
+            "medium": "email",
+            "address": "<user_mail_2>",
+            "added_at": 1586458409743,
+            "validated_at": 1586458409743,
+        },
+    ],
+    "avatar_url": "<avatar_url>",
+    "is_guest": 0,
+    "admin": 0,
+    "deactivated": 0,
+    "erased": "false",
+    "shadow_banned": 0,
+    "creation_ts": 1560432506,
+    "last_seen_ts": 1781554015393,
+    "appservice_id": "null",
+    "consent_server_notice_sent": "null",
+    "consent_version": "null",
+    "consent_ts": "null",
+    "external_ids": [
+        {"auth_provider": "<provider1>", "external_id": "<user_id_provider_1>"},
+        {"auth_provider": "<provider2>", "external_id": "<user_id_provider_2>"},
+    ],
+    "user_type": "null",
+    "locked": "false",
+    "suspended": "false",
+}
+
 
 def mock_response_error(status_code: int, text: str) -> Mock:
     return Mock(
@@ -285,4 +323,14 @@ def mock_response_with_json(json: dict[str, Any]) -> Mock:
             "Content-Type": "application/json",
         },
         json=Mock(return_value=json),
+    )
+
+
+def async_mock_response_with_json(json: dict[str, Any]) -> Mock:
+    return Mock(
+        ok=True,
+        headers={
+            "Content-Type": "application/json",
+        },
+        json=AsyncMock(return_value=json),
     )
