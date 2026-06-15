@@ -375,4 +375,4 @@ def check_if_mas_enabled(homeserver: str | None) -> bool:
                 )
         except Exception:
             logger.exception("Cannot request %s", url)
-    return False
+    return True
