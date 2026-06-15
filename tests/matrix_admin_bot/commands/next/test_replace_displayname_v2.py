@@ -10,7 +10,11 @@ from tests import (
     OkValidator,
     create_fake_admin_bot_with_mas_enabled,
 )
-from tests.matrix_admin_bot.commands.next import mock_response_with_json, mock_response_error, USER
+from tests.matrix_admin_bot.commands.next import (
+    USER,
+    mock_response_error,
+    mock_response_with_json,
+)
 
 
 @pytest.mark.asyncio
@@ -37,7 +41,9 @@ async def test_replace_displayname(monkeypatch: MonkeyPatch) -> None:
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
     await mocked_matrix_client.fake_synced_text_message(
-        room, USER1_ID, "!replace_displayname @user_to_reset:example.org My-Display Name[matrix]"
+        room,
+        USER1_ID,
+        "!replace_displayname @user_to_reset:example.org My-Display Name[matrix]",
     )
 
     # 1 call to get the mas user id on MAS
@@ -48,8 +54,14 @@ async def test_replace_displayname(monkeypatch: MonkeyPatch) -> None:
         "/users/by-username/user_to_reset"
         in mock_admin_client.session.request.call_args_list[0][0][1]
     )
-    assert "/_synapse/admin/v2/users/@user_to_reset:example.org" in mocked_matrix_client.send.call_args_list[0][0][1]
-    assert "My-Display Name[matrix]" == mocked_matrix_client.send.call_args_list[0][1]['data']['displayname']
+    assert (
+        "/_synapse/admin/v2/users/@user_to_reset:example.org"
+        in mocked_matrix_client.send.call_args_list[0][0][1]
+    )
+    assert (
+        mocked_matrix_client.send.call_args_list[0][1]["data"]["displayname"]
+        == "My-Display Name[matrix]"
+    )
 
     mocked_matrix_client.send_file_message.assert_awaited_once()
     mocked_matrix_client.send_file_message.reset_mock()
@@ -57,6 +69,7 @@ async def test_replace_displayname(monkeypatch: MonkeyPatch) -> None:
     mock_admin_client.session.request.reset_mock()
 
     t.cancel()
+
 
 @pytest.mark.asyncio
 async def test_replace_displayname_with_single_quote(monkeypatch: MonkeyPatch) -> None:
@@ -82,7 +95,9 @@ async def test_replace_displayname_with_single_quote(monkeypatch: MonkeyPatch) -
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
     await mocked_matrix_client.fake_synced_text_message(
-        room, USER1_ID, "!replace_displayname @user_to_reset:example.org 'My-Display Name[matrix]'"
+        room,
+        USER1_ID,
+        "!replace_displayname @user_to_reset:example.org 'My-Display Name[matrix]'",
     )
 
     # 1 call to get the mas user id on MAS
@@ -93,8 +108,14 @@ async def test_replace_displayname_with_single_quote(monkeypatch: MonkeyPatch) -
         "/users/by-username/user_to_reset"
         in mock_admin_client.session.request.call_args_list[0][0][1]
     )
-    assert "/_synapse/admin/v2/users/@user_to_reset:example.org" in mocked_matrix_client.send.call_args_list[0][0][1]
-    assert "My-Display Name[matrix]" == mocked_matrix_client.send.call_args_list[0][1]['data']['displayname']
+    assert (
+        "/_synapse/admin/v2/users/@user_to_reset:example.org"
+        in mocked_matrix_client.send.call_args_list[0][0][1]
+    )
+    assert (
+        mocked_matrix_client.send.call_args_list[0][1]["data"]["displayname"]
+        == "My-Display Name[matrix]"
+    )
 
     mocked_matrix_client.send_file_message.assert_awaited_once()
     mocked_matrix_client.send_file_message.reset_mock()
@@ -105,7 +126,9 @@ async def test_replace_displayname_with_single_quote(monkeypatch: MonkeyPatch) -
 
 
 @pytest.mark.asyncio
-async def test_failed_replace_displayname_when_user_not_found(monkeypatch: MonkeyPatch) -> None:
+async def test_failed_replace_displayname_when_user_not_found(
+    monkeypatch: MonkeyPatch,
+) -> None:
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -128,7 +151,9 @@ async def test_failed_replace_displayname_when_user_not_found(monkeypatch: Monke
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
     await mocked_matrix_client.fake_synced_text_message(
-        room, USER1_ID, "!replace_displayname @user_to_reset:example.org 'My-Display Name[matrix]'"
+        room,
+        USER1_ID,
+        "!replace_displayname @user_to_reset:example.org 'My-Display Name[matrix]'",
     )
 
     mocked_matrix_client.send_file_message.assert_awaited_once()

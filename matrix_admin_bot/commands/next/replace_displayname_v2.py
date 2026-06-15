@@ -92,14 +92,13 @@ class ReplaceDisplayNameCommandV2(UserRelatedCommand):
 
         return not self.failed_user_ids
 
-
     @override
     async def should_execute(self) -> bool:
-        args = self.command_text.split(' ',1)
+        args = self.command_text.split(" ", 1)
 
         self.user_id = args[0]
         # TODO: validate user_id
-        self.displayname = args[1].strip('\'')
+        self.displayname = args[1].strip("'")
         # TODO: validate displayname
         return is_local_user(self.user_id, self.server_name)
 
