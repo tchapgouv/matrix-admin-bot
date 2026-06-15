@@ -17,6 +17,7 @@ Matrix Admin Bot is a command-line bot for Matrix server administration tasks.
 - `!add_email` - Adds an email to user with mxid
 - `!remove_email` - Removes an email from a user
 - `!memberships` - Gets the room memberships of users
+- `!replace_email` - Replace an email for a user
 
 ## Configuration
 
