@@ -166,7 +166,8 @@ class AdminBot(CommandBot):
         roles: dict[str, list[Role]] = {}
 
         command_list = get_command_list(config.homeserver)
-        commands_dict = {c.__name__: c for c in command_list}
+        all_commands = [*command_list, HelpCommand]
+        commands_dict = {c.__name__: c for c in all_commands}
         for role_name, role_model in config.roles.items():
             allowed_commands: list[type[ICommand]] = []
             for allowed_command_str in role_model.allowed_commands:
@@ -189,7 +190,7 @@ class AdminBot(CommandBot):
             password=config.bot_password,
             mas_base_url=config.mas_base_url,
             mas_access_token=config.mas_access_token,
-            commands=[*command_list, HelpCommand],
+            commands=all_commands,
             roles=roles,
             is_coordinator=config.is_coordinator,
             **extra_config,
