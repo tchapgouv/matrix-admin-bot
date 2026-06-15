@@ -57,7 +57,7 @@ def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
             RoomDetailsCommandV2,
             RoomStateCommandV2,
             MembershipsCommandV2,
-            ReplaceEmailCommandV2
+            ReplaceEmailCommandV2,
         ]
     return [
         ServerNoticeCommand,

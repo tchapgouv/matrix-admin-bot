@@ -65,10 +65,14 @@ async def test_replace_email(monkeypatch: MonkeyPatch) -> None:
     assert "/user-emails" in mock_admin_client.session.request.call_args_list[1][0][1]
     assert "/user-emails" in mock_admin_client.session.request.call_args_list[2][0][1]
     assert "/user-emails" in mock_admin_client.session.request.call_args_list[3][0][1]
-    assert "newemail@domain.tld" == mock_admin_client.session.request.call_args_list[3][1]['json']['email']
+    assert (
+        mock_admin_client.session.request.call_args_list[3][1]["json"]["email"]
+        == "newemail@domain.tld"
+    )
     mock_admin_client.session.request.reset_mock()
 
     t.cancel()
+
 
 @pytest.mark.asyncio
 async def test_failed_replace_email_when_api_in_error(monkeypatch: MonkeyPatch) -> None:
@@ -92,7 +96,9 @@ async def test_failed_replace_email_when_api_in_error(monkeypatch: MonkeyPatch) 
         room, USER1_ID, "!replace_email @user_to_reset:example.org user@domain.tld"
     )
 
-    mocked_matrix_client.check_sent_message("Couldn't replace email of the following users:")
+    mocked_matrix_client.check_sent_message(
+        "Couldn't replace email of the following users:"
+    )
 
     t.cancel()
 

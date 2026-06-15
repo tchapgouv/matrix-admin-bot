@@ -45,9 +45,7 @@ class ReplaceEmailCommandV2(UserRelatedCommand):
         if mas_user_id is None:
             return False
 
-        params = {
-            "filter[user]": mas_user_id
-        }
+        params = {"filter[user]": mas_user_id}
 
         # Get user emails
         user_emails = await self.admin_client.find_emails(
@@ -55,16 +53,17 @@ class ReplaceEmailCommandV2(UserRelatedCommand):
         )
 
         # Remove all emails for the user
-        for user_email in user_emails:
-            user_email_id = user_email["id"]
-            old_email = user_email["attributes"]["email"]
-            result = await self.admin_client.remove_email(
-                self.json_report, self.failed_user_ids, user_email_id, user_id
-            )
-            if result:
-                self.json_report[user_id]["description"] = (
-                    f"{old_email} has been removed"
+        if user_emails:
+            for user_email in user_emails:
+                user_email_id = user_email["id"]
+                old_email = user_email["attributes"]["email"]
+                result = await self.admin_client.remove_email(
+                    self.json_report, self.failed_user_ids, user_email_id, user_id
                 )
+                if result:
+                    self.json_report[user_id]["description"] = (
+                        f"{old_email} has been removed"
+                    )
 
         # Add email for the user
         return await self.admin_client.add_email(
@@ -98,7 +97,6 @@ class ReplaceEmailCommandV2(UserRelatedCommand):
             )
 
         return not self.failed_user_ids
-
 
     @override
     async def should_execute(self) -> bool:
