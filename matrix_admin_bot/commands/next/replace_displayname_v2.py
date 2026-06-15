@@ -1,3 +1,4 @@
+import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -45,9 +46,7 @@ class ReplaceDisplayNameCommandV2(UserRelatedCommand):
         if mas_user_id is None:
             return False
 
-        data = {
-            "displayname": displayname,
-        }
+        data = json.dumps({"displayname": displayname})
 
         resp = await self.admin_client.send_to_synapse(
             "PUT", f"/_synapse/admin/v2/users/{user_id}", data=data

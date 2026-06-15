@@ -59,8 +59,8 @@ async def test_replace_displayname(monkeypatch: MonkeyPatch) -> None:
         in mocked_matrix_client.send.call_args_list[0][0][1]
     )
     assert (
-        mocked_matrix_client.send.call_args_list[0][1]["data"]["displayname"]
-        == "My-Display Name[matrix]"
+        mocked_matrix_client.send.call_args_list[0][1]["data"]
+        == '{"displayname": "My-Display Name[matrix]"}'
     )
 
     mocked_matrix_client.send_file_message.assert_awaited_once()
@@ -113,8 +113,8 @@ async def test_replace_displayname_with_single_quote(monkeypatch: MonkeyPatch) -
         in mocked_matrix_client.send.call_args_list[0][0][1]
     )
     assert (
-        mocked_matrix_client.send.call_args_list[0][1]["data"]["displayname"]
-        == "My-Display Name[matrix]"
+        mocked_matrix_client.send.call_args_list[0][1]["data"]
+        == '{"displayname": "My-Display Name[matrix]"}'
     )
 
     mocked_matrix_client.send_file_message.assert_awaited_once()
