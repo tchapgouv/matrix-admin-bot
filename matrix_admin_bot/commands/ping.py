@@ -6,7 +6,7 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
 
-from matrix_admin_bot.commands.server_notice import USER_ALL
+from matrix_admin_bot.commands.next.server_notice_v2 import USER_ALL
 from matrix_command_bot.util import get_server_name, send_report
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 

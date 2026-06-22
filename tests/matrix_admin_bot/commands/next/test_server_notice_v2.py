@@ -3,17 +3,16 @@ from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from nio import MatrixRoom
 
-from matrix_admin_bot.commands.server_notice import USER_ALL
+from matrix_admin_bot.commands.next.server_notice_v2 import USER_ALL
 from matrix_command_bot.validation.validators.confirm import ConfirmValidator
 from tests import (
     USER1_ID,
     USER2_ID,
     USER3_ID,
     USER4_ID,
-    create_fake_admin_bot_with_mas_enabled,
+    create_fake_admin_bot,
     create_replace_relation,
     create_thread_relation,
     fake_synced_text_message,
@@ -174,7 +173,7 @@ TEXT_DATA = "Some simple server notice"
 
 
 @pytest.mark.asyncio
-async def test_server_notice_to_all_recipients(monkeypatch: MonkeyPatch) -> None:
+async def test_server_notice_to_all_recipients() -> None:
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users?filter[status]=active&page[first]=100"
@@ -190,9 +189,7 @@ async def test_server_notice_to_all_recipients(monkeypatch: MonkeyPatch) -> None
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -248,9 +245,7 @@ async def test_server_notice_to_all_recipients(monkeypatch: MonkeyPatch) -> None
 
 
 @pytest.mark.asyncio
-async def test_server_notice_to_all_recipients_when_invalid_request(
-    monkeypatch: MonkeyPatch,
-) -> None:
+async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
     counter = 0
 
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
@@ -274,9 +269,7 @@ async def test_server_notice_to_all_recipients_when_invalid_request(
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -331,9 +324,7 @@ async def test_server_notice_to_all_recipients_when_invalid_request(
 
 
 @pytest.mark.asyncio
-async def test_server_notice_to_all_recipients_when_exception(
-    monkeypatch: MonkeyPatch,
-) -> None:
+async def test_server_notice_to_all_recipients_when_exception() -> None:
     counter = 0
 
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
@@ -358,9 +349,7 @@ async def test_server_notice_to_all_recipients_when_exception(
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -415,7 +404,7 @@ async def test_server_notice_to_all_recipients_when_exception(
 
 
 @pytest.mark.asyncio
-async def test_server_notice_to_all_recipients_failed(monkeypatch: MonkeyPatch) -> None:
+async def test_server_notice_to_all_recipients_failed() -> None:
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users?filter[status]=active&page[first]=100"
@@ -427,9 +416,7 @@ async def test_server_notice_to_all_recipients_failed(monkeypatch: MonkeyPatch) 
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -480,14 +467,12 @@ async def test_server_notice_to_all_recipients_failed(monkeypatch: MonkeyPatch) 
 
 
 @pytest.mark.asyncio
-async def test_html_server_notice_to_one_recipient(monkeypatch: MonkeyPatch) -> None:
+async def test_html_server_notice_to_one_recipient() -> None:
     (
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -551,14 +536,12 @@ async def test_html_server_notice_to_one_recipient(monkeypatch: MonkeyPatch) -> 
 
 
 @pytest.mark.asyncio
-async def test_failed_server_notice_with_no_matrix_id(monkeypatch: MonkeyPatch) -> None:
+async def test_failed_server_notice_with_no_matrix_id() -> None:
     (
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -609,14 +592,12 @@ async def test_failed_server_notice_with_no_matrix_id(monkeypatch: MonkeyPatch) 
 
 
 @pytest.mark.asyncio
-async def test_server_notice_with_edit(monkeypatch: MonkeyPatch) -> None:
+async def test_server_notice_with_edit() -> None:
     (
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -699,14 +680,12 @@ async def test_server_notice_with_edit(monkeypatch: MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_to_one_recipient_with_coordinator(monkeypatch: MonkeyPatch) -> None:
+async def test_to_one_recipient_with_coordinator() -> None:
     (
         mocked_matrix_client1,
         mock_admin_client1,
         t1,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, "example.org", validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot("example.org", validator=ConfirmValidator())
     mocked_matrix_client1.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -715,11 +694,8 @@ async def test_to_one_recipient_with_coordinator(monkeypatch: MonkeyPatch) -> No
         mocked_matrix_client2,
         mock_admin_client2,
         t2,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch,
-        "example2.org",
-        validator=ConfirmValidator(),
-        is_coordinator=False,
+    ) = await create_fake_admin_bot(
+        "example2.org", is_coordinator=False, validator=ConfirmValidator()
     )
     mocked_matrix_client2.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))

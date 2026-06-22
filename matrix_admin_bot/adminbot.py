@@ -13,13 +13,9 @@ from pydantic_settings import (
 )
 from typing_extensions import override
 
-from matrix_admin_bot.commands.account_validity import AccountValidityCommand
-from matrix_admin_bot.commands.deactivate import DeactivateCommand
-from matrix_admin_bot.commands.memberships import MembershipsCommand
 from matrix_admin_bot.commands.next.add_email_v2 import AddEmailCommandV2
 from matrix_admin_bot.commands.next.admin_client import (
     AdminClient,
-    check_if_mas_enabled,
 )
 from matrix_admin_bot.commands.next.deactivate_v2 import DeactivateCommandV2
 from matrix_admin_bot.commands.next.lock_v2 import LockCommandV2
@@ -37,43 +33,28 @@ from matrix_admin_bot.commands.next.server_notice_v2 import ServerNoticeCommandV
 from matrix_admin_bot.commands.next.unlock_v2 import UnlockCommandV2
 from matrix_admin_bot.commands.next.user_v2 import UserCommandV2
 from matrix_admin_bot.commands.ping import PingCommand
-from matrix_admin_bot.commands.reset_password import ResetPasswordCommand
-from matrix_admin_bot.commands.room_details import RoomDetailsCommand
-from matrix_admin_bot.commands.room_state import RoomStateCommand
-from matrix_admin_bot.commands.server_notice import ServerNoticeCommand
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
 from matrix_command_bot.validation.validators.totp import TOTPValidator
 
 
-def get_command_list(homeserver: str | None) -> list[type[ICommand]]:
-    if check_if_mas_enabled(homeserver):
-        return [
-            DeactivateCommandV2,
-            ReactivateCommandV2,
-            PingCommand,
-            ResetPasswordCommandV2,
-            LockCommandV2,
-            UnlockCommandV2,
-            AddEmailCommandV2,
-            RemoveEmailCommandV2,
-            ServerNoticeCommandV2,
-            RoomDetailsCommandV2,
-            RoomStateCommandV2,
-            MembershipsCommandV2,
-            ReplaceEmailCommandV2,
-            ReplaceDisplayNameCommandV2,
-            UserCommandV2,
-        ]
+def get_command_list() -> list[type[ICommand]]:
     return [
-        ServerNoticeCommand,
-        ResetPasswordCommand,
-        AccountValidityCommand,
-        DeactivateCommand,
+        DeactivateCommandV2,
+        ReactivateCommandV2,
         PingCommand,
-        RoomDetailsCommand,
-        RoomStateCommand,
-        MembershipsCommand,
+        ResetPasswordCommandV2,
+        LockCommandV2,
+        UnlockCommandV2,
+        AddEmailCommandV2,
+        RemoveEmailCommandV2,
+        ServerNoticeCommandV2,
+        RoomDetailsCommandV2,
+        RoomStateCommandV2,
+        MembershipsCommandV2,
+        ReplaceEmailCommandV2,
+        ReplaceDisplayNameCommandV2,
+        UserCommandV2,
     ]
 
 
@@ -100,7 +81,7 @@ class HelpCommand(ICommand):
                 "please use `!<command> help` to get "
                 "more information about a specific command:\n\n"
             )
-            for command in get_command_list(self.matrix_client.homeserver):
+            for command in get_command_list():
                 keyword = getattr(command, "KEYWORD", None)
                 if keyword:
                     help_message += f"- **!{keyword}**\n"
@@ -165,7 +146,7 @@ class AdminBot(CommandBot):
 
         roles: dict[str, list[Role]] = {}
 
-        command_list = get_command_list(config.homeserver)
+        command_list = get_command_list()
         all_commands = [*command_list, HelpCommand]
         commands_dict = {c.__name__: c for c in all_commands}
         for role_name, role_model in config.roles.items():

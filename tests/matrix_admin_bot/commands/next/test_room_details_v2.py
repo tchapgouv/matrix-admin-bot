@@ -1,25 +1,22 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from nio import MatrixRoom
 
 from tests import (
     USER1_ID,
     OkValidator,
-    create_fake_admin_bot_with_mas_enabled,
+    create_fake_admin_bot,
 )
 
 
 @pytest.mark.asyncio
-async def test_room_details(monkeypatch: MonkeyPatch) -> None:
+async def test_room_details() -> None:
     (
         mocked_matrix_client,
         _,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
