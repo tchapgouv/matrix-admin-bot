@@ -15,7 +15,7 @@ async def test_help_command() -> None:
 
     mocked_client.check_sent_message("Here are the available commands")
 
-    for command in get_command_list(None):
+    for command in get_command_list():
         await mocked_client.fake_synced_text_message(
             room,
             USER1_ID,

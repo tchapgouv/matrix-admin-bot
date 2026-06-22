@@ -5,7 +5,7 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from nio import MatrixRoom
 
-from matrix_admin_bot.commands.server_notice import USER_ALL
+from matrix_admin_bot.commands.next.server_notice_v2 import USER_ALL
 from matrix_command_bot.validation.validators.confirm import ConfirmValidator
 from tests import (
     USER1_ID,
@@ -89,14 +89,12 @@ TEXT_DATA = "Some simple server notice"
 
 
 @pytest.mark.asyncio
-async def test_server_notice_to_all_recipients(monkeypatch: MonkeyPatch) -> None:
+async def test_server_notice_to_all_recipients() -> None:
     (
         mocked_matrix_client,
         _,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -149,14 +147,12 @@ async def test_server_notice_to_all_recipients(monkeypatch: MonkeyPatch) -> None
 
 
 @pytest.mark.asyncio
-async def test_html_server_notice_to_one_recipient(monkeypatch: MonkeyPatch) -> None:
+async def test_html_server_notice_to_one_recipient() -> None:
     (
         mocked_matrix_client,
         _,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -218,14 +214,12 @@ async def test_html_server_notice_to_one_recipient(monkeypatch: MonkeyPatch) -> 
 
 
 @pytest.mark.asyncio
-async def test_failed_server_notice_with_no_matrix_id(monkeypatch: MonkeyPatch) -> None:
+async def test_failed_server_notice_with_no_matrix_id() -> None:
     (
         mocked_matrix_client,
         _,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -275,14 +269,12 @@ async def test_failed_server_notice_with_no_matrix_id(monkeypatch: MonkeyPatch) 
 
 
 @pytest.mark.asyncio
-async def test_server_notice_with_edit(monkeypatch: MonkeyPatch) -> None:
+async def test_server_notice_with_edit() -> None:
     (
         mocked_matrix_client,
         _,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=ConfirmValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
     )
@@ -362,14 +354,12 @@ async def test_server_notice_with_edit(monkeypatch: MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_to_one_recipient_with_coordinator(monkeypatch: MonkeyPatch) -> None:
+async def test_to_one_recipient_with_coordinator() -> None:
     (
         mocked_matrix_client1,
         _,
         t1,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, "example.org", validator=ConfirmValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled("example.org", validator=ConfirmValidator())
     mocked_matrix_client1.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -377,12 +367,7 @@ async def test_to_one_recipient_with_coordinator(monkeypatch: MonkeyPatch) -> No
         mocked_matrix_client2,
         _,
         t2,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch,
-        "example2.org",
-        validator=ConfirmValidator(),
-        is_coordinator=False,
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled("example2.org", is_coordinator=False, validator=ConfirmValidator())
     mocked_matrix_client2.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )

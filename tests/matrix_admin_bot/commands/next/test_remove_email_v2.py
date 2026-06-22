@@ -20,7 +20,7 @@ from tests.matrix_admin_bot.commands.next import (
 
 
 @pytest.mark.asyncio
-async def test_remove_email(monkeypatch: MonkeyPatch) -> None:
+async def test_remove_email() -> None:
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -41,9 +41,7 @@ async def test_remove_email(monkeypatch: MonkeyPatch) -> None:
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -98,9 +96,7 @@ async def test_failed_remove_email_when_user_has_no_email(
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -120,7 +116,7 @@ async def test_failed_remove_email_when_user_has_no_email(
 
 
 @pytest.mark.asyncio
-async def test_failed_remove_email_when_api_in_error(monkeypatch: MonkeyPatch) -> None:
+async def test_failed_remove_email_when_api_in_error() -> None:
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         return mock_response_error(403, "Forbidden")
 
@@ -128,9 +124,7 @@ async def test_failed_remove_email_when_api_in_error(monkeypatch: MonkeyPatch) -
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -150,14 +144,12 @@ async def test_failed_remove_email_when_api_in_error(monkeypatch: MonkeyPatch) -
 
 
 @pytest.mark.asyncio
-async def test_non_local_user_remove_email(monkeypatch: MonkeyPatch) -> None:
+async def test_non_local_user_remove_email() -> None:
     (
         mocked_matrix_client,
         _,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )

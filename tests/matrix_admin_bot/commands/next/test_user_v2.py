@@ -19,7 +19,7 @@ from tests.matrix_admin_bot.commands.next import (
 
 
 @pytest.mark.asyncio
-async def test_user_v2(monkeypatch: MonkeyPatch) -> None:
+async def test_user_v2() -> None:
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -46,9 +46,7 @@ async def test_user_v2(monkeypatch: MonkeyPatch) -> None:
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(side_effect=request_synapse_side_effect)
     mock_admin_client.session.request.side_effect = Mock(
         side_effect=request_side_effect
@@ -92,7 +90,7 @@ async def test_user_v2(monkeypatch: MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_failed_user_v2(monkeypatch: MonkeyPatch) -> None:
+async def test_failed_user_v2() -> None:
     def request_side_effect(method: str, url: str) -> Mock:
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -104,9 +102,7 @@ async def test_failed_user_v2(monkeypatch: MonkeyPatch) -> None:
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -126,14 +122,12 @@ async def test_failed_user_v2(monkeypatch: MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_non_local_user_user_v2(monkeypatch: MonkeyPatch) -> None:
+async def test_non_local_user_user_v2() -> None:
     (
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )

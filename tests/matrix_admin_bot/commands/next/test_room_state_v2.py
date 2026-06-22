@@ -12,14 +12,12 @@ from tests import (
 
 
 @pytest.mark.asyncio
-async def test_room_state(monkeypatch: MonkeyPatch) -> None:
+async def test_room_state() -> None:
     (
         mocked_matrix_client,
         _,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot_with_mas_enabled(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
