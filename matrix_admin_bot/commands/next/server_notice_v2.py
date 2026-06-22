@@ -179,6 +179,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
         super().__init__(room, message, matrix_client, extra_config)
         self.validator: IValidator = extra_config.get("validator")  # pyright: ignore[reportAttributeAccessIssue]
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
+        self.limit: int = extra_config.get("limit", 100)  # pyright: ignore[reportAttributeAccessIssue]
 
         self.state = ServerNoticeState()
 
@@ -257,7 +258,8 @@ class ServerNoticeCommandV2(CommandWithSteps):
         ):
             # Get list of users
             resp = await self.admin_client.send_to_synapse(
-                "GET", "/_synapse/admin/v2/users?from=0&guests=false"
+                "GET", f"/_synapse/admin/v3/users?from=0&limit={self.limit}&guests=false&deactivated=false",
+                timeout=300
             )
             if not resp.ok:
                 return users
@@ -267,12 +269,13 @@ class ServerNoticeCommandV2(CommandWithSteps):
                     users = users | {
                         user["name"]
                         for user in data["users"]
-                        if not user["user_type"] and not user["deactivated"]
+                        if not user["user_type"]
                     }
                 if data.get("next_token"):
                     counter = data["next_token"]
                     resp = await self.admin_client.send_to_synapse(
-                        "GET", f"/_synapse/admin/v2/users?from={counter}&guests=false"
+                        "GET", f"/_synapse/admin/v2/users?from={counter}&limit={self.limit}&guests=false&deactivated=false",
+                        timeout=300,
                     )
                     if not resp.ok:
                         return users
