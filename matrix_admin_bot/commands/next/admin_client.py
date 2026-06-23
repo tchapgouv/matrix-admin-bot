@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 import requests
@@ -78,6 +79,96 @@ class AdminClient:
             failed_user_ids.append(user_id)
             return None
         return json_body["data"]["id"]
+
+    async def get_users(
+        self, server_name: str | None, json_report: dict[str, Any], limit: int = 100
+    ) -> set[str]:
+        if server_name is None:
+            return set()
+
+        users: set[str] = set()
+        endpoint = f"/api/admin/v1/users?filter[status]=active&page[first]={limit}"
+        resp = await self.send_to_mas_with_retry(endpoint)
+        json_body = await self.decode_response(resp)
+        if not resp.ok:
+            error = "Cannot get all users from MAS"
+            json_report["details"]["get_users"] = {
+                "error": error,
+                "description": json_body,
+            }
+            logger.warning(
+                "%s - %s users has been retrieved: %s",
+                error,
+                len(users),
+                f"{resp.status_code}-{resp.reason}-{json_body}",
+            )
+            return users
+
+        nb_users = 0
+        if json_body.get("meta") and json_body.get("meta").get("count"):
+            nb_users = json_body["meta"]["count"]
+
+        while True:
+            users = users | {
+                f"@{user['attributes']['username']}:{server_name}"
+                for user in json_body["data"]
+                if user["type"] == "user"
+            }
+            # Update user count
+            if json_body.get("meta") and json_body.get("meta").get("count"):
+                nb_users = json_body["meta"]["count"]
+            if json_body.get("links") and json_body.get("links").get("next"):
+                endpoint = json_body["links"]["next"]
+                resp = await self.send_to_mas_with_retry(endpoint)
+                json_body = await self.decode_response(resp)
+                if not resp.ok:
+                    error = "Cannot get all users from MAS"
+                    json_report["details"]["get_users"] = {
+                        "error": error,
+                        "description": json_body,
+                    }
+                    logger.warning(
+                        "%s - %s users has been retrieved: %s",
+                        error,
+                        len(users),
+                        f"{resp.status_code}-{resp.reason}-{json_body}",
+                    )
+                    return set()
+            else:
+                break
+
+        # Check if we have retrieve all users
+        if nb_users > len(users):
+            logger.warning(
+                "Not all users have been retrieved : %s/%s users", len(users), nb_users
+            )
+            error = "Cannot get all users from MAS"
+            json_report["details"]["get_users"] = {
+                "error": error,
+                "description": f"Not all users have been retrieved : "
+                f"{len(users)}/{nb_users} users",
+            }
+            return set()
+
+        return users
+
+    async def send_to_mas_with_retry(
+        self, endpoint: str, max_retry: int = 5
+    ) -> Response:
+        for retry_nb in range(max_retry):
+            try:
+                resp = self.send_to_mas("GET", endpoint=endpoint)
+                if resp.ok:
+                    return resp
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Request to MAS has failed", exc_info=e)
+                # use some backoff
+                await asyncio.sleep(0.5 * retry_nb)
+
+        resp = Response()
+        resp.status_code = 500
+        resp.reason = "Internal Server Error"
+        return resp
 
     async def decode_response(self, resp: Response) -> Any:  # noqa: ANN401
         if resp.headers.get("Content-Type", "").startswith("application/json") is True:

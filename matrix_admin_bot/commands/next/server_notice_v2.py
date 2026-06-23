@@ -21,6 +21,7 @@ from matrix_command_bot.step.reaction_steps import (
 from matrix_command_bot.util import (
     get_server_name,
     is_local_user,
+    randomword,
     send_report,
     set_status_reaction,
 )
@@ -179,6 +180,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
         super().__init__(room, message, matrix_client, extra_config)
         self.validator: IValidator = extra_config.get("validator")  # pyright: ignore[reportAttributeAccessIssue]
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
+        self.limit: int = extra_config.get("server_notice_limit", 100)  # pyright: ignore[reportAttributeAccessIssue]
 
         self.state = ServerNoticeState()
 
@@ -197,6 +199,8 @@ class ServerNoticeCommandV2(CommandWithSteps):
         self.json_report.setdefault("failed_users", "")
 
         self.server_name = get_server_name(self.matrix_client.user_id)
+
+        self.command_id = randomword(16)
 
     async def execute(self) -> bool:
         if self.command_text == "help":
@@ -228,7 +232,9 @@ class ServerNoticeCommandV2(CommandWithSteps):
         ]
 
     async def simple_execute(self) -> bool:
-        users = await self.get_users()
+        logger.info("Server Notice - %s - started", self.command_id)
+        users = await self.get_users(self.json_report, self.limit)
+        logger.info("Notice will be sent to %s users", len(users))
         result = True
         if self.state.notice_content:
             for user_id in users:
@@ -238,6 +244,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
         else:
             self.json_report["summary"]["status"] = "FAILED"
             self.json_report["summary"]["reason"] = "There is no notice to send"
+        logger.info("Server Notice - %s - completed", self.command_id)
 
         if self.json_report and result:
             await send_report(
@@ -249,40 +256,21 @@ class ServerNoticeCommandV2(CommandWithSteps):
             )
         return result
 
-    async def get_users(self) -> set[str]:
+    async def get_users(
+        self, json_report: dict[str, Any], limit: int = 100
+    ) -> set[str]:
         users: set[str] = set()
         if self.state.recipients and (
             (USER_ALL in self.state.recipients and len(self.state.recipients) == 1)
             or (self.server_name in self.state.recipients)
         ):
-            # Get list of users
-            resp = await self.admin_client.send_to_synapse(
-                "GET", "/_synapse/admin/v2/users?from=0&guests=false"
+            users = await self.admin_client.get_users(
+                self.server_name, json_report, limit
             )
-            if not resp.ok:
-                return users
-            while True:
-                data = await resp.json()
-                if "users" in data:
-                    users = users | {
-                        user["name"]
-                        for user in data["users"]
-                        if not user["user_type"] and not user["deactivated"]
-                    }
-                if data.get("next_token"):
-                    counter = data["next_token"]
-                    resp = await self.admin_client.send_to_synapse(
-                        "GET", f"/_synapse/admin/v2/users?from={counter}&guests=false"
-                    )
-                    if not resp.ok:
-                        return users
-                else:
-                    break
         elif self.state.recipients:
             for user_id in self.state.recipients:
                 if is_local_user(user_id, self.server_name):
                     users.add(user_id)
-
         return users
 
     async def send_server_notice(
@@ -311,7 +299,9 @@ class ServerNoticeCommandV2(CommandWithSteps):
                 if resp.status < 500 and resp.status != 429:
                     break
             except Exception as e:  # noqa: BLE001
-                logger.warning("Bot Admin has lost connection for %s: %s", user_id, e)
+                logger.warning(
+                    "Bot Admin has lost connection for %s: %s", user_id, exc_info=e
+                )
 
             # use some backoff
             await asyncio.sleep(0.5 * retry_nb)
