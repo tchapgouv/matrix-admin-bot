@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 import structlog
+from aiohttp import ClientResponse
 from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
@@ -21,6 +22,7 @@ from matrix_command_bot.step.reaction_steps import (
 from matrix_command_bot.util import (
     get_server_name,
     is_local_user,
+    randomword,
     send_report,
     set_status_reaction,
 )
@@ -179,6 +181,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
         super().__init__(room, message, matrix_client, extra_config)
         self.validator: IValidator = extra_config.get("validator")  # pyright: ignore[reportAttributeAccessIssue]
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
+        self.limit: int = extra_config.get("server_notice_limit", 100)  # pyright: ignore[reportAttributeAccessIssue]
 
         self.state = ServerNoticeState()
 
@@ -197,6 +200,8 @@ class ServerNoticeCommandV2(CommandWithSteps):
         self.json_report.setdefault("failed_users", "")
 
         self.server_name = get_server_name(self.matrix_client.user_id)
+
+        self.command_id = randomword(16)
 
     async def execute(self) -> bool:
         if self.command_text == "help":
@@ -228,18 +233,26 @@ class ServerNoticeCommandV2(CommandWithSteps):
         ]
 
     async def simple_execute(self) -> bool:
-        users = await self.get_users()
+        logger.info("Server Notice - %s - started", self.command_id)
+        users = await self.get_users(self.json_report, self.limit)
+        nb_users = len(users)
+        logger.info("Notice will be sent to %s users", nb_users)
         result = True
         if self.state.notice_content:
-            for user_id in users:
-                result = result and await self.send_server_notice(
+            for index, user_id in enumerate(users):
+                has_been_sent = await self.send_server_notice(
                     self.state.notice_content, user_id
+                )
+                result = result and has_been_sent
+                logger.info(
+                    "Process Server Notice %s/%s : %s", index + 1, nb_users, user_id
                 )
         else:
             self.json_report["summary"]["status"] = "FAILED"
             self.json_report["summary"]["reason"] = "There is no notice to send"
+        logger.info("Server Notice - %s - completed", self.command_id)
 
-        if self.json_report and result:
+        if self.json_report:
             await send_report(
                 json_report=self.json_report,
                 report_name=self.KEYWORD,
@@ -249,53 +262,41 @@ class ServerNoticeCommandV2(CommandWithSteps):
             )
         return result
 
-    async def get_users(self) -> set[str]:
+    async def get_users(
+        self, json_report: dict[str, Any], limit: int = 100
+    ) -> set[str]:
         users: set[str] = set()
         if self.state.recipients and (
             (USER_ALL in self.state.recipients and len(self.state.recipients) == 1)
             or (self.server_name in self.state.recipients)
         ):
-            # Get list of users
-            resp = await self.admin_client.send_to_synapse(
-                "GET", "/_synapse/admin/v2/users?from=0&guests=false"
+            users = await self.admin_client.get_users(
+                self.server_name, json_report, limit
             )
-            if not resp.ok:
-                return users
-            while True:
-                data = await resp.json()
-                if "users" in data:
-                    users = users | {
-                        user["name"]
-                        for user in data["users"]
-                        if not user["user_type"] and not user["deactivated"]
-                    }
-                if data.get("next_token"):
-                    counter = data["next_token"]
-                    resp = await self.admin_client.send_to_synapse(
-                        "GET", f"/_synapse/admin/v2/users?from={counter}&guests=false"
-                    )
-                    if not resp.ok:
-                        return users
-                else:
-                    break
         elif self.state.recipients:
             for user_id in self.state.recipients:
                 if is_local_user(user_id, self.server_name):
                     users.add(user_id)
-
         return users
 
     async def send_server_notice(
         self, message: Mapping[str, Any], user_id: str
     ) -> bool:
         if user_id.startswith("@_"):
-            # Skip appservice users
-            return True
-        content: dict[str, Any] = {}
-        for key in ["msgtype", "body", "format", "formatted_body"]:
-            if key in message:
-                content[key] = message[key]
+            return True  # Skip appservice users
 
+        content = {
+            key: message[key]
+            for key in ["msgtype", "body", "format", "formatted_body"]
+            if key in message
+        }
+
+        resp = await self._send_with_retry(user_id, content)
+        return await self._handle_response(user_id, resp)
+
+    async def _send_with_retry(
+        self, user_id: str, content: dict[str, Any]
+    ) -> ClientResponse | None:
         resp = None
         for retry_nb in range(10):
             try:
@@ -304,46 +305,28 @@ class ServerNoticeCommandV2(CommandWithSteps):
                     "/_synapse/admin/v1/send_server_notice",
                     data=json.dumps({"user_id": user_id, "content": content}),
                 )
-                if resp.ok:
-                    break
-                # Let's also stop there if we get a client error that
-                # is not a rate limit.
-                if resp.status < 500 and resp.status != 429:
+                if resp.ok or (resp.status < 500 and resp.status != 429):
                     break
             except Exception as e:  # noqa: BLE001
-                logger.warning("Bot Admin has lost connection for %s: %s", user_id, e)
-
-            # use some backoff
+                logger.warning(
+                    "Bot Admin has lost connection for %s", user_id, exc_info=e
+                )
             await asyncio.sleep(0.5 * retry_nb)
+        return resp
 
-        # TODO handle unknown user here and return
+    async def _handle_response(self, user_id: str, resp: ClientResponse | None) -> bool:
         if resp and resp.ok:
-            json_body = await resp.json()
-            logger.info("Notice sent for %s: %s", user_id, str(json_body))
-            self.json_report["summary"]["success"] = (
-                self.json_report["summary"]["success"] + 1
-            )
-
-        elif resp:
-            json_body = await resp.json()
-            logger.info("Notice sent for %s: %s", user_id, str(json_body))
-            self.json_report["summary"]["failed"] = (
-                self.json_report["summary"]["failed"] + 1
-            )
-            self.json_report["failed_users"] = (
-                self.json_report["failed_users"] + user_id + " "
-            )
-        else:
-            error_message = "No response from /_synapse/admin/v1/send_server_notice"
-            logger.info("Notice failed for %s: %s", user_id, error_message)
-            self.json_report["summary"]["failed"] = (
-                self.json_report["summary"]["failed"] + 1
-            )
-            self.json_report["failed_users"] = (
-                self.json_report["failed_users"] + user_id + " "
-            )
-
-        return True
+            self.json_report["summary"]["success"] += 1
+            return True
+        error_message = (
+            str(await resp.json())
+            if resp
+            else "No response from /_synapse/admin/v1/send_server_notice"
+        )
+        logger.warning("Notice failed for %s: %s", user_id, error_message)
+        self.json_report["summary"]["failed"] += 1
+        self.json_report["failed_users"] += user_id + " "
+        return False
 
     async def send_help(self) -> None:
         """Send the command's help message."""

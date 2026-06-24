@@ -1,4 +1,6 @@
 import json
+import secrets
+import string
 import time
 from typing import Any
 
@@ -85,3 +87,8 @@ async def set_status_reaction(
         )
 
     return None
+
+
+def randomword(length: int) -> str:
+    characters = string.ascii_lowercase + string.digits
+    return "".join(secrets.choice(characters) for _ in range(length))
