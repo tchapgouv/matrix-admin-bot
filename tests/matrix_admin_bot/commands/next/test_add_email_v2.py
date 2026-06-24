@@ -2,13 +2,12 @@ from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from nio import MatrixRoom
 
 from tests import (
     USER1_ID,
     OkValidator,
-    create_fake_admin_bot_with_mas_enabled,
+    create_fake_admin_bot,
 )
 from tests.matrix_admin_bot.commands.next import (
     USER,
@@ -20,7 +19,7 @@ from tests.matrix_admin_bot.commands.next import (
 
 
 @pytest.mark.asyncio
-async def test_add_email(monkeypatch: MonkeyPatch) -> None:
+async def test_add_email() -> None:
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -36,9 +35,7 @@ async def test_add_email(monkeypatch: MonkeyPatch) -> None:
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -71,9 +68,7 @@ async def test_add_email(monkeypatch: MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_failed_add_email_when_email_already_used(
-    monkeypatch: MonkeyPatch,
-) -> None:
+async def test_failed_add_email_when_email_already_used() -> None:
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -95,9 +90,7 @@ async def test_failed_add_email_when_email_already_used(
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -117,7 +110,7 @@ async def test_failed_add_email_when_email_already_used(
 
 
 @pytest.mark.asyncio
-async def test_failed_add_email_when_user_has_email(monkeypatch: MonkeyPatch) -> None:
+async def test_failed_add_email_when_user_has_email() -> None:
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -141,9 +134,7 @@ async def test_failed_add_email_when_user_has_email(monkeypatch: MonkeyPatch) ->
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -163,14 +154,12 @@ async def test_failed_add_email_when_user_has_email(monkeypatch: MonkeyPatch) ->
 
 
 @pytest.mark.asyncio
-async def test_failed_add_email_when_api_in_error(monkeypatch: MonkeyPatch) -> None:
+async def test_failed_add_email_when_api_in_error() -> None:
     (
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -192,14 +181,12 @@ async def test_failed_add_email_when_api_in_error(monkeypatch: MonkeyPatch) -> N
 
 
 @pytest.mark.asyncio
-async def test_non_local_user_add_email(monkeypatch: MonkeyPatch) -> None:
+async def test_non_local_user_add_email() -> None:
     (
         mocked_matrix_client,
         _,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )

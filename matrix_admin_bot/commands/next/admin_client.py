@@ -476,24 +476,6 @@ class AdminClient:
         return True
 
 
-def check_if_mas_enabled(homeserver: str | None) -> bool:
-    if homeserver:
-        url = f"{homeserver}/.well-known/matrix/client"
-        try:
-            resp = requests.request(
-                method="GET", url=url, verify=VERIFY_SSL_CERT, timeout=10
-            )
-            if resp.ok:
-                json_body = resp.json()
-                return (
-                    "org.matrix.msc2965.authentication" in json_body
-                    or "m.authentication" in json_body
-                )
-        except Exception:
-            logger.exception("Cannot request %s", url)
-    return False
-
-
 def format_timestamp(ts: int) -> str:
     # Si le timestamp est en millisecondes (> 1e10), on convertit en secondes
     if ts > 1e10:

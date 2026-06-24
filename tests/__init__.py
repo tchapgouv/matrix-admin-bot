@@ -7,12 +7,10 @@ from typing import Any, NoReturn
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from matrix_bot.bot import MatrixBot
 from nio import Event, MatrixRoom, RoomMessage, RoomMessageText
 from typing_extensions import override
 
-from matrix_admin_bot.adminbot import AdminBot, AdminBotConfig
 from matrix_admin_bot.commands.next.admin_client import AdminClient
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
@@ -182,6 +180,13 @@ class FakeWellKnownResponse:
         return {"org.matrix.msc2965.authentication": {}}
 
 
+class FakeWellKnownResponseLegacy:
+    ok = True
+
+    def json(self) -> dict[str, Any]:
+        return {}
+
+
 async def fake_synced_text_message(
     mocked_clients: list[MatrixClientMock],
     room: MatrixRoom,
@@ -222,47 +227,10 @@ async def create_fake_admin_bot(
     *,
     is_coordinator: bool = True,
     **extra_config: Any,
-) -> tuple[MatrixClientMock, Task[None]]:
-    bot = AdminBot(
-        AdminBotConfig(
-            homeserver="http://localhost:8008",
-            bot_username="",
-            bot_password="",
-            mas_base_url="",
-            mas_access_token="",
-            is_coordinator=is_coordinator,
-            allowed_room_ids=[],
-            totps={},
-        ),
-        **extra_config,
-    )
-    return await mock_client_and_run(bot, server_name)
-
-
-async def create_fake_admin_bot_with_mas_enabled(
-    monkeypatch: MonkeyPatch,
-    server_name: str = "example.org",
-    *,
-    is_coordinator: bool = True,
-    **extra_config: Any,
 ) -> tuple[MatrixClientMock, AdminClient, Task[None]]:
-    # Request to Well-known says that MAS is enabled
-    def fake_request_metadata(
-        method: str,  # noqa: ARG001
-        url: str,  # noqa: ARG001
-        verify: bool,  # noqa :FBT001,ARG001
-        timeout: int,  # noqa: ARG001
-    ) -> FakeWellKnownResponse:
-        return FakeWellKnownResponse()
-
-    monkeypatch.setattr(
-        "matrix_admin_bot.commands.next.admin_client.requests.request",
-        fake_request_metadata,
-    )
-
     # Initialize the bot and the matrix client
-    bot = AdminBot(
-        AdminBotConfig(
+    bot = TchapAdminBot(
+        TchapAdminBotConfig(
             homeserver="http://localhost:8008",
             bot_username="",
             bot_password="",

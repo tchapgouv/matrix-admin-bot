@@ -1,13 +1,12 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from nio import MatrixRoom
 
 from tests import (
     USER1_ID,
     OkValidator,
-    create_fake_admin_bot_with_mas_enabled,
+    create_fake_admin_bot,
 )
 from tests.matrix_admin_bot.commands.next import (
     USER,
@@ -17,7 +16,7 @@ from tests.matrix_admin_bot.commands.next import (
 
 
 @pytest.mark.asyncio
-async def test_unlock(monkeypatch: MonkeyPatch) -> None:
+async def test_unlock() -> None:
     def request_side_effect(method: str, url: str) -> Mock:
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -29,9 +28,7 @@ async def test_unlock(monkeypatch: MonkeyPatch) -> None:
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -64,7 +61,7 @@ async def test_unlock(monkeypatch: MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_failed_unlock(monkeypatch: MonkeyPatch) -> None:
+async def test_failed_unlock() -> None:
     def request_side_effect(method: str, url: str) -> Mock:
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -76,9 +73,7 @@ async def test_failed_unlock(monkeypatch: MonkeyPatch) -> None:
         mocked_matrix_client,
         mock_admin_client,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )
@@ -96,14 +91,12 @@ async def test_failed_unlock(monkeypatch: MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_non_local_user_unlock(monkeypatch: MonkeyPatch) -> None:
+async def test_non_local_user_unlock() -> None:
     (
         mocked_matrix_client,
         _,
         t,
-    ) = await create_fake_admin_bot_with_mas_enabled(
-        monkeypatch, validator=OkValidator()
-    )
+    ) = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(
         return_value=Mock(ok=True, json=AsyncMock(return_value={}))
     )

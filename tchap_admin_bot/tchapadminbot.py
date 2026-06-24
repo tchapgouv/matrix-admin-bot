@@ -32,50 +32,61 @@ class TchapAdminBot(AdminBot):
     async def transform_cmd_input(
         self, _command: type[ICommand], cmd_input: list[str]
     ) -> list[str]:
-        potential_emails = filter(
-            lambda user_id: not (user_id.startswith("@") and get_server_name(user_id)),
-            cmd_input,
+        def filter_email(email: str) -> bool:
+            return (
+                not (email.startswith("@") and get_server_name(email)) and "@" in email
+            )
+
+        potential_emails = set(
+            filter(
+                filter_email,
+                cmd_input,
+            )
         )
 
         email_to_mxid_map: dict[str | None, Any] = {}
 
-        access_token = await self.get_identity_server_access_token()
-        pepper = await self.get_hash_pepper()
-        if self.matrix_client.client_session and access_token and pepper:
+        # get mxid to identity server only if we have valid email
+        if len(potential_emails) > 0:
+            access_token = await self.get_identity_server_access_token()
+            pepper = await self.get_hash_pepper()
+            if self.matrix_client.client_session and access_token and pepper:
 
-            def hash_email(email: str) -> str:
-                return str(
-                    unpaddedbase64.encode_base64(
-                        sha256(f"{email} email {pepper}".encode()).digest(),
-                        urlsafe=True,
+                def hash_email(email: str) -> str:
+                    return str(
+                        unpaddedbase64.encode_base64(
+                            sha256(f"{email} email {pepper}".encode()).digest(),
+                            urlsafe=True,
+                        )
                     )
-                )
 
-            address_hash_to_email_map = {
-                hash_email(email): email for email in potential_emails
-            }
-            res = await self.matrix_client.client_session.post(
-                f"{self.identity_server}/_matrix/identity/v2/lookup",
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                },
-                json={
-                    "addresses": list(address_hash_to_email_map.keys()),
-                    "algorithm": "sha256",
-                    "pepper": pepper,
-                },
-            )
-            if res.ok:
-                body = await res.json()
-                address_hash_to_mxid_map: dict[str, str] = body.get("mappings", {})
-                email_to_mxid_map = {
-                    address_hash_to_email_map.get(address_hash): mxid
-                    for address_hash, mxid in address_hash_to_mxid_map.items()
+                address_hash_to_email_map = {
+                    hash_email(email): email for email in potential_emails
                 }
-            else:
-                logger.warning(
-                    "Error when doing the lookup", emails=potential_emails, result=res
+                res = await self.matrix_client.client_session.post(
+                    f"{self.identity_server}/_matrix/identity/v2/lookup",
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                    },
+                    json={
+                        "addresses": list(address_hash_to_email_map.keys()),
+                        "algorithm": "sha256",
+                        "pepper": pepper,
+                    },
                 )
+                if res.ok:
+                    body = await res.json()
+                    address_hash_to_mxid_map: dict[str, str] = body.get("mappings", {})
+                    email_to_mxid_map = {
+                        address_hash_to_email_map.get(address_hash): mxid
+                        for address_hash, mxid in address_hash_to_mxid_map.items()
+                    }
+                else:
+                    logger.warning(
+                        "Error when doing the lookup",
+                        emails=potential_emails,
+                        result=res,
+                    )
 
         return [email_to_mxid_map.get(user_id, user_id) for user_id in cmd_input]
 
