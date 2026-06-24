@@ -35,6 +35,7 @@ bot_password = "***"                     # Bot password
 mas_base_url = "http://127.0.0.1:8080"   # Matrix Authentication Service URL
 mas_access_token = "***"                 # Matrix Authentication Service PAT to access Admin API
 server_notice_limit = 100                # Limit of users to retrieve per request in the server notice
+server_notice_nb_workers = 4             # Number of workers to use in the server notice
 
 
 # Set to true for the primary bot instance
