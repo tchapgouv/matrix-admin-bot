@@ -1,7 +1,7 @@
 import asyncio
 import json
 from collections.abc import Awaitable, Callable, Mapping
-from typing import Any
+from typing import Any, Coroutine
 
 import structlog
 from aiohttp import ClientResponse
@@ -265,8 +265,8 @@ class ServerNoticeCommandV2(CommandWithSteps):
     async def simple_execute(self) -> bool:
         logger.info("Server Notice - %s - started", self.command_id)
         users = await self.get_users(self.json_report, self.limit)
-        users=list(users)
         nb_users = len(users)
+        users=list(users)
         logger.info("Notice will be sent to %s users", nb_users)
         result = True
 
@@ -274,54 +274,44 @@ class ServerNoticeCommandV2(CommandWithSteps):
             self.json_report["summary"]["status"] = "FAILED"
             self.json_report["summary"]["reason"] = "There is no notice to send"
         else:
-            chunk_size = 4
-            for chunk_start in range(0, nb_users, chunk_size):
-                chunk = users[chunk_start:chunk_start + chunk_size]
+            user_queue: asyncio.Queue[str] = asyncio.Queue()
+            result_queue: asyncio.Queue[tuple[str, bool]] = asyncio.Queue()
 
-                results = await asyncio.gather(
-                    *[
-                        self.send_server_notice(self.state.notice_content, user_id)
-                        for user_id in chunk
-                    ],
-                    return_exceptions=True,
-                )
+            for user_id in users:
+                await user_queue.put(user_id)
 
-                for index, (user_id, (success, _)) in enumerate(zip(chunk, results)):
-                    result = result and success
-                    if success:
-                        self.json_report["summary"]["success"] += 1
-                    else:
-                        self.json_report["summary"]["failed"] += 1
-                        self.json_report["failed_users"] += user_id + " "
+            processed = {"count": 0}
+
+            async def worker() -> None:
+                while not user_queue.empty():
+                    try:
+                        user_id = user_queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        break
+
+                    success = await self.send_server_notice(
+                        self.state.notice_content, user_id
+                    )
+                    processed["count"] += 1
                     logger.info(
                         "Process Server Notice %s/%s : %s",
-                        chunk_start + index + 1,
+                        processed["count"],
                         nb_users,
                         user_id,
                     )
-                for index, (user_id, user_result) in enumerate(zip(chunk, results)):
-                    if isinstance(user_result, Exception):
-                        logger.exception(
-                            "Unexpected error for %s", user_id, exc_info=user_result
-                        )
-                        self.json_report["summary"]["failed"] += 1
-                        self.json_report["failed_users"] += user_id + " "
-                        result = False
-                    else:
-                        (success, _) = user_result
-                        result = result and success
-                        if success:
-                            self.json_report["summary"]["success"] += 1
-                        else:
-                            self.json_report["summary"]["failed"] += 1
-                            self.json_report["failed_users"] += user_id + " "
+                    await result_queue.put((user_id, success))
+                    user_queue.task_done()
 
-                    logger.info(
-                        "Process Server Notice %s/%s : %s",
-                        chunk_start + index + 1,
-                        nb_users,
-                        user_id,
-                    )
+            await asyncio.gather(*[worker() for _ in range(4)])
+
+            while not result_queue.empty():
+                user_id, success = result_queue.get_nowait()
+                if success:
+                    self.json_report["summary"]["success"] += 1
+                else:
+                    result = False
+                    self.json_report["summary"]["failed"] += 1
+                    self.json_report["failed_users"] += user_id + " "
 
         logger.info("Server Notice - %s - completed", self.command_id)
 
@@ -401,16 +391,16 @@ class ServerNoticeCommandV2(CommandWithSteps):
     #     self.json_report["failed_users"] += user_id + " "
     #     return False
 
-    async def _handle_response(self, user_id: str, resp: ClientResponse) -> tuple[bool, str]:
+    async def _handle_response(self, user_id: str, resp: ClientResponse) -> bool:
         if resp and resp.ok:
-            return True, user_id
+            return True
         else:
             error_message = (
                 str(await resp.json()) if resp else
                 "No response from /_synapse/admin/v1/send_server_notice"
             )
             logger.info("Notice failed for %s: %s", user_id, error_message)
-            return False, user_id
+            return False
 
     async def send_help(self) -> None:
         """Send the command's help message."""
