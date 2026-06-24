@@ -232,24 +232,78 @@ class ServerNoticeCommandV2(CommandWithSteps):
             ResultReactionStep(self, self.state),
         ]
 
+    # async def simple_execute(self) -> bool:
+    #     logger.info("Server Notice - %s - started", self.command_id)
+    #     users = await self.get_users(self.json_report, self.limit)
+    #     nb_users = len(users)
+    #     logger.info("Notice will be sent to %s users", nb_users)
+    #     result = True
+    #     if self.state.notice_content:
+    #         for index, user_id in enumerate(users):
+    #             has_been_sent = await self.send_server_notice(
+    #                 self.state.notice_content, user_id
+    #             )
+    #             result = result and has_been_sent
+    #             logger.info(
+    #                 "Process Server Notice %s/%s : %s", index + 1, nb_users, user_id
+    #             )
+    #     else:
+    #         self.json_report["summary"]["status"] = "FAILED"
+    #         self.json_report["summary"]["reason"] = "There is no notice to send"
+    #     logger.info("Server Notice - %s - completed", self.command_id)
+    #
+    #     if self.json_report:
+    #         await send_report(
+    #             json_report=self.json_report,
+    #             report_name=self.KEYWORD,
+    #             matrix_client=self.matrix_client,
+    #             room_id=self.room.room_id,
+    #             replied_event_id=self.message.event_id,
+    #         )
+    #     return result
+
     async def simple_execute(self) -> bool:
         logger.info("Server Notice - %s - started", self.command_id)
         users = await self.get_users(self.json_report, self.limit)
+        users=list(users)
         nb_users = len(users)
         logger.info("Notice will be sent to %s users", nb_users)
         result = True
-        if self.state.notice_content:
-            for index, user_id in enumerate(users):
-                has_been_sent = await self.send_server_notice(
-                    self.state.notice_content, user_id
-                )
-                result = result and has_been_sent
-                logger.info(
-                    "Process Server Notice %s/%s : %s", index + 1, nb_users, user_id
-                )
-        else:
+
+        if not self.state.notice_content:
             self.json_report["summary"]["status"] = "FAILED"
             self.json_report["summary"]["reason"] = "There is no notice to send"
+        else:
+            chunk_size = 4
+            for chunk_start in range(0, nb_users, chunk_size):
+                chunk = users[chunk_start:chunk_start + chunk_size]
+
+                results = await asyncio.gather(
+                    *[
+                        self.send_server_notice(self.state.notice_content, user_id)
+                        for user_id in chunk
+                    ],
+                    return_exceptions=True,
+                )
+
+                for index, (user_id, user_result) in enumerate(zip(chunk, results)):
+                    if isinstance(user_result, Exception):
+                        logger.exception(
+                            "Unexpected error for %s", user_id, exc_info=user_result
+                        )
+                        self.json_report["summary"]["failed"] += 1
+                        self.json_report["failed_users"] += user_id + " "
+                        result = False
+                    else:
+                        result = result and user_result
+
+                    logger.info(
+                        "Process Server Notice %s/%s : %s",
+                        chunk_start + index + 1,
+                        nb_users,
+                        user_id,
+                    )
+
         logger.info("Server Notice - %s - completed", self.command_id)
 
         if self.json_report:
@@ -314,19 +368,30 @@ class ServerNoticeCommandV2(CommandWithSteps):
             await asyncio.sleep(0.5 * retry_nb)
         return resp
 
-    async def _handle_response(self, user_id: str, resp: ClientResponse | None) -> bool:
+    # async def _handle_response(self, user_id: str, resp: ClientResponse | None) -> bool:
+    #     if resp and resp.ok:
+    #         self.json_report["summary"]["success"] += 1
+    #         return True
+    #     error_message = (
+    #         str(await resp.json())
+    #         if resp
+    #         else "No response from /_synapse/admin/v1/send_server_notice"
+    #     )
+    #     logger.warning("Notice failed for %s: %s", user_id, error_message)
+    #     self.json_report["summary"]["failed"] += 1
+    #     self.json_report["failed_users"] += user_id + " "
+    #     return False
+
+    async def _handle_response(self, user_id: str, resp: ClientResponse) -> tuple[bool, str]:
         if resp and resp.ok:
-            self.json_report["summary"]["success"] += 1
-            return True
-        error_message = (
-            str(await resp.json())
-            if resp
-            else "No response from /_synapse/admin/v1/send_server_notice"
-        )
-        logger.warning("Notice failed for %s: %s", user_id, error_message)
-        self.json_report["summary"]["failed"] += 1
-        self.json_report["failed_users"] += user_id + " "
-        return False
+            return True, user_id
+        else:
+            error_message = (
+                str(await resp.json()) if resp else
+                "No response from /_synapse/admin/v1/send_server_notice"
+            )
+            logger.info("Notice failed for %s: %s", user_id, error_message)
+            return False, user_id
 
     async def send_help(self) -> None:
         """Send the command's help message."""
