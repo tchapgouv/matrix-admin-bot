@@ -476,8 +476,10 @@ class AdminClient:
         return True
 
 
-def format_timestamp(ts: int) -> str:
-    # Si le timestamp est en millisecondes (> 1e10), on convertit en secondes
+def format_timestamp(ts: int | None) -> str | None:
+    if ts is None:
+        return None
+    # if ts is in ms (> 1e10), we convert to second
     if ts > 1e10:
         ts = int(ts / 1000)
     return datetime.fromtimestamp(ts, tz=ZoneInfo("Europe/Paris")).strftime(
