@@ -65,6 +65,26 @@ class AdminClient:
             method, endpoint, headers=headers, **kwargs
         )
 
+    async def is_email_valid(
+        self, server_name: str | None, email: str | None
+    ) -> tuple[bool, str]:
+        if email is None or email.startswith("@") or "@" not in email:
+            return False, f"Email={email} is not valid: missing @"
+        homeserver = await self.get_homeserver(email)
+        result: bool = homeserver is not None and homeserver == server_name
+        if not result:
+            return False, f"Email={email} is not valid: Wrong homeserver-{homeserver}"
+        return True, ""
+
+    async def get_homeserver(self, email: str) -> str | None:
+        resp = await self.send_to_synapse(
+            "GET", f"/_matrix/identity/api/v1/info?medium=email&address={email}"
+        )
+        if resp.ok:
+            json_body = await self.decode_client_response(resp)
+            return json_body.get("hs", None)
+        return None
+
     async def get_mas_user_id(
         self, json_report: dict[str, Any], failed_user_ids: list[str], user_id: str
     ) -> str | None:
@@ -176,6 +196,11 @@ class AdminClient:
         if resp.headers.get("Content-Type", "").startswith("application/json") is True:
             return resp.json()
         return resp.text
+
+    async def decode_client_response(self, resp: ClientResponse) -> Any:  # noqa: ANN401
+        if resp.headers.get("Content-Type", "").startswith("application/json") is True:
+            return await resp.json()
+        return await resp.text()
 
     async def get_devices_from_synapse(
         self, json_report: dict[str, Any], user_id: str

@@ -38,6 +38,14 @@ class ReplaceEmailCommandV2(UserRelatedCommand):
         self.json_report.setdefault(user_id, {})
         self.json_report[user_id]["errors"] = []
 
+        is_email_valid, error_message = await self.admin_client.is_email_valid(
+            self.server_name, email
+        )
+        if not is_email_valid:
+            self.json_report[user_id]["errors"] = error_message
+            self.failed_user_ids.append(user_id)
+            return False
+
         # Get the user from the MAS with its localpart
         mas_user_id = await self.admin_client.get_mas_user_id(
             self.json_report, self.failed_user_ids, user_id
