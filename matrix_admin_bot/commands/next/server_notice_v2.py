@@ -182,6 +182,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
         self.validator: IValidator = extra_config.get("validator")  # pyright: ignore[reportAttributeAccessIssue]
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
         self.limit: int = extra_config.get("server_notice_limit", 100)  # pyright: ignore[reportAttributeAccessIssue]
+        self.nb_workers: int = extra_config.get("server_notice_nb_workers", 1)  # pyright: ignore[reportAttributeAccessIssue]
 
         self.state = ServerNoticeState()
 
@@ -236,20 +237,53 @@ class ServerNoticeCommandV2(CommandWithSteps):
         logger.info("Server Notice - %s - started", self.command_id)
         users = await self.get_users(self.json_report, self.limit)
         nb_users = len(users)
+        users = list(users)
         logger.info("Notice will be sent to %s users", nb_users)
         result = True
-        if self.state.notice_content:
-            for index, user_id in enumerate(users):
-                has_been_sent = await self.send_server_notice(
-                    self.state.notice_content, user_id
-                )
-                result = result and has_been_sent
-                logger.info(
-                    "Process Server Notice %s/%s : %s", index + 1, nb_users, user_id
-                )
-        else:
+
+        if not self.state.notice_content:
             self.json_report["summary"]["status"] = "FAILED"
             self.json_report["summary"]["reason"] = "There is no notice to send"
+        else:
+            user_queue: asyncio.Queue[str] = asyncio.Queue()
+            result_queue: asyncio.Queue[tuple[str, bool]] = asyncio.Queue()
+
+            for user_id in users:
+                await user_queue.put(user_id)
+
+            processed = {"count": 0}
+
+            async def worker() -> None:
+                while not user_queue.empty():
+                    try:
+                        user_id = user_queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        break
+
+                    success = await self.send_server_notice(
+                        self.state.notice_content, user_id
+                    )
+                    processed["count"] += 1
+                    logger.info(
+                        "Process Server Notice %s/%s : %s",
+                        processed["count"],
+                        nb_users,
+                        user_id,
+                    )
+                    await result_queue.put((user_id, success))
+                    user_queue.task_done()
+
+            await asyncio.gather(*[worker() for _ in range(self.nb_workers)])
+
+            while not result_queue.empty():
+                user_id, success = result_queue.get_nowait()
+                if success:
+                    self.json_report["summary"]["success"] += 1
+                else:
+                    result = False
+                    self.json_report["summary"]["failed"] += 1
+                    self.json_report["failed_users"] += user_id + " "
+
         logger.info("Server Notice - %s - completed", self.command_id)
 
         if self.json_report:
@@ -316,7 +350,6 @@ class ServerNoticeCommandV2(CommandWithSteps):
 
     async def _handle_response(self, user_id: str, resp: ClientResponse | None) -> bool:
         if resp and resp.ok:
-            self.json_report["summary"]["success"] += 1
             return True
         error_message = (
             str(await resp.json())
@@ -324,8 +357,6 @@ class ServerNoticeCommandV2(CommandWithSteps):
             else "No response from /_synapse/admin/v1/send_server_notice"
         )
         logger.warning("Notice failed for %s: %s", user_id, error_message)
-        self.json_report["summary"]["failed"] += 1
-        self.json_report["failed_users"] += user_id + " "
         return False
 
     async def send_help(self) -> None:
