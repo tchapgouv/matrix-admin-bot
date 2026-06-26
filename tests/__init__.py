@@ -173,20 +173,6 @@ class MatrixClientMock:
         pytest.fail("No matching sent message")
 
 
-class FakeWellKnownResponse:
-    ok = True
-
-    def json(self) -> dict[str, Any]:
-        return {"org.matrix.msc2965.authentication": {}}
-
-
-class FakeWellKnownResponseLegacy:
-    ok = True
-
-    def json(self) -> dict[str, Any]:
-        return {}
-
-
 async def fake_synced_text_message(
     mocked_clients: list[MatrixClientMock],
     room: MatrixRoom,

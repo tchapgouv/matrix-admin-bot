@@ -20,6 +20,17 @@ from tests.matrix_admin_bot.commands.next import (
 
 @pytest.mark.asyncio
 async def test_add_email() -> None:
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+        if method == "GET" and url.endswith(
+            "/_matrix/identity/api/v1/info?medium=email&address=user@domain.tld"
+        ):
+            return AsyncMock(
+                ok=True,
+                headers={"Content-Type": "application/json"},
+                json=AsyncMock(return_value={"hs": "example.org"}),
+            )
+        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -36,9 +47,7 @@ async def test_add_email() -> None:
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
+    mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
     mock_admin_client.session.request = Mock(side_effect=request_side_effect)
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -69,6 +78,17 @@ async def test_add_email() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_add_email_when_email_already_used() -> None:
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+        if method == "GET" and url.endswith(
+            "/_matrix/identity/api/v1/info?medium=email&address=user@domain.tld"
+        ):
+            return AsyncMock(
+                ok=True,
+                headers={"Content-Type": "application/json"},
+                json=AsyncMock(return_value={"hs": "example.org"}),
+            )
+        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -91,9 +111,7 @@ async def test_failed_add_email_when_email_already_used() -> None:
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
+    mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
     mock_admin_client.session.request = Mock(side_effect=request_side_effect)
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
@@ -111,6 +129,17 @@ async def test_failed_add_email_when_email_already_used() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_add_email_when_user_has_email() -> None:
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+        if method == "GET" and url.endswith(
+            "/_matrix/identity/api/v1/info?medium=email&address=user@domain.tld"
+        ):
+            return AsyncMock(
+                ok=True,
+                headers={"Content-Type": "application/json"},
+                json=AsyncMock(return_value={"hs": "example.org"}),
+            )
+        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -135,9 +164,7 @@ async def test_failed_add_email_when_user_has_email() -> None:
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
+    mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
     mock_admin_client.session.request = Mock(side_effect=request_side_effect)
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
@@ -155,14 +182,23 @@ async def test_failed_add_email_when_user_has_email() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_add_email_when_api_in_error() -> None:
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+        if method == "GET" and url.endswith(
+            "/_matrix/identity/api/v1/info?medium=email&address=user@domain.tld"
+        ):
+            return AsyncMock(
+                ok=True,
+                headers={"Content-Type": "application/json"},
+                json=AsyncMock(return_value={"hs": "example.org"}),
+            )
+        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+
     (
         mocked_matrix_client,
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
+    mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
     mock_admin_client.session.request.return_value = mock_response_error(
         403, "Forbidden"
     )

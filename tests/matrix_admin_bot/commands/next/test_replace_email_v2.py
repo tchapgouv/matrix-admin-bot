@@ -20,6 +20,17 @@ from tests.matrix_admin_bot.commands.next import (
 
 @pytest.mark.asyncio
 async def test_replace_email() -> None:
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+        if method == "GET" and url.endswith(
+            "/_matrix/identity/api/v1/info?medium=email&address=newemail@domain.tld"
+        ):
+            return AsyncMock(
+                ok=True,
+                headers={"Content-Type": "application/json"},
+                json=AsyncMock(return_value={"hs": "example.org"}),
+            )
+        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
@@ -36,9 +47,7 @@ async def test_replace_email() -> None:
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
+    mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
     mock_admin_client.session.request = Mock(side_effect=request_side_effect)
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -72,15 +81,57 @@ async def test_replace_email() -> None:
 
 
 @pytest.mark.asyncio
+async def test_failed_replace_email_with_new_email_on_wrong_homeserver() -> None:
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+        if method == "GET" and url.startswith(
+            "/_matrix/identity/api/v1/info?medium=email&address=newemail@domain.tld"
+        ):
+            return AsyncMock(
+                ok=True,
+                headers={"Content-Type": "application/json"},
+                json=AsyncMock(return_value={"hs": "other.example.org"}),
+            )
+        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+
+    (
+        mocked_matrix_client,
+        _,
+        t,
+    ) = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
+
+    room = MatrixRoom("!roomid:example.org", USER1_ID)
+
+    await mocked_matrix_client.fake_synced_text_message(
+        room, USER1_ID, "!replace_email @user_to_reset:example.org newemail@domain.tld"
+    )
+
+    mocked_matrix_client.check_sent_message(
+        "Couldn't replace email of the following users:"
+    )
+
+    t.cancel()
+
+
+@pytest.mark.asyncio
 async def test_failed_replace_email_when_api_in_error() -> None:
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+        if method == "GET" and url.startswith(
+            "/_matrix/identity/api/v1/info?medium=email&address=user@domain.tld"
+        ):
+            return AsyncMock(
+                ok=True,
+                headers={"Content-Type": "application/json"},
+                json=AsyncMock(return_value={"hs": "example.org"}),
+            )
+        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+
     (
         mocked_matrix_client,
         mock_admin_client,
         t,
     ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
+    mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
     mock_admin_client.session.request.return_value = mock_response_error(
         403, "Forbidden"
     )
