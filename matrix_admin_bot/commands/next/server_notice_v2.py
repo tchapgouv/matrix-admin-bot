@@ -253,7 +253,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
 
             processed = {"count": 0}
 
-            async def worker() -> None:
+            async def worker(worker_id: int) -> None:
                 while not user_queue.empty():
                     try:
                         user_id = user_queue.get_nowait()
@@ -265,7 +265,8 @@ class ServerNoticeCommandV2(CommandWithSteps):
                     )
                     processed["count"] += 1
                     logger.info(
-                        "Process Server Notice %s/%s : %s",
+                        "Worker %s - Process Server Notice %s/%s : %s",
+                        worker_id,
                         processed["count"],
                         nb_users,
                         user_id,
@@ -273,7 +274,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
                     await result_queue.put((user_id, success))
                     user_queue.task_done()
 
-            await asyncio.gather(*[worker() for _ in range(self.nb_workers)])
+            await asyncio.gather(*[worker(i) for i in range(self.nb_workers)])
 
             while not result_queue.empty():
                 user_id, success = result_queue.get_nowait()
