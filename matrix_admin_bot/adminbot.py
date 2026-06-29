@@ -112,6 +112,7 @@ class AdminBotConfig(BaseSettings):
     is_coordinator: bool = True
     roles: dict[str, RoleModel] = {}
     server_notice_limit: int = 100
+    server_notice_nb_workers: int = 1
 
     @classmethod
     @override
@@ -143,6 +144,8 @@ class AdminBot(CommandBot):
         bot_lib_config.allowed_room_ids = config.allowed_room_ids
         if "server_notice_limit" not in extra_config:
             extra_config["server_notice_limit"] = config.server_notice_limit
+        if "server_notice_nb_workers" not in extra_config:
+            extra_config["server_notice_nb_workers"] = config.server_notice_nb_workers
 
         roles: dict[str, list[Role]] = {}
 
