@@ -35,6 +35,7 @@ class ReactivateCommandV2(UserRelatedCommand):
 
         # Initialize report for user_id
         self.json_report.setdefault(user_id, {})
+        self.json_report[user_id]["sessions"] = {}
         self.json_report[user_id]["errors"] = []
 
         # Get devices from the user in Synapse

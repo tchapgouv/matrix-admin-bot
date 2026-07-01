@@ -234,7 +234,10 @@ class AdminClient:
             )
             return True
         json_body = await resp.json()
-        json_report[user_id]["errors"]["user"] = json_body
+        error = f"Cannot get user information from localpart {user_id}"
+        json_report[user_id]["errors"].append(
+            {"error": error, "description": json_body}
+        )
         failed_user_ids.append(user_id)
         return False
 
@@ -253,9 +256,10 @@ class AdminClient:
             count = json_body["meta"]["count"]
             if count > 0:
                 sessions = json_body["data"]
-                json_report[user_id]["compat-sessions"] = sessions
+                json_report[user_id]["sessions"]["compat-sessions"] = sessions
                 logger.debug(
-                    "Compat-Sessions : %s", json_report[user_id]["compat-sessions"]
+                    "Compat-Sessions : %s",
+                    json_report[user_id]["sessions"]["compat-sessions"],
                 )
         else:
             error = f"Cannot get compat session  from localpart {user_id}"
@@ -279,9 +283,10 @@ class AdminClient:
             count = json_body["meta"]["count"]
             if count > 0:
                 sessions = json_body["data"]
-                json_report[user_id]["user-sessions"] = sessions
+                json_report[user_id]["sessions"]["user-sessions"] = sessions
                 logger.debug(
-                    "User-Sessions : %s", json_report[user_id]["user-sessions"]
+                    "User-Sessions : %s",
+                    json_report[user_id]["sessions"]["user-sessions"],
                 )
         else:
             error = f"Cannot get user session for {user_id}"
@@ -305,9 +310,10 @@ class AdminClient:
             count = json_body["meta"]["count"]
             if count > 0:
                 sessions = json_body["data"]
-                json_report[user_id]["oauth2-sessions"] = sessions
+                json_report[user_id]["sessions"]["oauth2-sessions"] = sessions
                 logger.debug(
-                    "OAuth2-Sessions : %s", json_report[user_id]["oauth2-sessions"]
+                    "OAuth2-Sessions : %s",
+                    json_report[user_id]["sessions"]["oauth2-sessions"],
                 )
         else:
             error = f"Cannot get oauth2 session for {user_id}"
