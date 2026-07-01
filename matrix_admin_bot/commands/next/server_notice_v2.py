@@ -352,6 +352,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
     async def _stop_retry(self, resp: ClientResponse) -> bool:
         if resp.ok or (resp.status < 500 and resp.status != 429):
             return True
+        # NOTE: Synapse replied a 'User not found' with an error 500 - "M_FORBIDDEN"
         if resp.status == 500:
             json_body = await resp.json()
             return json_body.get("errcode") == "M_FORBIDDEN"

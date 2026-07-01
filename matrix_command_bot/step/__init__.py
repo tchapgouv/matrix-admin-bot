@@ -89,9 +89,8 @@ class CommandWithSteps(ICommand, ABC):
     async def reply_received(self, reply: RoomMessage) -> None:
         if self.is_step_running:
             logger.warning(
-                "Step %s/%s is already running",
-                self.current_step_index,
-                len(self.steps),
+                "Step %s is already running",
+                self.steps[self.current_step_index].__class__.__name__,
             )
         else:
             await self.resume_execute(reply)
