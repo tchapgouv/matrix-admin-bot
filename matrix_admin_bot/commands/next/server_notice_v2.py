@@ -333,14 +333,14 @@ class ServerNoticeCommandV2(CommandWithSteps):
         self, user_id: str, content: dict[str, Any]
     ) -> ClientResponse | None:
         resp = None
-        for retry_nb in range(10):
+        for retry_nb in range(3):
             try:
                 resp = await self.admin_client.send_to_synapse(
                     "POST",
                     "/_synapse/admin/v1/send_server_notice",
                     data=json.dumps({"user_id": user_id, "content": content}),
                 )
-                if resp.ok or (resp.status < 500 and resp.status != 429):
+                if await self._stop_retry(resp):
                     break
             except Exception as e:  # noqa: BLE001
                 logger.warning(
@@ -348,6 +348,15 @@ class ServerNoticeCommandV2(CommandWithSteps):
                 )
             await asyncio.sleep(0.5 * retry_nb)
         return resp
+
+    async def _stop_retry(self, resp: ClientResponse) -> bool:
+        if resp.ok or (resp.status < 500 and resp.status != 429):
+            return True
+        # NOTE: Synapse replied a 'User not found' with an error 500 - "M_FORBIDDEN"
+        if resp.status == 500:
+            json_body = await resp.json()
+            return json_body.get("errcode") == "M_FORBIDDEN"
+        return False
 
     async def _handle_response(self, user_id: str, resp: ClientResponse | None) -> bool:
         if resp and resp.ok:
