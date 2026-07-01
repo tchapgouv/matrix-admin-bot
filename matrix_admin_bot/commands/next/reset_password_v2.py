@@ -36,6 +36,7 @@ class ResetPasswordCommandV2(UserRelatedCommand):
         # Initialize report for user_id
         self.json_report.setdefault(user_id, {})
         self.json_report[user_id]["errors"] = []
+        self.json_report[user_id]["new_password"] = ""
 
         # Get devices from the user in Synapse
         await self.admin_client.get_devices_from_synapse(self.json_report, user_id)
@@ -66,6 +67,9 @@ class ResetPasswordCommandV2(UserRelatedCommand):
         set_password_success = await self.admin_client.set_password(
             self.json_report, self.failed_user_ids, mas_user_id, password, user_id
         )
+        # Report password
+        self.json_report[user_id]["new_password"] = password
+
         if not set_password_success:
             return False
 
