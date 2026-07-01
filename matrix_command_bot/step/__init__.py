@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from enum import Enum
 from typing import Any
 
+import structlog
 from matrix_bot.client import MatrixClient
 from nio import MatrixRoom, RoomMessage
 from typing_extensions import override
@@ -15,6 +16,9 @@ class CommandAction(Enum):
     CONTINUE = 2
     RETRY = 3
     WAIT_FOR_NEXT_REPLY = 4
+
+
+logger = structlog.getLogger(__name__)
 
 
 class ICommandStep:
@@ -42,6 +46,7 @@ class CommandWithSteps(ICommand, ABC):
         super().__init__(room, message, matrix_client, extra_config)
         self.current_step_index: int = 0
         self.current_result = True
+        self.is_step_running = False
 
     @abstractmethod
     async def create_steps(self) -> list[ICommandStep]: ...
@@ -75,8 +80,18 @@ class CommandWithSteps(ICommand, ABC):
     async def execute_step(
         self, step: ICommandStep, reply: RoomMessage | None
     ) -> tuple[bool, CommandAction]:
-        return await step.execute(reply)
+        self.is_step_running = True
+        result = await step.execute(reply)
+        self.is_step_running = False
+        return result
 
     @override
     async def reply_received(self, reply: RoomMessage) -> None:
-        await self.resume_execute(reply)
+        if self.is_step_running:
+            logger.warning(
+                "Step %s/%s is already running",
+                self.current_step_index,
+                len(self.steps),
+            )
+        else:
+            await self.resume_execute(reply)
