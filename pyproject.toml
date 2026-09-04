@@ -12,6 +12,8 @@ dependencies = [
     "structlog",
     "matrix-nio",
     "requests",
+    "vodozemac",
+    "canonicaljson",
 ]
 dynamic = ["version"]
 

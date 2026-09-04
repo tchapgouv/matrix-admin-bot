@@ -17,6 +17,9 @@ from matrix_admin_bot.commands.next.admin_client import (
     AdminClient,
 )
 from matrix_admin_bot.commands.next.deactivate_v2 import DeactivateCommandV2
+from matrix_admin_bot.commands.next.list_unverified_devices import (
+    ListUnverifiedDevicesCommand,
+)
 from matrix_admin_bot.commands.next.lock_v2 import LockCommandV2
 from matrix_admin_bot.commands.next.memberships_v2 import MembershipsCommandV2
 from matrix_admin_bot.commands.next.reactivate_v2 import ReactivateCommandV2
@@ -54,6 +57,7 @@ def get_command_list() -> list[type[ICommand]]:
         ReplaceEmailCommandV2,
         ReplaceDisplayNameCommandV2,
         UserCommandV2,
+        ListUnverifiedDevicesCommand,
     ]
 
 
