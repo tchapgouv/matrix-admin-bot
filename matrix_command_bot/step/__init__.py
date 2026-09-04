@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from enum import Enum
-from typing import Any
+from typing import Any, override
 
 import structlog
 from matrix_bot.client import MatrixClient
 from nio import MatrixRoom, RoomMessage
-from typing_extensions import override
 
 from matrix_command_bot.command import ICommand
 

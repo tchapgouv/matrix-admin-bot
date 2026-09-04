@@ -1,11 +1,10 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, override
 
 import pytest
 from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
-from typing_extensions import override
 
 from matrix_command_bot.simple_command import SimpleCommand
 from tests import USER1_ID, create_fake_command_bot

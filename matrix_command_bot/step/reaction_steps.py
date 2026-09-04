@@ -1,5 +1,6 @@
+from typing import override
+
 from nio import RoomMessage
-from typing_extensions import override
 
 from matrix_command_bot.step import (
     CommandAction,

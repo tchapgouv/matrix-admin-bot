@@ -182,7 +182,7 @@ class AdminClient:
                 resp = self.send_to_mas("GET", endpoint=endpoint)
                 if resp.ok:
                     return resp
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.warning("Request to MAS has failed", exc_info=e)
                 # use some backoff
                 await asyncio.sleep(0.5 * retry_nb)

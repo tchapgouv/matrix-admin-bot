@@ -1,10 +1,9 @@
-from typing import Any
+from typing import Any, override
 
 import pytest
 from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
-from typing_extensions import override
 
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 from matrix_command_bot.validation.validators.confirm import ConfirmValidator

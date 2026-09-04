@@ -2,14 +2,14 @@
 name = "matrix_admin_bot"
 description = "Admin bot"
 authors = [{ name = "Tchap Team", email = "tech@tchap.beta.gouv.fr" }]
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 license = "MIT"
 dependencies = [
     "tchap-bot",
-    "pydantic>=2.12.3,<3",
-    "pydantic-settings>=2.11.0,<3",
-    "pyotp>=2.9.0,<3",
-    "structlog>=24.4.0,<25",
+    "pydantic>=2.13.5,<3",
+    "pydantic-settings>=2.15.0,<3",
+    "pyotp>=2.10.0,<3",
+    "structlog",
     "matrix-nio",
     "requests",
 ]
@@ -21,11 +21,11 @@ tchap-admin-bot = "tchap_admin_bot.tchapadminbot:main"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.14.1,<0.15",
-    "basedpyright>=1.32.0,<2",
-    "pytest>=8.4.2,<9",
-    "pytest-asyncio>=1.2.0,<2",
-    "pytest-cov>=7.0.0,<8",
+    "ruff>=0.16.6,<0.17",
+    "basedpyright>=1.39.10,<2",
+    "pytest>=9.1.1,<10",
+    "pytest-asyncio>=1.4.0,<2",
+    "pytest-cov>=7.1.0,<8",
 ]
 
 [build-system]
@@ -52,11 +52,10 @@ include = [
 [tool.uv]
 
 [tool.uv.sources]
-tchap-bot = { git = "https://code.peren.fr/open-source/tchapbot.git", rev = "8cbfab64d956cc4c79d9e2e86926c4c98576327a" }
-matrix-nio = { git = "https://github.com/matrix-nio/matrix-nio.git", rev = "eeace59baa634ab0ee747ba40a7a96a686a9e536" }
+tchap-bot = { git = "https://code.peren.fr/MatMaul/tchapbot.git", rev = "6d5dc977f4ad83810df97069d454a29e47c761d9" }
 
 [tool.pyright]
-pythonVersion = "3.11"
+pythonVersion = "3.13"
 
 typeCheckingMode = "strict"
 
@@ -85,6 +84,7 @@ ignore = [
     "PLR0913",  # Too many arguments in function definition
     "TC001",   # Move application import into a type-checking block
     "ASYNC110", # Use `anyio.Event` instead of awaiting `anyio.sleep` in a `while` loop
+    "CPY001",   # Do not mandate copyright notice on all files
 
     # TO BE FIXED !!
     "TRY002",   # Create your own exception

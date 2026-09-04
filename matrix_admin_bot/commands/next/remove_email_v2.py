@@ -1,10 +1,9 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, override
 
 import structlog
 from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
-from typing_extensions import override
 
 from matrix_admin_bot import UserRelatedCommand
 from matrix_admin_bot.commands.next.admin_client import AdminClient
