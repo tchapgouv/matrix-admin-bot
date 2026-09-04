@@ -39,10 +39,10 @@ class CommandBot(MatrixBot):
         if extra_config:
             self.extra_config = extra_config
 
-        self.recent_events_cache: cachetools.TTLCache[str, RoomMessage] = (
+        self.recent_events_cache: cachetools.TTLCache[str, RoomMessage] = (  # pyright: ignore[reportAttributeAccessIssue]
             cachetools.TTLCache(maxsize=5120, ttl=24 * 60 * 60)
         )
-        self.commands_cache: cachetools.TTLCache[str, ICommand] = cachetools.TTLCache(
+        self.commands_cache: cachetools.TTLCache[str, ICommand] = cachetools.TTLCache(  # pyright: ignore[reportAttributeAccessIssue]
             maxsize=5120, ttl=24 * 60 * 60
         )
 

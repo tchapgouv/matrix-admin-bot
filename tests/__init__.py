@@ -3,13 +3,12 @@ import time
 from asyncio import Task
 from collections.abc import Awaitable, Callable, Mapping
 from functools import wraps
-from typing import Any, NoReturn
+from typing import Any, NoReturn, override
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 from matrix_bot.bot import MatrixBot
 from nio import Event, MatrixRoom, RoomMessage, RoomMessageText
-from typing_extensions import override
 
 from matrix_admin_bot.commands.next.admin_client import AdminClient
 from matrix_command_bot.command import ICommand

@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable, Mapping
-from typing import Any
+from typing import Any, override
 
 from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
-from typing_extensions import override
 
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.step import CommandAction, CommandWithSteps, ICommandStep

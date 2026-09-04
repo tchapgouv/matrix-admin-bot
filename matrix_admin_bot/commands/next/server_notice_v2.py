@@ -1,14 +1,13 @@
 import asyncio
 import json
 from collections.abc import Awaitable, Callable, Mapping
-from typing import Any
+from typing import Any, override
 
 import structlog
 from aiohttp import ClientResponse
 from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
-from typing_extensions import override
 
 from matrix_admin_bot.commands.next.admin_client import AdminClient
 from matrix_command_bot.command import ICommand
@@ -342,7 +341,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
                 )
                 if await self._stop_retry(resp):
                     break
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.warning(
                     "Bot Admin has lost connection for %s", user_id, exc_info=e
                 )

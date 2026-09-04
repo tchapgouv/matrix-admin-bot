@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, override
 
 from matrix_bot.bot import MatrixClient, bot_lib_config
 from matrix_bot.eventparser import MessageEventParser
@@ -11,7 +11,6 @@ from pydantic_settings import (
     SettingsConfigDict,
     TomlConfigSettingsSource,
 )
-from typing_extensions import override
 
 from matrix_admin_bot.commands.next.add_email_v2 import AddEmailCommandV2
 from matrix_admin_bot.commands.next.admin_client import (

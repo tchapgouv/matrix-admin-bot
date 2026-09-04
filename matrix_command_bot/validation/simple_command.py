@@ -1,10 +1,9 @@
 from abc import ABC
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, override
 
 from matrix_bot.client import MatrixClient
 from nio import MatrixRoom, RoomMessage
-from typing_extensions import override
 
 from matrix_command_bot.simple_command import (
     SimpleCommand,

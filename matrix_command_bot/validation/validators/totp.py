@@ -1,6 +1,7 @@
+from typing import override
+
 from nio import RoomMessage, RoomMessageText
 from pyotp import TOTP
-from typing_extensions import override
 
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.util import get_fallback_stripped_body

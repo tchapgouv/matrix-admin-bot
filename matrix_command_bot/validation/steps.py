@@ -1,5 +1,6 @@
+from typing import override
+
 from nio import RoomMessage
-from typing_extensions import override
 
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.step import CommandAction, ICommandStep
@@ -39,9 +40,9 @@ class ValidateStep(ICommandStep):
 
     async def send_prompt(self) -> None:
         if self.command.extra_config.get("is_coordinator", True):
-            confirm_text = self.validator.prompt if self.validator.prompt else ""
+            confirm_text = self.validator.prompt or ""
             if confirm_text:
-                message = self.message if self.message else ""
+                message = self.message or ""
                 if message:
                     confirm_text = f"{message}\n\n" + confirm_text
 

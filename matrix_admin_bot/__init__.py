@@ -1,11 +1,10 @@
 from collections.abc import Awaitable, Callable, Mapping
-from typing import Any
+from typing import Any, override
 
 import structlog
 from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
-from typing_extensions import override
 
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.util import get_server_name, is_local_user, send_report
