@@ -30,6 +30,9 @@ from matrix_admin_bot.commands.next.room_details_v2 import RoomDetailsCommandV2
 from matrix_admin_bot.commands.next.room_state_v2 import RoomStateCommandV2
 from matrix_admin_bot.commands.next.server_notice_v2 import ServerNoticeCommandV2
 from matrix_admin_bot.commands.next.unlock_v2 import UnlockCommandV2
+from matrix_admin_bot.commands.next.unverified_sessions import (
+    UnverifiedSessionsCommand,
+)
 from matrix_admin_bot.commands.next.user_v2 import UserCommandV2
 from matrix_admin_bot.commands.ping import PingCommand
 from matrix_command_bot.command import ICommand
@@ -54,6 +57,7 @@ def get_command_list() -> list[type[ICommand]]:
         ReplaceEmailCommandV2,
         ReplaceDisplayNameCommandV2,
         UserCommandV2,
+        UnverifiedSessionsCommand,
     ]
 
 
