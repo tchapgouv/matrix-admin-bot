@@ -261,7 +261,7 @@ class AdminClient:
         failed_user_ids: list[str],
         mas_user_id: str,
         user_id: str,
-    ) -> dict[str, str | None]:
+    ) -> dict[str, dict[str, Any]]:
         params = {
             "filter[user]": mas_user_id,
             "filter[status]": "active",
@@ -274,13 +274,14 @@ class AdminClient:
             count = json_body["meta"]["count"]
             if count > 0:
                 sessions = json_body["data"]
-                json_report[user_id]["sessions"][f"{session_type}-sessions"] = sessions
+                json_report[user_id].setdefault("sessions", {})[
+                    f"{session_type}-sessions"
+                ] = sessions
                 return {
-                    session["id"]: session.get("attributes", {}).get("device_id")
-                    for session in sessions
+                    session["id"]: session.get("attributes", {}) for session in sessions
                 }
             return {}
-        error = f"Cannot get {session_type} session for {user_id}"
+        error = f"Cannot get {session_type} sessions for {user_id}"
         json_report[user_id]["errors"].append(
             {"error": error, "description": json_body}
         )
@@ -294,7 +295,7 @@ class AdminClient:
         failed_user_ids: list[str],
         mas_user_id: str,
         user_id: str,
-    ) -> dict[str, str | None]:
+    ) -> dict[str, dict[str, Any]]:
         return await self.get_sessions(
             "compat", json_report, failed_user_ids, mas_user_id, user_id
         )
@@ -305,7 +306,7 @@ class AdminClient:
         failed_user_ids: list[str],
         mas_user_id: str,
         user_id: str,
-    ) -> dict[str, str | None]:
+    ) -> dict[str, dict[str, Any]]:
         return await self.get_sessions(
             "user", json_report, failed_user_ids, mas_user_id, user_id
         )
@@ -316,7 +317,7 @@ class AdminClient:
         failed_user_ids: list[str],
         mas_user_id: str,
         user_id: str,
-    ) -> dict[str, str | None]:
+    ) -> dict[str, dict[str, Any]]:
         return await self.get_sessions(
             "oauth2", json_report, failed_user_ids, mas_user_id, user_id
         )
@@ -327,7 +328,7 @@ class AdminClient:
         failed_user_ids: list[str],
         mas_user_id: str,
         user_id: str,
-    ) -> dict[str, str | None]:
+    ) -> dict[str, dict[str, Any]]:
         return await self.get_sessions(
             "personal", json_report, failed_user_ids, mas_user_id, user_id
         )
