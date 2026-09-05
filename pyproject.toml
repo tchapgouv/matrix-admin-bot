@@ -87,6 +87,8 @@ ignore = [
     "TC001",   # Move application import into a type-checking block
     "ASYNC110", # Use `anyio.Event` instead of awaiting `anyio.sleep` in a `while` loop
     "CPY001",   # Do not mandate copyright notice on all files
+    "TRY003",   # Sometimes simple Exception with custom message is enough
+    "EM101",    # We'll survive with a doubled info in the stack trace
 
     # TO BE FIXED !!
     "TRY002",   # Create your own exception

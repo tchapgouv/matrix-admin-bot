@@ -1,5 +1,5 @@
-from collections.abc import Mapping
 import json
+from collections.abc import Mapping
 from typing import Any, override
 
 import canonicaljson
@@ -28,13 +28,11 @@ class ListUnverifiedDevicesCommand(UserRelatedCommand):
         super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
 
-    # TODO decrease complexity
-    async def list_unverified_devices(self, user_id: str) -> bool:  # noqa: C901, PLR0911, PLR0912, PLR0915
-        if get_server_name(user_id) != self.server_name:
-            return True
-
-        self.json_report.setdefault(user_id, {})
-        self.json_report[user_id]["errors"] = []
+    async def get_device_keys(
+        self, user_id: str
+    ) -> tuple[dict[str, Any], Ed25519PublicKey] | None:
+        """Get the device keys for a user. Parsed SSK will also be returned,
+        after verifying that it has been properly signed by the MSK."""
 
         resp = await self.admin_client.send_to_synapse(
             "POST",
@@ -42,34 +40,83 @@ class ListUnverifiedDevicesCommand(UserRelatedCommand):
             data=json.dumps({"device_keys": {user_id: []}}),
         )
         if not resp.ok:
-            self.json_report[user_id]["errors"].append("Can't query device keys")
-            return False
+            raise Exception("Can't query device keys")
         keys = await resp.json()
 
         all_device_keys = keys.get("device_keys", {}).get(user_id, {})
         if len(all_device_keys) == 0:
+            return None
+
+        self_signing_keys = keys.get("self_signing_keys", {}).get(user_id, {})
+        ed25519_ssk_str = get_key(
+            "ed25519",
+            self_signing_keys.get("keys", {}),
+        )
+
+        if not ed25519_ssk_str:
+            raise Exception("no SSK available")
+
+        try:
+            ed25519_ssk = Ed25519PublicKey.from_base64(ed25519_ssk_str)
+        except Exception as e:
+            raise Exception("SSK could not be parsed") from e
+
+        ed25519_msk_str = get_key(
+            "ed25519",
+            keys.get("master_keys", {}).get(user_id, {}).get("keys", {}),
+        )
+
+        if not ed25519_msk_str:
+            raise Exception("no MSK available")
+
+        try:
+            ed25519_msk = Ed25519PublicKey.from_base64(ed25519_msk_str)
+        except Exception as e:
+            raise Exception("MSK could not be parsed") from e
+
+        msk_signature = (
+            self_signing_keys.get("signatures", {})
+            .get(user_id, {})
+            .get(f"ed25519:{ed25519_msk_str}")
+        )
+        if not msk_signature:
+            raise Exception("no MSK signature available on the SSK")
+
+        del self_signing_keys["signatures"]
+        if "unsigned" in self_signing_keys:
+            del self_signing_keys["unsigned"]
+
+        try:
+            ed25519_msk.verify_signature(
+                canonicaljson.encode_canonical_json(self_signing_keys),
+                Ed25519Signature.from_base64(msk_signature),
+            )
+        except Exception as e:
+            raise Exception("MSK signature of the SSK is invalid") from e
+
+        return all_device_keys, ed25519_ssk
+
+    # TODO decrease complexity
+    async def list_unverified_devices(self, user_id: str) -> bool:  # noqa: C901, PLR0912
+        if get_server_name(user_id) != self.server_name:
+            return True
+
+        self.json_report.setdefault(user_id, {})
+        self.json_report[user_id]["errors"] = []
+
+        try:
+            res = await self.get_device_keys(user_id)
+        except Exception as e:  # noqa: BLE001
+            self.json_report[user_id]["errors"].append(str(e))
+            return False
+
+        if res is None:
             # No device keys so nothing to report
             del self.json_report[user_id]
             return True
 
-        self_signing_keys_and_sigs = keys.get("self_signing_keys", {}).get(user_id, {})
-        ed25519_ssk_str = None
-        for k, v in self_signing_keys_and_sigs.get("keys", {}).items():
-            if k.startswith("ed25519:"):
-                ed25519_ssk_str = v
-                continue
-
-        if not ed25519_ssk_str:
-            self.json_report[user_id]["errors"].append("No SSK available")
-            return False
-
-        try:
-            ed25519_ssk = Ed25519PublicKey.from_base64(ed25519_ssk_str)
-        except:  # noqa: E722
-            self.json_report[user_id]["errors"].append("can't parse SSK")
-            return False
-
-        # TODO check that SSK is properly signed by the MSK (if not what do we do ??)
+        all_device_keys, ed25519_ssk = res
+        ed25519_ssk_str = ed25519_ssk.to_base64()
 
         unverified_devices: list[str] = []
         for device_id in all_device_keys:
@@ -102,7 +149,8 @@ class ListUnverifiedDevicesCommand(UserRelatedCommand):
                 continue
 
             del device_keys["signatures"]
-            del device_keys["unsigned"]
+            if "unsigned" in device_keys:
+                del device_keys["unsigned"]
             try:
                 ed25519_ssk.verify_signature(
                     canonicaljson.encode_canonical_json(device_keys),
@@ -183,3 +231,10 @@ Lists unverified devices of the specified users.
 - `!list_unverified_devices @user:example.com`
 - `!list_unverified_devices @user1:example.com @user2:example.com`
 """
+
+
+def get_key(key_type: str, keys: dict[str, Any]) -> str | None:
+    for k, v in keys.items():
+        if k.startswith(f"{key_type}:"):
+            return v
+    return None
