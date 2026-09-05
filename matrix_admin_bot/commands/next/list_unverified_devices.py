@@ -1,5 +1,5 @@
 import json
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, override
 
 import canonicaljson
@@ -8,14 +8,15 @@ from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
 from vodozemac import Ed25519PublicKey, Ed25519Signature, SignatureException
 
-from matrix_admin_bot import UserRelatedCommand
+from matrix_admin_bot import InteractiveValidatedCommand
 from matrix_admin_bot.commands.next.admin_client import AdminClient
-from matrix_command_bot.util import get_server_name
+from matrix_command_bot.command import ICommand
+from matrix_command_bot.util import get_server_name, is_local_user
 
 logger = structlog.getLogger(__name__)
 
 
-class ListUnverifiedDevicesCommand(UserRelatedCommand):
+class ListUnverifiedDevicesCommand(InteractiveValidatedCommand):
     KEYWORD = "list_unverified_devices"
 
     def __init__(
@@ -26,6 +27,11 @@ class ListUnverifiedDevicesCommand(UserRelatedCommand):
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
+
+        self.transform_cmd_input_fct: (
+            Callable[[type[ICommand], list[str]], Awaitable[list[str]]] | None
+        ) = extra_config.get("transform_cmd_input_fct")  # pyright: ignore[reportAttributeAccessIssue]
+
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
 
     async def get_device_keys(
@@ -217,12 +223,30 @@ class ListUnverifiedDevicesCommand(UserRelatedCommand):
 
         return True
 
+    @override
+    async def should_execute(self) -> bool:
+        splitted = self.command_text.split()
+        self.from_ts = None
+        if len(splitted) > 0 and splitted[0].startswith("from_ts="):
+            self.from_ts = int(splitted[0][8:])
+            splitted = splitted[1:]
+
+        self.user_ids = splitted
+
+        if self.transform_cmd_input_fct:
+            self.user_ids = await self.transform_cmd_input_fct(
+                self.__class__, self.user_ids
+            )
+        return any(
+            is_local_user(user_id, self.server_name) for user_id in self.user_ids
+        )
+
     @property
     @override
     def help_message(self) -> str:
         return """
 **Usage**:
-`!list_unverified_devices <user1> [user2] ...`
+`!list_unverified_devices [from_ts=1782307502] <user1> [user2] ...`
 
 **Purpose**:
 Lists unverified devices of the specified users.
