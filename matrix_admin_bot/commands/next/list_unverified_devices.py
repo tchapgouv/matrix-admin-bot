@@ -103,7 +103,7 @@ class ListUnverifiedDevicesCommand(InteractiveValidatedCommand):
         return all_device_keys, ed25519_ssk
 
     # TODO decrease complexity
-    async def list_unverified_devices(self, user_id: str) -> bool:  # noqa: C901, PLR0912
+    async def list_unverified_devices(self, user_id: str) -> bool:  # noqa: C901
         if get_server_name(user_id) != self.server_name:
             return True
 
@@ -179,18 +179,32 @@ class ListUnverifiedDevicesCommand(InteractiveValidatedCommand):
         # In this case we would probably have a recent device verified, and everything
         # else unverified.
 
-        for device_id in unverified_devices:
-            resp = await self.admin_client.send_to_synapse(
-                "GET", f"/_synapse/admin/v2/users/{user_id}/devices/{device_id}"
+        mas_user_id = await self.admin_client.get_mas_user_id(
+            self.json_report, [], user_id
+        )
+        if mas_user_id is None:
+            return False
+
+        mas_devices_sessions = await self.admin_client.get_oauth2_sessions(
+            self.json_report, [], mas_user_id, user_id
+        )
+        mas_devices_sessions.update(
+            await self.admin_client.get_compat_sessions(
+                self.json_report, [], mas_user_id, user_id
             )
-            if not resp.ok:
-                self.json_report[user_id]["errors"].append(
-                    f"Cannot retrieve device details for unverified device {device_id}"
-                )
-            else:
-                self.json_report[user_id].setdefault(
-                    "unverified_devices_details", []
-                ).append(await resp.json())
+        )
+        self.json_report[user_id]["mas_devices_sessions"] = mas_devices_sessions
+
+        synapse_devices = {}
+        resp = await self.admin_client.send_to_synapse(
+            "GET", f"/_synapse/admin/v2/users/{user_id}/devices"
+        )
+
+        if not resp.ok:
+            self.json_report[user_id]["errors"].append("Cannot retrieve device details")
+
+        synapse_devices = (await resp.json()).get("devices", [])
+        self.json_report[user_id]["synapse_devices"] = synapse_devices
 
         return False
 
