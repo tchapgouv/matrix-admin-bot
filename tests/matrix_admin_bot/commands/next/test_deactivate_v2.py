@@ -13,6 +13,7 @@ from tests import (
 from tests.matrix_admin_bot.commands.next import (
     COMPAT_SESSIONS_LIST,
     OAUTH2_SESSIONS_LIST,
+    PERSONAL_SESSIONS_LIST,
     USER,
     USER_SESSIONS_LIST,
     mock_response_error,
@@ -34,6 +35,8 @@ async def test_deactivate() -> None:
             return mock_response_with_json(OAUTH2_SESSIONS_LIST)
         if method == "GET" and url.endswith("/api/admin/v1/user-sessions"):
             return mock_response_with_json(USER_SESSIONS_LIST)
+        if method == "GET" and url.endswith("/api/admin/v1/personal-sessions"):
+            return mock_response_with_json(PERSONAL_SESSIONS_LIST)
         return mock_response_error(403, "Forbidden")
 
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
@@ -52,14 +55,15 @@ async def test_deactivate() -> None:
     # one call to fetch the devices
     check_requests_sent(mocked_matrix_client.send, "/devices")
     # 1 call to get the mas user id on MAS
-    # 3 calls to get each session type
+    # 4 calls to get each session type
     # 1 call to deactivate user
     check_requests_sent(
         mocked_matrix_client.client_session,
         "/users/by-username",
         "/compat-sessions",
-        "/user-sessions",
         "/oauth2-sessions",
+        "/user-sessions",
+        "/personal-sessions",
         "/deactivate",
     )
 

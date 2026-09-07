@@ -15,6 +15,7 @@ from tests import (
 from tests.matrix_admin_bot.commands.next import (
     COMPAT_SESSIONS_LIST,
     OAUTH2_SESSIONS_LIST,
+    PERSONAL_SESSIONS_LIST,
     USER,
     USER_SESSIONS_LIST,
     mock_response_error,
@@ -44,6 +45,8 @@ async def test_mail_address() -> None:  # noqa: C901
             return mock_response_with_json(OAUTH2_SESSIONS_LIST)
         if method == "GET" and url.endswith("/api/admin/v1/user-sessions"):
             return mock_response_with_json(USER_SESSIONS_LIST)
+        if method == "GET" and url.endswith("/api/admin/v1/personal-sessions"):
+            return mock_response_with_json(PERSONAL_SESSIONS_LIST)
         return mock_response_error(403, "Forbidden")
 
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
@@ -111,7 +114,7 @@ async def test_mail_address() -> None:  # noqa: C901
     check_requests_sent(mocked_matrix_client.send, "/devices")
     # 3 calls to the identity server to resolve the email
     # 1 call to get the mas user id on MAS
-    # 3 calls to get each session type
+    # 4 calls to get each session type
     # 1 call to reset the password
     # 1 call to kill sessions
     check_requests_sent(
@@ -121,8 +124,9 @@ async def test_mail_address() -> None:  # noqa: C901
         "/_matrix/identity/v2/lookup",
         "/users/by-username",
         "/compat-sessions",
-        "/user-sessions",
         "/oauth2-sessions",
+        "/user-sessions",
+        "/personal-sessions",
         "/set-password",
         "/kill-sessions",
     )
