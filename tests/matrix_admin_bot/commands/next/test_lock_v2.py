@@ -12,6 +12,7 @@ from tests import (
 from tests.matrix_admin_bot.commands.next import (
     COMPAT_SESSIONS_LIST,
     OAUTH2_SESSIONS_LIST,
+    PERSONAL_SESSIONS_LIST,
     USER,
     USER_SESSIONS_LIST,
     mock_response_error,
@@ -32,6 +33,8 @@ async def test_lock() -> None:
             return mock_response_with_json(OAUTH2_SESSIONS_LIST)
         if method == "GET" and url.endswith("/api/admin/v1/user-sessions"):
             return mock_response_with_json(USER_SESSIONS_LIST)
+        if method == "GET" and url.endswith("/api/admin/v1/personal-sessions"):
+            return mock_response_with_json(PERSONAL_SESSIONS_LIST)
         return mock_response_error(403, "Forbidden")
 
     (
@@ -58,9 +61,9 @@ async def test_lock() -> None:
     assert "/devices" in mocked_matrix_client.send.await_args_list[0][0][1]
     mocked_matrix_client.send.reset_mock()
     # 1 call to get the mas user id on MAS
-    # 3 calls to get each session type
+    # 4 calls to get each session type
     # 1 call to lock user
-    assert len(mock_admin_client.session.request.call_args_list) == 5  # type: ignore[reportUnknownArgumentType]
+    assert len(mock_admin_client.session.request.call_args_list) == 6  # type: ignore[reportUnknownArgumentType]
     assert (
         "/users/by-username"
         in mock_admin_client.session.request.call_args_list[0][0][1]
@@ -68,11 +71,16 @@ async def test_lock() -> None:
     assert (
         "/compat-sessions" in mock_admin_client.session.request.call_args_list[1][0][1]
     )
-    assert "/user-sessions" in mock_admin_client.session.request.call_args_list[2][0][1]
     assert (
-        "/oauth2-sessions" in mock_admin_client.session.request.call_args_list[3][0][1]
+        "/oauth2-sessions" in mock_admin_client.session.request.call_args_list[2][0][1]
     )
-    assert "/lock" in mock_admin_client.session.request.call_args_list[4][0][1]
+    assert "/user-sessions" in mock_admin_client.session.request.call_args_list[3][0][1]
+    assert (
+        "/personal-sessions"
+        in mock_admin_client.session.request.call_args_list[4][0][1]
+    )
+
+    assert "/lock" in mock_admin_client.session.request.call_args_list[5][0][1]
     mock_admin_client.session.request.reset_mock()
 
     t.cancel()

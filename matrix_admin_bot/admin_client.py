@@ -49,6 +49,7 @@ class AdminClient:
         self,
         method: str,
         endpoint: str,
+        access_token: str | None = None,
         headers: dict[str, Any] | None = None,
         **kwargs: Any,  # noqa: ANN401
     ) -> ClientResponse:
@@ -58,7 +59,7 @@ class AdminClient:
             {
                 "Accept": "application/json",
                 "User-Agent": "matrix-admin-bot",
-                "Authorization": f"Bearer {self.access_token}",
+                "Authorization": f"Bearer {access_token or self.access_token}",
             }
         )
         return await self.synapse_client.send(
@@ -202,6 +203,18 @@ class AdminClient:
             return await resp.json()
         return await resp.text()
 
+    async def login_as_user(self, user_id: str) -> str | None:
+        endpoint = f"/_synapse/admin/v1/users/{user_id}/login"
+        resp = await self.send_to_synapse(
+            "GET",
+            endpoint=endpoint,
+        )
+        if resp.ok:
+            json_body = await resp.json()
+            if "access_token" in json_body:
+                return json_body["access_token"]
+        return None
+
     async def get_devices_from_synapse(
         self, json_report: dict[str, Any], user_id: str
     ) -> None:
@@ -241,86 +254,82 @@ class AdminClient:
         failed_user_ids.append(user_id)
         return False
 
-    async def get_compat_sessions(
+    async def get_all_sessions(
         self,
-        json_report: dict[str, Any],
-        failed_user_ids: list[str],
         mas_user_id: str,
         user_id: str,
-    ) -> None:
-        params = {"filter[user]": mas_user_id, "filter[status]": "active"}
-        endpoint = "/api/admin/v1/compat-sessions"
+    ) -> list[dict[str, Any]]:
+        all_sessions: list[dict[str, Any]] = []
+        for session_type in ["compat", "oauth2", "user", "personal"]:
+            sessions = await self.get_sessions(session_type, mas_user_id, user_id)
+            if session_type == "oauth2":
+                for session in sessions:
+                    scope_list = session.get("attributes", {}).get("scope")
+                    scopes: list[str] = scope_list.split() if scope_list else []
+                    device_id = None
+                    for scope in scopes:
+                        if scope.startswith("urn:matrix:client:device:"):
+                            device_id = scope[len("urn:matrix:client:device:") :]
+                        elif scope.startswith(
+                            "urn:matrix:org.matrix.msc2967.client:device:"
+                        ):
+                            device_id = scope[
+                                len("urn:matrix:org.matrix.msc2967.client:device:") :
+                            ]
+                    if device_id:
+                        session["attributes"]["device_id"] = device_id
+                        break
+            all_sessions.extend(sessions)
+        return all_sessions
+
+    async def get_sessions(
+        self,
+        session_type: str,
+        mas_user_id: str,
+        user_id: str,
+    ) -> list[dict[str, Any]]:
+        params = {
+            "filter[user]": mas_user_id,
+            "filter[status]": "active",
+            "page[first]": 100000,
+        }
+        endpoint = f"/api/admin/v1/{session_type}-sessions"
         resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
         json_body = await self.decode_response(resp)
         if resp.ok:
-            count = json_body["meta"]["count"]
+            count = int(json_body["meta"]["count"])
             if count > 0:
-                sessions = json_body["data"]
-                json_report[user_id]["sessions"]["compat-sessions"] = sessions
-                logger.debug(
-                    "Compat-Sessions : %s",
-                    json_report[user_id]["sessions"]["compat-sessions"],
-                )
-        else:
-            error = f"Cannot get compat session  from localpart {user_id}"
-            json_report[user_id]["errors"].append(
-                {"error": error, "description": json_body}
-            )
-            failed_user_ids.append(user_id)
+                return json_body["data"]
+            return []
+        raise RuntimeError(f"Cannot get {session_type} sessions for {user_id}")
+
+    async def get_compat_sessions(
+        self,
+        mas_user_id: str,
+        user_id: str,
+    ) -> list[dict[str, Any]]:
+        return await self.get_sessions("compat", mas_user_id, user_id)
 
     async def get_user_sessions(
         self,
-        json_report: dict[str, Any],
-        failed_user_ids: list[str],
         mas_user_id: str,
         user_id: str,
-    ) -> None:
-        params = {"filter[user]": mas_user_id, "filter[status]": "active"}
-        endpoint = "/api/admin/v1/user-sessions"
-        resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = await self.decode_response(resp)
-        if resp.ok:
-            count = json_body["meta"]["count"]
-            if count > 0:
-                sessions = json_body["data"]
-                json_report[user_id]["sessions"]["user-sessions"] = sessions
-                logger.debug(
-                    "User-Sessions : %s",
-                    json_report[user_id]["sessions"]["user-sessions"],
-                )
-        else:
-            error = f"Cannot get user session for {user_id}"
-            json_report[user_id]["errors"].append(
-                {"error": error, "description": json_body}
-            )
-            failed_user_ids.append(user_id)
+    ) -> list[dict[str, Any]]:
+        return await self.get_sessions("user", mas_user_id, user_id)
 
     async def get_oauth2_sessions(
         self,
-        json_report: dict[str, Any],
-        failed_user_ids: list[str],
         mas_user_id: str,
         user_id: str,
-    ) -> None:
-        params = {"filter[user]": mas_user_id, "filter[status]": "active"}
-        endpoint = "/api/admin/v1/oauth2-sessions"
-        resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = await self.decode_response(resp)
-        if resp.ok:
-            count = json_body["meta"]["count"]
-            if count > 0:
-                sessions = json_body["data"]
-                json_report[user_id]["sessions"]["oauth2-sessions"] = sessions
-                logger.debug(
-                    "OAuth2-Sessions : %s",
-                    json_report[user_id]["sessions"]["oauth2-sessions"],
-                )
-        else:
-            error = f"Cannot get oauth2 session for {user_id}"
-            json_report[user_id]["errors"].append(
-                {"error": error, "description": json_body}
-            )
-            failed_user_ids.append(user_id)
+    ) -> list[dict[str, Any]]:
+        return await self.get_sessions("oauth2", mas_user_id, user_id)
+
+    async def get_personal_sessions(
+        self,
+        mas_user_id: str,
+        user_id: str,
+    ) -> list[dict[str, Any]]:
+        return await self.get_sessions("personal", mas_user_id, user_id)
 
     async def set_password(
         self,

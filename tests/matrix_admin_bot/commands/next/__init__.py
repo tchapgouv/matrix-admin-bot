@@ -193,7 +193,7 @@ OAUTH2_SESSIONS_LIST = {
                 "user_id": "040G2081040G2081040G208104",
                 "user_session_id": "050M2GA1850M2GA1850M2GA185",
                 "client_id": "060R30C1G60R30C1G60R30C1G6",
-                "scope": "urn:matrix:client:api:*",
+                "scope": "urn:matrix:client:api:* urn:matrix:org.matrix.msc2967.client:device:QWERTYXYZ",  # noqa: E501
                 "user_agent": "Mozilla/5.0",
                 "last_active_at": "1970-01-01T00:00:00Z",
                 "last_active_ip": "127.0.0.1",
@@ -266,6 +266,78 @@ USER_SESSIONS_LIST = {
         "last": "/api/admin/v1/user-sessions?page[last]=3",
         "next": "/api/admin/v1/user-sessions?page[after]=030C1G60R30C1G60R30C1G60R3"
         "&page[first]=3",
+    },
+}
+
+PERSONAL_SESSIONS_LIST = {
+    "meta": {"count": 3},
+    "data": [
+        {
+            "type": "personal-session",
+            "id": "01FSHN9AG0AJ6AC5HQ9X6H4RP4",
+            "attributes": {
+                "created_at": "2022-01-16T13:00:00Z",
+                "revoked_at": "null",
+                "owner_user_id": "01FSHN9AG0MZAA6S4AF7CTV32E",
+                "owner_client_id": "null",
+                "actor_user_id": "01FSHN9AG0MZAA6S4AF7CTV32E",
+                "human_name": "Alice's Development Token",
+                "scope": "openid urn:matrix:org.matrix.msc2967.client:api:*",
+                "last_active_at": "2022-01-16T15:30:00Z",
+                "last_active_ip": "192.168.1.100",
+                "expires_at": "null",
+            },
+            "links": {
+                "self": "/api/admin/v1/personal-sessions/01FSHN9AG0AJ6AC5HQ9X6H4RP4"
+            },
+            "meta": {"page": {"cursor": "01FSHN9AG0AJ6AC5HQ9X6H4RP4"}},
+        },
+        {
+            "type": "personal-session",
+            "id": "01FSHN9AG0BJ6AC5HQ9X6H4RP5",
+            "attributes": {
+                "created_at": "2022-01-16T13:01:00Z",
+                "revoked_at": "2022-01-16T16:20:00Z",
+                "owner_user_id": "01FSHN9AG0NZAA6S4AF7CTV32F",
+                "owner_client_id": "null",
+                "actor_user_id": "01FSHN9AG0NZAA6S4AF7CTV32F",
+                "human_name": "Bob's Mobile App",
+                "scope": "openid",
+                "last_active_at": "2022-01-16T16:03:20Z",
+                "last_active_ip": "10.0.0.50",
+                "expires_at": "null",
+            },
+            "links": {
+                "self": "/api/admin/v1/personal-sessions/01FSHN9AG0BJ6AC5HQ9X6H4RP5"
+            },
+            "meta": {"page": {"cursor": "01FSHN9AG0BJ6AC5HQ9X6H4RP5"}},
+        },
+        {
+            "type": "personal-session",
+            "id": "01FSHN9AG0CJ6AC5HQ9X6H4RP6",
+            "attributes": {
+                "created_at": "2022-01-16T13:02:00Z",
+                "revoked_at": "null",
+                "owner_user_id": "null",
+                "owner_client_id": "01FSHN9AG0DJ6AC5HQ9X6H4RP7",
+                "actor_user_id": "01FSHN9AG0MZAA6S4AF7CTV32E",
+                "human_name": "CI/CD Pipeline Token",
+                "scope": "openid urn:mas:admin",
+                "last_active_at": "2022-01-16T15:46:40Z",
+                "last_active_ip": "203.0.113.10",
+                "expires_at": "2022-01-24T04:36:40Z",
+            },
+            "links": {
+                "self": "/api/admin/v1/personal-sessions/01FSHN9AG0CJ6AC5HQ9X6H4RP6"
+            },
+            "meta": {"page": {"cursor": "01FSHN9AG0CJ6AC5HQ9X6H4RP6"}},
+        },
+    ],
+    "links": {
+        "self": "/api/admin/v1/personal-sessions?page[first]=3",
+        "first": "/api/admin/v1/personal-sessions?page[first]=3",
+        "last": "/api/admin/v1/personal-sessions?page[last]=3",
+        "next": "/api/admin/v1/personal-sessions?page[after]=01FSHN9AG0CJ6AC5HQ9X6H4RP6&page[first]=3",  # noqa: E501
     },
 }
 
