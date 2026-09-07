@@ -268,17 +268,15 @@ class AdminClient:
                     scopes: list[str] = scope_list.split() if scope_list else []
                     device_id = None
                     for scope in scopes:
-                        if scope.startswith("urn:matrix:client:device:"):
-                            device_id = scope[len("urn:matrix:client:device:") :]
-                        elif scope.startswith(
-                            "urn:matrix:org.matrix.msc2967.client:device:"
-                        ):
-                            device_id = scope[
-                                len("urn:matrix:org.matrix.msc2967.client:device:") :
-                            ]
+                        for scope_prefix in [
+                            "urn:matrix:client:device:",
+                            "urn:matrix:org.matrix.msc2967.client:device:",
+                        ]:
+                            if scope.startswith(scope_prefix):
+                                device_id = scope[len(scope_prefix) :]
+                                break
                     if device_id:
                         session["attributes"]["device_id"] = device_id
-                        break
             all_sessions.extend(sessions)
         return all_sessions
 
