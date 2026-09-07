@@ -13,6 +13,7 @@ from tests import (
 from tests.matrix_admin_bot.commands.next import (
     COMPAT_SESSIONS_LIST,
     OAUTH2_SESSIONS_LIST,
+    PERSONAL_SESSIONS_LIST,
     USER,
     USER_SESSIONS_LIST,
     USER_SYNAPSE,
@@ -35,6 +36,8 @@ async def test_user_v2() -> None:
             return mock_response_with_json(OAUTH2_SESSIONS_LIST)
         if method == "GET" and url.endswith("/api/admin/v1/user-sessions"):
             return mock_response_with_json(USER_SESSIONS_LIST)
+        if method == "GET" and url.endswith("/api/admin/v1/personal-sessions"):
+            return mock_response_with_json(PERSONAL_SESSIONS_LIST)
         return mock_response_error(403, "Forbidden")
 
     def request_synapse_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
@@ -72,8 +75,9 @@ async def test_user_v2() -> None:
         mocked_matrix_client.client_session,
         "/users/by-username",
         "/compat-sessions",
-        "/user-sessions",
         "/oauth2-sessions",
+        "/user-sessions",
+        "/personal-sessions",
     )
 
     t.cancel()

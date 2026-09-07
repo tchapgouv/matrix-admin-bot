@@ -13,6 +13,7 @@ from tests import (
 from tests.matrix_admin_bot.commands.next import (
     COMPAT_SESSIONS_LIST,
     OAUTH2_SESSIONS_LIST,
+    PERSONAL_SESSIONS_LIST,
     USER,
     USER_EMAIL,
     USER_SESSIONS_LIST,
@@ -35,6 +36,8 @@ async def test_reactivate() -> None:
             return mock_response_with_json(OAUTH2_SESSIONS_LIST)
         if method == "GET" and url.endswith("/api/admin/v1/user-sessions"):
             return mock_response_with_json(USER_SESSIONS_LIST)
+        if method == "GET" and url.endswith("/api/admin/v1/personal-sessions"):
+            return mock_response_with_json(PERSONAL_SESSIONS_LIST)
         if method == "GET" and url.endswith("/api/admin/v1/user-emails"):
             return mock_response_error(404, "Not Found")
         if method == "POST" and url.endswith("/api/admin/v1/user-emails"):
@@ -61,7 +64,7 @@ async def test_reactivate() -> None:
     # one call to fetch the devices
     check_requests_sent(mocked_matrix_client.send, "/devices")
     # 1 call to get the mas user id on MAS
-    # 3 calls to get each session type
+    # 4 calls to get each session type
     # 1 call to reactivate user
     # 1 call to check if email is not used
     # 1 call to check if user has no email
@@ -70,8 +73,9 @@ async def test_reactivate() -> None:
         mocked_matrix_client.client_session,
         "/users/by-username",
         "/compat-sessions",
-        "/user-sessions",
         "/oauth2-sessions",
+        "/user-sessions",
+        "/personal-sessions",
         "/user-emails",
         "/user-emails",
         "/reactivate",
