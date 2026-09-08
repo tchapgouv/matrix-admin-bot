@@ -7,7 +7,6 @@ import unpaddedbase64
 from nio import GetOpenIDTokenResponse
 
 from matrix_admin_bot.adminbot import AdminBot, AdminBotConfig
-from matrix_command_bot.command import ICommand
 from matrix_command_bot.util import get_server_name
 
 logger = structlog.getLogger(__name__)
@@ -30,9 +29,7 @@ class TchapAdminBot(AdminBot):
 
         self.identity_server_access_token: str | None = None
 
-    async def transform_cmd_input(
-        self, _command: type[ICommand], cmd_input: list[str]
-    ) -> list[str]:
+    async def transform_cmd_input(self, cmd_input: list[str]) -> list[str]:
         def filter_email(email: str) -> bool:
             return (
                 not (email.startswith("@") and get_server_name(email)) and "@" in email

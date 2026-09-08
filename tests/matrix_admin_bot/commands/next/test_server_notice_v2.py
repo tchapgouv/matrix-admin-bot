@@ -5,7 +5,6 @@ from unittest.mock import Mock
 import pytest
 from nio import MatrixRoom
 
-from matrix_admin_bot.commands.next.server_notice_v2 import USER_ALL
 from matrix_command_bot.validation.validators.confirm import ConfirmValidator
 from tests import (
     USER1_ID,
@@ -32,7 +31,7 @@ mas_user_response_data_page1 = {
             "type": "user",
             "id": "01040G2081040G2081040G2081",
             "attributes": {
-                "username": USER1_ID,
+                "username": "user1",
                 "created_at": "1970-01-01T00:00:00Z",
                 "locked_at": "null",
                 "deactivated_at": "null",
@@ -46,7 +45,7 @@ mas_user_response_data_page1 = {
             "type": "user",
             "id": "02081040G2081040G2081040G2",
             "attributes": {
-                "username": USER2_ID,
+                "username": "user2",
                 "created_at": "1970-01-01T00:00:00Z",
                 "locked_at": "null",
                 "deactivated_at": "null",
@@ -60,7 +59,7 @@ mas_user_response_data_page1 = {
             "type": "user",
             "id": "030C1G60R30C1G60R30C1G60R3",
             "attributes": {
-                "username": USER3_ID,
+                "username": "user3",
                 "created_at": "1970-01-01T00:00:00Z",
                 "locked_at": "1970-01-01T00:00:00Z",
                 "deactivated_at": "null",
@@ -87,7 +86,7 @@ mas_user_response_data_page2 = {
             "type": "user",
             "id": "01040G2081040G2081040G2082",
             "attributes": {
-                "username": USER4_ID,
+                "username": "user4",
                 "created_at": "1970-01-01T00:00:00Z",
                 "locked_at": "null",
                 "deactivated_at": "null",
@@ -205,7 +204,7 @@ async def test_server_notice_to_all_recipients() -> None:
     await mocked_matrix_client.fake_synced_text_message(
         room,
         USER1_ID,
-        USER_ALL,
+        "all",
         extra_content=create_thread_relation(command_event_id),
     )
     mocked_matrix_client.check_sent_message("Type your notice")
@@ -274,7 +273,7 @@ async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
     await mocked_matrix_client.fake_synced_text_message(
         room,
         USER1_ID,
-        USER_ALL,
+        "all",
         extra_content=create_thread_relation(command_event_id),
     )
     mocked_matrix_client.check_sent_message("Type your notice")
@@ -344,7 +343,7 @@ async def test_server_notice_to_all_recipients_when_exception() -> None:
     await mocked_matrix_client.fake_synced_text_message(
         room,
         USER1_ID,
-        USER_ALL,
+        "all",
         extra_content=create_thread_relation(command_event_id),
     )
     mocked_matrix_client.check_sent_message("Type your notice")
@@ -401,7 +400,7 @@ async def test_server_notice_to_all_recipients_failed() -> None:
     await mocked_matrix_client.fake_synced_text_message(
         room,
         USER1_ID,
-        USER_ALL,
+        "all",
         extra_content=create_thread_relation(command_event_id),
     )
     mocked_matrix_client.check_sent_message("Type your notice")
@@ -539,8 +538,9 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
         extra_content=create_thread_relation(msg_event_id),
     )
 
-    # no call to any endpoint if user is not a matrix id
-    check_requests_sent(mocked_matrix_client.client_session)
+    # only calls to /user-emails to get a list of all email addresses
+    # and check the domain.
+    check_requests_sent(mocked_matrix_client.client_session, "/user-emails")
     check_requests_sent(mocked_matrix_client.send)
     assert len(mocked_matrix_client.send_reaction.await_args_list) == 0
 
