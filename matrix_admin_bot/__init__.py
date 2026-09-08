@@ -6,6 +6,7 @@ from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 
+from matrix_admin_bot.admin_client import AdminClient
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.util import get_server_name, is_local_user, send_report
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
@@ -23,6 +24,7 @@ class InteractiveValidatedCommand(SimpleValidatedCommand):
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, extra_config)
+        self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
 
         self.keyword = keyword
 
@@ -86,12 +88,16 @@ class UserRelatedCommand(InteractiveValidatedCommand):
 
     @override
     async def should_execute(self) -> bool:
-        self.user_ids = self.command_text.split()
-
-        if self.transform_cmd_input_fct:
-            self.user_ids = await self.transform_cmd_input_fct(
-                self.__class__, self.user_ids
-            )
+        self.user_ids = await self.get_user_ids_from_args(self.command_text.split())
         return any(
             is_local_user(user_id, self.server_name) for user_id in self.user_ids
         )
+
+    async def get_user_ids_from_args(self, args: list[str]) -> list[str]:
+        # for arg in args:
+        #     if arg == "all":
+        if self.transform_cmd_input_fct:
+            return await self.transform_cmd_input_fct(self.__class__, args)
+        return args
+
+    # async def get_all_mas_emails(self) -> list[str]:

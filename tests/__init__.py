@@ -10,7 +10,7 @@ import pytest
 from matrix_bot.bot import MatrixBot
 from nio import Event, MatrixRoom, RoomMessage, RoomMessageText
 
-from matrix_admin_bot.commands.next.admin_client import AdminClient
+from matrix_admin_bot.admin_client import AdminClient
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
 from matrix_command_bot.validation import IValidator

@@ -8,7 +8,6 @@ from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
 
 from matrix_admin_bot import UserRelatedCommand
-from matrix_admin_bot.commands.next.admin_client import AdminClient
 from matrix_command_bot.util import get_server_name
 
 logger = structlog.getLogger(__name__)
@@ -25,7 +24,6 @@ class ResetPasswordCommandV2(UserRelatedCommand):
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
-        self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
         self.failed_user_ids: list[str] = []
 
     async def reset_password(self, user_id: str, password: str) -> bool:
