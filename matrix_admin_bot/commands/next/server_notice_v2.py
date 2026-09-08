@@ -32,8 +32,6 @@ from matrix_command_bot.util import (
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.steps import ValidateStep
 
-USER_ALL = "all"
-
 logger = structlog.getLogger(__name__)
 
 
@@ -95,15 +93,6 @@ class ServerNoticeGetRecipientsStep(ICommandStep):
             reply.source.get("content", {}).get("body", "").split()
         )
 
-        self.transform_cmd_input_fct: (
-            Callable[[type[ICommand], list[str]], Awaitable[list[str]]] | None
-        ) = self.command.extra_config.get("transform_cmd_input_fct")  # pyright: ignore[reportAttributeAccessIssue]
-
-        if self.transform_cmd_input_fct:
-            self.command_state.recipients = await self.transform_cmd_input_fct(
-                self.command.__class__, self.command_state.recipients
-            )
-
         if self.command.extra_config.get("is_coordinator", True):
             message = "Type your notice"
             await self.command.matrix_client.send_markdown_message(
@@ -155,6 +144,10 @@ class ServerNoticeCommandV2(CommandWithSteps):
         self.limit: int = extra_config.get("server_notice_limit", 100)  # pyright: ignore[reportAttributeAccessIssue]
         self.nb_workers: int = extra_config.get("server_notice_nb_workers", 1)  # pyright: ignore[reportAttributeAccessIssue]
 
+        self.transform_cmd_input_fct: (
+            Callable[[list[str]], Awaitable[list[str]]] | None
+        ) = extra_config.get("transform_cmd_input_fct")  # pyright: ignore[reportAttributeAccessIssue]
+
         self.state = ServerNoticeState()
 
         event_parser = MessageEventParser(
@@ -171,7 +164,9 @@ class ServerNoticeCommandV2(CommandWithSteps):
         self.json_report.setdefault("details", {})
         self.json_report.setdefault("failed_users", "")
 
-        self.server_name = get_server_name(self.matrix_client.user_id)
+        server_name = get_server_name(self.matrix_client.user_id)
+        assert server_name is not None  # noqa: S101
+        self.server_name = server_name
 
         self.command_id = randomword(16)
 
@@ -205,24 +200,21 @@ class ServerNoticeCommandV2(CommandWithSteps):
         ]
 
     async def should_execute(self) -> bool:
-        if self.state.recipients:
-            if (
-                USER_ALL in self.state.recipients and len(self.state.recipients) == 1
-            ) or (self.server_name in self.state.recipients):
-                return True
+        self.state.recipients, _ = await self.admin_client.get_mxids_from_args(
+            self.state.recipients, self.server_name, self.transform_cmd_input_fct
+        )
 
-            for user_id in self.state.recipients:
-                if is_local_user(user_id, self.server_name):
-                    return True
+        for user_id in self.state.recipients:
+            if is_local_user(user_id, self.server_name):
+                return True
 
         await set_status_reaction(self, "", self.state.current_reaction_event_id)
         return False
 
     async def simple_execute(self) -> bool:
         logger.info("Server Notice - %s - started", self.command_id)
-        users = await self.get_users(self.json_report, self.limit)
+        users = self.state.recipients
         nb_users = len(users)
-        users = list(users)
         logger.info("Notice will be sent to %s users", nb_users)
         result = True
 
@@ -281,23 +273,6 @@ class ServerNoticeCommandV2(CommandWithSteps):
                 replied_event_id=self.message.event_id,
             )
         return result
-
-    async def get_users(
-        self, json_report: dict[str, Any], limit: int = 100
-    ) -> set[str]:
-        users: set[str] = set()
-        if self.state.recipients and (
-            (USER_ALL in self.state.recipients and len(self.state.recipients) == 1)
-            or (self.server_name in self.state.recipients)
-        ):
-            users = await self.admin_client.get_users(
-                self.server_name, json_report, limit
-            )
-        elif self.state.recipients:
-            for user_id in self.state.recipients:
-                if is_local_user(user_id, self.server_name):
-                    users.add(user_id)
-        return users
 
     async def send_server_notice(
         self, message: Mapping[str, Any], user_id: str
