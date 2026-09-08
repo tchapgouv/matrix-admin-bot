@@ -10,14 +10,14 @@ from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
 from vodozemac import Ed25519PublicKey, Ed25519Signature, SignatureException
 
-from matrix_admin_bot import InteractiveValidatedCommand
+from matrix_admin_bot import UserRelatedCommand
 from matrix_command_bot.command import ICommand
-from matrix_command_bot.util import get_server_name, is_local_user
+from matrix_command_bot.util import get_server_name
 
 logger = structlog.getLogger(__name__)
 
 
-class UnverifiedSessionsCommand(InteractiveValidatedCommand):
+class UnverifiedSessionsCommand(UserRelatedCommand):
     KEYWORD = "unverified_sessions"
 
     def __init__(
@@ -187,6 +187,10 @@ class UnverifiedSessionsCommand(InteractiveValidatedCommand):
         self.json_report.setdefault(user_id, {})
         self.json_report[user_id]["errors"] = []
 
+        emails = self.mxid_to_emails.get(user_id, [])
+        if emails:
+            self.json_report[user_id]["emails"] = emails
+
         resp = await self.admin_client.send_to_synapse(
             "GET", f"/_synapse/admin/v2/users/{user_id}/devices"
         )
@@ -296,17 +300,9 @@ class UnverifiedSessionsCommand(InteractiveValidatedCommand):
         splitted = self.command_text.split()
         if len(splitted) > 0 and splitted[0].startswith("from="):
             self.from_date = parse_date(splitted[0][5:])
-            splitted = splitted[1:]
+            self.command_text = " ".join(splitted[1:])
 
-        self.user_ids = splitted
-
-        if self.transform_cmd_input_fct:
-            self.user_ids = await self.transform_cmd_input_fct(
-                self.__class__, self.user_ids
-            )
-        return any(
-            is_local_user(user_id, self.server_name) for user_id in self.user_ids
-        )
+        return await super().should_execute()
 
     @property
     @override

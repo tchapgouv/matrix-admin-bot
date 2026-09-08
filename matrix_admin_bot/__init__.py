@@ -81,6 +81,11 @@ class UserRelatedCommand(InteractiveValidatedCommand):
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, keyword, extra_config)
+        server_name = get_server_name(self.matrix_client.user_id)
+        assert server_name  # noqa: S101
+        self.server_name: str = server_name
+        self.user_ids: list[str] = []
+        self.mxid_to_emails: dict[str, list[str]] = {}
 
         self.transform_cmd_input_fct: (
             Callable[[type[ICommand], list[str]], Awaitable[list[str]]] | None
@@ -88,16 +93,48 @@ class UserRelatedCommand(InteractiveValidatedCommand):
 
     @override
     async def should_execute(self) -> bool:
-        self.user_ids = await self.get_user_ids_from_args(self.command_text.split())
+        await self.get_user_ids_from_args(self.command_text.split())
         return any(
             is_local_user(user_id, self.server_name) for user_id in self.user_ids
         )
 
-    async def get_user_ids_from_args(self, args: list[str]) -> list[str]:
-        # for arg in args:
-        #     if arg == "all":
-        if self.transform_cmd_input_fct:
-            return await self.transform_cmd_input_fct(self.__class__, args)
-        return args
+    # TODO reduce complexity
+    async def get_user_ids_from_args(self, args: list[str]) -> None:  # noqa: C901
+        email_args: list[str] = []
+        domains: set[str] = set()
+        all_local_users = False
+        for arg in args:
+            if arg in ["all", self.server_name]:
+                all_local_users = True
+                break
 
-    # async def get_all_mas_emails(self) -> list[str]:
+            if len(arg) > 0 and arg[0] == "@" and ":" in arg:
+                self.user_ids.append(arg)
+            elif "@" in arg:
+                email_args.append(arg)
+            else:
+                domains.add(arg)
+
+        # TODO use sydent /info to check if a domain is this server responsability
+
+        if all_local_users or domains:
+            mas_user_id_to_emails: dict[str, list[str]] = {}
+            mas_user_emails = await self.admin_client.get_user_emails(self.json_report)
+
+            for email, mas_id in mas_user_emails.items():
+                domain = email.split("@")[1]
+                if all_local_users or domain in domains:
+                    mas_user_id_to_emails.setdefault(mas_id, []).append(email)
+
+            for mas_user_id, emails in mas_user_id_to_emails.items():
+                user_id = await self.admin_client.get_user(
+                    self.server_name, mas_user_id
+                )
+                if user_id:
+                    self.user_ids.append(user_id)
+                    self.mxid_to_emails[user_id] = emails
+
+        if self.transform_cmd_input_fct:
+            self.user_ids.extend(
+                await self.transform_cmd_input_fct(self.__class__, email_args)
+            )
