@@ -10,7 +10,6 @@ dependencies = [
     "pydantic-settings>=2.15.0,<3",
     "pyotp>=2.10.0,<3",
     "python-dateutil>=2.9.0,<3",
-    "requests>=2.34.2,<3",
     "structlog",
     "matrix-nio",
     "vodozemac",
