@@ -3,11 +3,10 @@ from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import requests
 import structlog
 from aiohttp import ClientResponse
 from matrix_bot.client import MatrixClient
-from requests import Response
+from multidict import CIMultiDict, CIMultiDictProxy
 
 from matrix_command_bot.util import get_localpart_from_id
 
@@ -31,24 +30,29 @@ class AdminClient:
         self.access_token = mas_access_token
 
         self.synapse_client = synapse_client
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "Accept": "application/json",
-                "User-Agent": "matrix-admin-bot",
-                "Authorization": f"Bearer {self.access_token}",
-            }
-        )
-        self.session.verify = VERIFY_SSL_CERT
 
-    def send_to_mas(self, method: str, endpoint: str, **kwargs: Any) -> Response:  # noqa: ANN401
+    async def send_to_mas(
+        self,
+        method: str,
+        endpoint: str,
+        headers: dict[str, Any] | None = None,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> ClientResponse:
         url = f"{self.base_url}" + endpoint
-        return self.session.request(method, url, **kwargs)
+        if headers is None:
+            headers = {}
+        headers.update({"Authorization": f"Bearer {self.access_token}"})
+        kwargs["headers"] = headers
+        # At this point the client session should always be available
+        # since the sync loop is already running.
+        assert self.synapse_client.client_session  # noqa: S101
+        return await self.synapse_client.client_session.request(method, url, **kwargs)
 
     async def send_to_synapse(
         self,
         method: str,
         endpoint: str,
+        access_token: str | None = None,
         headers: dict[str, Any] | None = None,
         **kwargs: Any,  # noqa: ANN401
     ) -> ClientResponse:
@@ -58,12 +62,44 @@ class AdminClient:
             {
                 "Accept": "application/json",
                 "User-Agent": "matrix-admin-bot",
-                "Authorization": f"Bearer {self.access_token}",
+                "Authorization": f"Bearer {access_token or self.access_token}",
             }
         )
         return await self.synapse_client.send(
             method, endpoint, headers=headers, **kwargs
         )
+
+    async def send_to_mas_with_retry(
+        self, method: str, endpoint: str, max_retry: int = 5
+    ) -> ClientResponse:
+        for retry_nb in range(max_retry):
+            try:
+                resp = await self.send_to_mas(method, endpoint=endpoint)
+                if resp.ok:
+                    return resp
+            except Exception as e:
+                logger.warning("Request to MAS has failed", exc_info=e)
+                # use some backoff
+                await asyncio.sleep(0.5 * retry_nb)
+
+        class FakeClientResponse(ClientResponse):
+            def __init__(self, status: int, reason: str) -> None:
+                self.status = status
+                self.reason = reason
+                # Minimal state required by the ClientResponse helpers used by
+                # decode_client_response (headers/text/json).
+                self._headers = CIMultiDictProxy(
+                    CIMultiDict({"Content-Type": "text/plain"})
+                )
+                self._cache: dict[str, Any] = {}
+                self._body = b""
+
+        return FakeClientResponse(500, "Internal Server Error")
+
+    async def decode_client_response(self, resp: ClientResponse) -> Any:  # noqa: ANN401
+        if resp.headers.get("Content-Type", "").startswith("application/json") is True:
+            return await resp.json()
+        return await resp.text()
 
     async def is_email_valid(
         self, server_name: str | None, email: str | None
@@ -90,9 +126,9 @@ class AdminClient:
     ) -> str | None:
         username = get_localpart_from_id(user_id)
         endpoint = f"/api/admin/v1/users/by-username/{username}"
-        resp = self.send_to_mas("GET", endpoint=endpoint)
+        resp = await self.send_to_mas("GET", endpoint=endpoint)
 
-        json_body = await self.decode_response(resp)
+        json_body = await self.decode_client_response(resp)
         if not resp.ok:
             error = f"Cannot get user from localpart {user_id}"
             json_report[user_id]["errors"].append(
@@ -110,8 +146,8 @@ class AdminClient:
 
         users: set[str] = set()
         endpoint = f"/api/admin/v1/users?filter[status]=active&page[first]={limit}"
-        resp = await self.send_to_mas_with_retry(endpoint)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas_with_retry("GET", endpoint)
+        json_body = await self.decode_client_response(resp)
         if not resp.ok:
             error = "Cannot get all users from MAS"
             json_report["details"]["get_users"] = {
@@ -122,7 +158,7 @@ class AdminClient:
                 "%s - %s users has been retrieved: %s",
                 error,
                 len(users),
-                f"{resp.status_code}-{resp.reason}-{json_body}",
+                f"{resp.status}-{resp.reason}-{json_body}",
             )
             return users
 
@@ -141,8 +177,8 @@ class AdminClient:
                 nb_users = json_body["meta"]["count"]
             if json_body.get("links") and json_body.get("links").get("next"):
                 endpoint = json_body["links"]["next"]
-                resp = await self.send_to_mas_with_retry(endpoint)
-                json_body = await self.decode_response(resp)
+                resp = await self.send_to_mas_with_retry("GET", endpoint)
+                json_body = await self.decode_client_response(resp)
                 if not resp.ok:
                     error = "Cannot get all users from MAS"
                     json_report["details"]["get_users"] = {
@@ -153,7 +189,7 @@ class AdminClient:
                         "%s - %s users has been retrieved: %s",
                         error,
                         len(users),
-                        f"{resp.status_code}-{resp.reason}-{json_body}",
+                        f"{resp.status}-{resp.reason}-{json_body}",
                     )
                     return set()
             else:
@@ -173,34 +209,6 @@ class AdminClient:
             return set()
 
         return users
-
-    async def send_to_mas_with_retry(
-        self, endpoint: str, max_retry: int = 5
-    ) -> Response:
-        for retry_nb in range(max_retry):
-            try:
-                resp = self.send_to_mas("GET", endpoint=endpoint)
-                if resp.ok:
-                    return resp
-            except Exception as e:
-                logger.warning("Request to MAS has failed", exc_info=e)
-                # use some backoff
-                await asyncio.sleep(0.5 * retry_nb)
-
-        resp = Response()
-        resp.status_code = 500
-        resp.reason = "Internal Server Error"
-        return resp
-
-    async def decode_response(self, resp: Response) -> Any:  # noqa: ANN401
-        if resp.headers.get("Content-Type", "").startswith("application/json") is True:
-            return resp.json()
-        return resp.text
-
-    async def decode_client_response(self, resp: ClientResponse) -> Any:  # noqa: ANN401
-        if resp.headers.get("Content-Type", "").startswith("application/json") is True:
-            return await resp.json()
-        return await resp.text()
 
     async def get_devices_from_synapse(
         self, json_report: dict[str, Any], user_id: str
@@ -250,8 +258,8 @@ class AdminClient:
     ) -> None:
         params = {"filter[user]": mas_user_id, "filter[status]": "active"}
         endpoint = "/api/admin/v1/compat-sessions"
-        resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)
+        json_body = await self.decode_client_response(resp)
         if resp.ok:
             count = json_body["meta"]["count"]
             if count > 0:
@@ -277,8 +285,8 @@ class AdminClient:
     ) -> None:
         params = {"filter[user]": mas_user_id, "filter[status]": "active"}
         endpoint = "/api/admin/v1/user-sessions"
-        resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)
+        json_body = await self.decode_client_response(resp)
         if resp.ok:
             count = json_body["meta"]["count"]
             if count > 0:
@@ -304,8 +312,8 @@ class AdminClient:
     ) -> None:
         params = {"filter[user]": mas_user_id, "filter[status]": "active"}
         endpoint = "/api/admin/v1/oauth2-sessions"
-        resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)
+        json_body = await self.decode_client_response(resp)
         if resp.ok:
             count = json_body["meta"]["count"]
             if count > 0:
@@ -332,9 +340,9 @@ class AdminClient:
     ) -> bool:
         endpoint = f"/api/admin/v1/users/{mas_user_id}/set-password"
         data = {"password": password, "skip_password_check": True}
-        resp = self.send_to_mas("POST", endpoint=endpoint, json=data)
+        resp = await self.send_to_mas("POST", endpoint=endpoint, json=data)
         if not resp.ok:
-            json_body = await self.decode_response(resp)
+            json_body = await self.decode_client_response(resp)
             error = f"Cannot reset password for {user_id}"
             json_report[user_id]["errors"].append(
                 {"error": error, "description": json_body}
@@ -351,8 +359,8 @@ class AdminClient:
         user_id: str,
     ) -> bool:
         endpoint = f"/api/admin/v1/users/{mas_user_id}/kill-sessions"
-        resp = self.send_to_mas("POST", endpoint=endpoint)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("POST", endpoint=endpoint)
+        json_body = await self.decode_client_response(resp)
         if not resp.ok:
             error = f"Cannot kill all sessions {user_id}"
             json_report[user_id]["errors"].append(
@@ -370,8 +378,8 @@ class AdminClient:
         user_id: str,
     ) -> bool:
         endpoint = f"/api/admin/v1/users/{mas_user_id}/lock"
-        resp = self.send_to_mas("POST", endpoint=endpoint)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("POST", endpoint=endpoint)
+        json_body = await self.decode_client_response(resp)
         if not resp.ok:
             error = f"Cannot lock for {user_id}"
             json_report[user_id]["errors"].append(
@@ -390,8 +398,8 @@ class AdminClient:
         user_id: str,
     ) -> bool:
         endpoint = f"/api/admin/v1/users/{mas_user_id}/unlock"
-        resp = self.send_to_mas("POST", endpoint=endpoint)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("POST", endpoint=endpoint)
+        json_body = await self.decode_client_response(resp)
         if not resp.ok:
             error = f"Cannot unlock for {user_id}"
             json_report[user_id]["errors"].append(
@@ -411,8 +419,8 @@ class AdminClient:
     ) -> bool:
         endpoint = f"/api/admin/v1/users/{mas_user_id}/deactivate"
         data = {"skip_erase": True}
-        resp = self.send_to_mas("POST", endpoint=endpoint, json=data)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("POST", endpoint=endpoint, json=data)
+        json_body = await self.decode_client_response(resp)
         if not resp.ok:
             error = f"Cannot deactivate for {user_id}"
             json_report[user_id]["errors"].append(
@@ -431,8 +439,8 @@ class AdminClient:
         user_id: str,
     ) -> bool:
         endpoint = f"/api/admin/v1/users/{mas_user_id}/reactivate"
-        resp = self.send_to_mas("POST", endpoint=endpoint)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("POST", endpoint=endpoint)
+        json_body = await self.decode_client_response(resp)
         if not resp.ok:
             error = f"Cannot reactivate for {user_id}"
             json_report[user_id]["errors"].append(
@@ -451,10 +459,10 @@ class AdminClient:
         params: dict[str, Any],
     ) -> list[dict[str, Any]] | None:
         endpoint = "/api/admin/v1/user-emails"
-        resp = self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)
+        json_body = await self.decode_client_response(resp)
         if not resp.ok:
-            if resp.status_code == 404:
+            if resp.status == 404:
                 return []
             error = f"Cannot find emails with {params} for {user_id}"
             json_report[user_id]["errors"].append(
@@ -473,8 +481,8 @@ class AdminClient:
         user_id: str,
     ) -> bool:
         endpoint = f"/api/admin/v1/user-emails/{user_email_id}"
-        resp = self.send_to_mas("DELETE", endpoint=endpoint)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("DELETE", endpoint=endpoint)
+        json_body = await self.decode_client_response(resp)
         if not resp.ok:
             error = f"Cannot remove email {user_email_id} for {user_id}"
             json_report[user_id]["errors"].append(
@@ -494,8 +502,8 @@ class AdminClient:
     ) -> bool:
         endpoint = "/api/admin/v1/user-emails"
         data = {"user_id": mas_user_id, "email": email}
-        resp = self.send_to_mas("POST", endpoint=endpoint, json=data)
-        json_body = await self.decode_response(resp)
+        resp = await self.send_to_mas("POST", endpoint=endpoint, json=data)
+        json_body = await self.decode_client_response(resp)
         if not resp.ok:
             error = f"Cannot add email {email} for {user_id}"
             json_report[user_id]["errors"].append(

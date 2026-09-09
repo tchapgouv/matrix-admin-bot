@@ -63,6 +63,14 @@ class MatrixClientMock:
         self.sync_forever_called = False
         self.homeserver = server_name
 
+        # aiohttp session, used both by the bot (get/post/put) and the admin
+        # client (request).
+        self.client_session = Mock()
+        self.client_session.request = AsyncMock()
+        self.client_session.get = AsyncMock()
+        self.client_session.post = AsyncMock()
+        self.client_session.put = AsyncMock()
+
         self.send_text_message_mocks = [
             self.send_text_message,
             self.send_markdown_message,
@@ -230,11 +238,9 @@ async def create_fake_admin_bot(
     # Mock the matrix client and run the bot
     fake_client, t = await mock_client_and_run(bot, server_name)
 
-    # Mock admin client with mocked matrix client and mocked session
+    # The admin client relies on the matrix client's aiohttp session.
     admin_client = AdminClient(Mock(), "", "")
-    fake_session = Mock()
     admin_client.synapse_client = fake_client
-    admin_client.session = fake_session
     bot.extra_config["admin_client"] = admin_client
 
     return fake_client, admin_client, t
@@ -297,6 +303,62 @@ def create_replace_relation(original_event_id: str) -> Mapping[str, Any]:
 
 def create_reply_relation(replied_event_id: str) -> Mapping[str, Any]:
     return {"m.relates_to": {"m.in_reply_to": {"event_id": replied_event_id}}}
+
+
+_SESSION_REQUEST_METHODS = ("get", "post", "put")
+
+
+def iter_requests(mock: Mock) -> list[tuple[str, str, Any]]:
+    """Return the ``(http_method, url, call)`` of every request on ``mock``.
+
+    Works both with an aiohttp session mock — ``session.request(method, url)``
+    as well as the ``session.get/post/put(url)`` shorthands — and with a flat
+    client mock such as ``MatrixClient.send(method, endpoint)``.
+    """
+    requests: list[tuple[str, str, Any]] = []
+    for call in mock.mock_calls:
+        name = call[0]
+        args = call.args
+        if name in _SESSION_REQUEST_METHODS:
+            # session.get/post/put(url, ...): the method is the call name.
+            requests.append((name.upper(), args[0], call))
+        elif name in ("request", ""):
+            # session.request(method, url, ...) or mock(method, url, ...).
+            requests.append((args[0], args[1], call))
+    return requests
+
+
+def check_requests_sent(
+    mock: Mock, *expected_endpoints: str, reset: bool = True
+) -> None:
+    """Check the requests received by a client or session mock.
+
+    The requests must match ``expected_endpoints`` (in order), each of which is
+    compared as a substring of the requested URL. Passing a session mock also
+    covers the ``get``/``post``/``put`` shorthands. The mock is reset by default
+    so each check starts from a clean state.
+    """
+    urls = [url for _method, url, _call in iter_requests(mock)]
+    assert len(urls) == len(expected_endpoints), (
+        f"Expected {len(expected_endpoints)} request(s), got {len(urls)}: {urls}"
+    )
+    for url, endpoint in zip(urls, expected_endpoints, strict=True):
+        assert endpoint in url, f"Expected a request to {endpoint!r}, got {url!r}"
+    if reset:
+        mock.reset_mock()
+
+
+def find_request(mock: Mock, method: str, endpoint: str) -> Any:
+    """Return the single request received by a mock matching method/endpoint."""
+    matches = [
+        call
+        for http_method, url, call in iter_requests(mock)
+        if http_method == method and endpoint in url
+    ]
+    assert len(matches) == 1, (
+        f"Expected exactly one {method} request to {endpoint!r}, got {len(matches)}"
+    )
+    return matches[0]
 
 
 class OkValidator(IValidator):

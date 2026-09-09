@@ -311,26 +311,26 @@ USER_SYNAPSE = {
 def mock_response_error(status_code: int, text: str) -> Mock:
     return Mock(
         ok=False,
-        status_code=status_code,
-        text=text,
+        status=status_code,
+        reason=text,
+        headers={"Content-Type": "text/plain"},
+        text=AsyncMock(return_value=text),
+        json=AsyncMock(return_value={}),
     )
 
 
 def mock_response_with_json(json: dict[str, Any]) -> Mock:
     return Mock(
         ok=True,
-        headers={
-            "Content-Type": "application/json",
-        },
-        json=Mock(return_value=json),
-    )
-
-
-def async_mock_response_with_json(json: dict[str, Any]) -> Mock:
-    return Mock(
-        ok=True,
+        status=200,
         headers={
             "Content-Type": "application/json",
         },
         json=AsyncMock(return_value=json),
+        text=AsyncMock(return_value=""),
     )
+
+
+def mock_send_response(json: dict[str, Any] | None = None) -> AsyncMock:
+    """Build a ``MatrixClient.send`` mock returning a successful response."""
+    return AsyncMock(return_value=mock_response_with_json({} if json is None else json))
