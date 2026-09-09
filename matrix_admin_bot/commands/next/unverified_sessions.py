@@ -275,7 +275,6 @@ class UnverifiedSessionsCommand(UserRelatedCommand):
                 unverified_users.append(user_id)
 
         if self.json_report:
-            self.json_report["command"] = self.KEYWORD
             await self.send_report()
 
         if unverified_users:
