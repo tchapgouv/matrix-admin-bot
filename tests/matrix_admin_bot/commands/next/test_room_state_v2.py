@@ -1,25 +1,19 @@
-from unittest.mock import AsyncMock, Mock
-
 import pytest
 from nio import MatrixRoom
 
 from tests import (
     USER1_ID,
     OkValidator,
+    check_requests_sent,
     create_fake_admin_bot,
 )
+from tests.matrix_admin_bot.commands.next import mock_send_response
 
 
 @pytest.mark.asyncio
 async def test_room_state() -> None:
-    (
-        mocked_matrix_client,
-        _,
-        t,
-    ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
+    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client.send = mock_send_response()
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -30,11 +24,8 @@ async def test_room_state() -> None:
     mocked_matrix_client.send_file_message.assert_awaited_once()
     mocked_matrix_client.send_file_message.reset_mock()
 
-    assert len(mocked_matrix_client.send.await_args_list) == 1
-    assert (
-        "/rooms/!theroomid:example.org/state"
-        in mocked_matrix_client.send.await_args_list[0][0][1]
+    check_requests_sent(
+        mocked_matrix_client.send, "/rooms/!theroomid:example.org/state"
     )
-    mocked_matrix_client.send.reset_mock()
 
     t.cancel()

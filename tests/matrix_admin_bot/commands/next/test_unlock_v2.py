@@ -1,4 +1,5 @@
-from unittest.mock import AsyncMock, Mock
+from typing import Any
+from unittest.mock import Mock
 
 import pytest
 from nio import MatrixRoom
@@ -6,33 +7,29 @@ from nio import MatrixRoom
 from tests import (
     USER1_ID,
     OkValidator,
+    check_requests_sent,
     create_fake_admin_bot,
 )
 from tests.matrix_admin_bot.commands.next import (
     USER,
     mock_response_error,
     mock_response_with_json,
+    mock_send_response,
 )
 
 
 @pytest.mark.asyncio
 async def test_unlock() -> None:
-    def request_side_effect(method: str, url: str) -> Mock:
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
         ):
             return mock_response_with_json(USER)
         return mock_response_error(403, "Forbidden")
 
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
-    mock_admin_client.session.request = Mock(side_effect=request_side_effect)
+    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client.send = mock_send_response()
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -44,40 +41,30 @@ async def test_unlock() -> None:
     mocked_matrix_client.send_file_message.reset_mock()
 
     # one call to fetch the devices
-    assert len(mocked_matrix_client.send.await_args_list) == 1
-    assert "/devices" in mocked_matrix_client.send.await_args_list[0][0][1]
-    mocked_matrix_client.send.reset_mock()
+    check_requests_sent(mocked_matrix_client.send, "/devices")
     # 1 call to get the mas user id on MAS
     # 1 call to unlock user
-    assert len(mock_admin_client.session.request.call_args_list) == 2  # type: ignore[reportUnknownArgumentType]
-    assert (
-        "/users/by-username"
-        in mock_admin_client.session.request.call_args_list[0][0][1]
+    check_requests_sent(
+        mocked_matrix_client.client_session,
+        "/users/by-username",
+        "/unlock",
     )
-    assert "/unlock" in mock_admin_client.session.request.call_args_list[1][0][1]
-    mock_admin_client.session.request.reset_mock()
 
     t.cancel()
 
 
 @pytest.mark.asyncio
 async def test_failed_unlock() -> None:
-    def request_side_effect(method: str, url: str) -> Mock:
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/api/admin/v1/users/by-username/user_to_reset"
         ):
             return mock_response_error(404, "Not found")
         return mock_response_error(403, "Forbidden")
 
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
-    mock_admin_client.session.request = Mock(side_effect=request_side_effect)
+    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client.send = mock_send_response()
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -92,14 +79,8 @@ async def test_failed_unlock() -> None:
 
 @pytest.mark.asyncio
 async def test_non_local_user_unlock() -> None:
-    (
-        mocked_matrix_client,
-        _,
-        t,
-    ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
+    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client.send = mock_send_response()
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 

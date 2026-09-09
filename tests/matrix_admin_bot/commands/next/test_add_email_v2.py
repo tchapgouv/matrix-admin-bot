@@ -7,6 +7,7 @@ from nio import MatrixRoom
 from tests import (
     USER1_ID,
     OkValidator,
+    check_requests_sent,
     create_fake_admin_bot,
 )
 from tests.matrix_admin_bot.commands.next import (
@@ -15,21 +16,18 @@ from tests.matrix_admin_bot.commands.next import (
     USER_EMAILS_LIST,
     mock_response_error,
     mock_response_with_json,
+    mock_send_response,
 )
 
 
 @pytest.mark.asyncio
 async def test_add_email() -> None:
-    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/_matrix/identity/api/v1/info?medium=email&address=user@domain.tld"
         ):
-            return AsyncMock(
-                ok=True,
-                headers={"Content-Type": "application/json"},
-                json=AsyncMock(return_value={"hs": "example.org"}),
-            )
-        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+            return mock_response_with_json({"hs": "example.org"})
+        return mock_response_with_json({})
 
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
@@ -42,13 +40,9 @@ async def test_add_email() -> None:
             return mock_response_with_json(USER_EMAIL)
         return mock_response_error(403, "Forbidden")
 
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
-    mock_admin_client.session.request = Mock(side_effect=request_side_effect)
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
     await mocked_matrix_client.fake_synced_text_message(
@@ -63,31 +57,25 @@ async def test_add_email() -> None:
     # 1 call to check if email is not used
     # 1 call to check if user has no email
     # 1 call to add email
-    assert len(mock_admin_client.session.request.call_args_list) == 4  # type: ignore[reportUnknownArgumentType]
-    assert (
-        "/users/by-username"
-        in mock_admin_client.session.request.call_args_list[0][0][1]
+    check_requests_sent(
+        mocked_matrix_client.client_session,
+        "/users/by-username",
+        "/user-emails",
+        "/user-emails",
+        "/user-emails",
     )
-    assert "/user-emails" in mock_admin_client.session.request.call_args_list[1][0][1]
-    assert "/user-emails" in mock_admin_client.session.request.call_args_list[2][0][1]
-    assert "/user-emails" in mock_admin_client.session.request.call_args_list[3][0][1]
-    mock_admin_client.session.request.reset_mock()
 
     t.cancel()
 
 
 @pytest.mark.asyncio
 async def test_failed_add_email_when_email_already_used() -> None:
-    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/_matrix/identity/api/v1/info?medium=email&address=user@domain.tld"
         ):
-            return AsyncMock(
-                ok=True,
-                headers={"Content-Type": "application/json"},
-                json=AsyncMock(return_value={"hs": "example.org"}),
-            )
-        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+            return mock_response_with_json({"hs": "example.org"})
+        return mock_response_with_json({})
 
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:
         if method == "GET" and url.endswith(
@@ -106,13 +94,9 @@ async def test_failed_add_email_when_email_already_used() -> None:
 
         return mock_response_error(403, "Forbidden")
 
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
-    mock_admin_client.session.request = Mock(side_effect=request_side_effect)
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -129,16 +113,12 @@ async def test_failed_add_email_when_email_already_used() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_add_email_when_user_has_email() -> None:
-    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/_matrix/identity/api/v1/info?medium=email&address=user@domain.tld"
         ):
-            return AsyncMock(
-                ok=True,
-                headers={"Content-Type": "application/json"},
-                json=AsyncMock(return_value={"hs": "example.org"}),
-            )
-        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+            return mock_response_with_json({"hs": "example.org"})
+        return mock_response_with_json({})
 
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:
         if method == "GET" and url.endswith(
@@ -159,13 +139,9 @@ async def test_failed_add_email_when_user_has_email() -> None:
 
         return mock_response_error(403, "Forbidden")
 
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
-    mock_admin_client.session.request = Mock(side_effect=request_side_effect)
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -182,24 +158,16 @@ async def test_failed_add_email_when_user_has_email() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_add_email_when_api_in_error() -> None:
-    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> AsyncMock:  # noqa: ARG001
+    def request_side_effect_synapse(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         if method == "GET" and url.endswith(
             "/_matrix/identity/api/v1/info?medium=email&address=user@domain.tld"
         ):
-            return AsyncMock(
-                ok=True,
-                headers={"Content-Type": "application/json"},
-                json=AsyncMock(return_value={"hs": "example.org"}),
-            )
-        return AsyncMock(ok=True, json=AsyncMock(return_value={}))
+            return mock_response_with_json({"hs": "example.org"})
+        return mock_response_with_json({})
 
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = AsyncMock(side_effect=request_side_effect_synapse)
-    mock_admin_client.session.request.return_value = mock_response_error(
+    mocked_matrix_client.client_session.request.return_value = mock_response_error(
         403, "Forbidden"
     )
 
@@ -218,14 +186,8 @@ async def test_failed_add_email_when_api_in_error() -> None:
 
 @pytest.mark.asyncio
 async def test_non_local_user_add_email() -> None:
-    (
-        mocked_matrix_client,
-        _,
-        t,
-    ) = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
+    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client.send = mock_send_response()
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 

@@ -1,6 +1,6 @@
 import json
 from typing import Any
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from nio import MatrixRoom
@@ -12,14 +12,17 @@ from tests import (
     USER2_ID,
     USER3_ID,
     USER4_ID,
+    check_requests_sent,
     create_fake_admin_bot,
     create_replace_relation,
     create_thread_relation,
     fake_synced_text_message,
+    find_request,
 )
 from tests.matrix_admin_bot.commands.next import (
     mock_response_error,
     mock_response_with_json,
+    mock_send_response,
 )
 
 mas_user_response_data_page1 = {
@@ -185,15 +188,11 @@ async def test_server_notice_to_all_recipients() -> None:
             return mock_response_with_json(mas_user_response_data_page2)
         return mock_response_error(403, "Forbidden")
 
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=ConfirmValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+    mocked_matrix_client, _, t = await create_fake_admin_bot(
+        validator=ConfirmValidator()
     )
-    mock_admin_client.session.request = Mock(side_effect=request_side_effect)
+    mocked_matrix_client.send = mock_send_response(user_response_data)
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -230,16 +229,9 @@ async def test_server_notice_to_all_recipients() -> None:
     mocked_matrix_client.send_file_message.assert_awaited_once()
     mocked_matrix_client.send_file_message.reset_mock()
     # 2 calls to fetch the users
-    assert len(mock_admin_client.session.request.call_args_list) == 2
-    assert "/users" in mock_admin_client.session.request.call_args_list[0][0][1]
-    assert "/users" in mock_admin_client.session.request.call_args_list[1][0][1]
+    check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 2))
     # 4 calls(one per user) to send the notice to all users
-    assert len(mocked_matrix_client.send.await_args_list) == 4
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[0][0][1]
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[1][0][1]
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[2][0][1]
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[3][0][1]
-    mocked_matrix_client.send.reset_mock()
+    check_requests_sent(mocked_matrix_client.send, *(["/send_server_notice"] * 4))
 
     t.cancel()
 
@@ -265,15 +257,11 @@ async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
         counter += 1
         return mock_response_error(403, "Forbidden")
 
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=ConfirmValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+    mocked_matrix_client, _, t = await create_fake_admin_bot(
+        validator=ConfirmValidator()
     )
-    mock_admin_client.session.request = Mock(side_effect=request_side_effect)
+    mocked_matrix_client.send = mock_send_response(user_response_data)
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -310,15 +298,9 @@ async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
     mocked_matrix_client.send_file_message.assert_awaited_once()
     mocked_matrix_client.send_file_message.reset_mock()
     # 6 calls to fetch the users
-    assert len(mock_admin_client.session.request.call_args_list) == 6
-    assert "/users" in mock_admin_client.session.request.call_args_list[0][0][1]
+    check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 6))
     # 4 calls(one per user) to send the notice to all users
-    assert len(mocked_matrix_client.send.await_args_list) == 4
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[0][0][1]
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[1][0][1]
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[2][0][1]
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[3][0][1]
-    mocked_matrix_client.send.reset_mock()
+    check_requests_sent(mocked_matrix_client.send, *(["/send_server_notice"] * 4))
 
     t.cancel()
 
@@ -345,15 +327,11 @@ async def test_server_notice_to_all_recipients_when_exception() -> None:
         reason = "Keep having exception until it succeed"
         raise Exception(reason)
 
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=ConfirmValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+    mocked_matrix_client, _, t = await create_fake_admin_bot(
+        validator=ConfirmValidator()
     )
-    mock_admin_client.session.request = Mock(side_effect=request_side_effect)
+    mocked_matrix_client.send = mock_send_response(user_response_data)
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -390,15 +368,9 @@ async def test_server_notice_to_all_recipients_when_exception() -> None:
     mocked_matrix_client.send_file_message.assert_awaited_once()
     mocked_matrix_client.send_file_message.reset_mock()
     # 6 calls to fetch the users
-    assert len(mock_admin_client.session.request.call_args_list) == 6
-    assert "/users" in mock_admin_client.session.request.call_args_list[0][0][1]
+    check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 6))
     # 4 calls(one per user) to send the notice to all users
-    assert len(mocked_matrix_client.send.await_args_list) == 4
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[0][0][1]
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[1][0][1]
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[2][0][1]
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[3][0][1]
-    mocked_matrix_client.send.reset_mock()
+    check_requests_sent(mocked_matrix_client.send, *(["/send_server_notice"] * 4))
 
     t.cancel()
 
@@ -412,15 +384,11 @@ async def test_server_notice_to_all_recipients_failed() -> None:
             return mock_response_with_json(mas_user_response_data_page1)
         return mock_response_error(403, "Forbidden")
 
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=ConfirmValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+    mocked_matrix_client, _, t = await create_fake_admin_bot(
+        validator=ConfirmValidator()
     )
-    mock_admin_client.session.request = Mock(side_effect=request_side_effect)
+    mocked_matrix_client.send = mock_send_response(user_response_data)
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -457,26 +425,19 @@ async def test_server_notice_to_all_recipients_failed() -> None:
     mocked_matrix_client.send_file_message.assert_awaited_once()
     mocked_matrix_client.send_file_message.reset_mock()
     # 6 calls to fetch the users
-    assert len(mock_admin_client.session.request.call_args_list) == 6
-    assert "/users" in mock_admin_client.session.request.call_args_list[0][0][1]
+    check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 6))
     # no call to send the notice to all users
-    assert len(mocked_matrix_client.send.await_args_list) == 0
-    mocked_matrix_client.send.reset_mock()
+    check_requests_sent(mocked_matrix_client.send)
 
     t.cancel()
 
 
 @pytest.mark.asyncio
 async def test_html_server_notice_to_one_recipient() -> None:
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=ConfirmValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+    mocked_matrix_client, _, t = await create_fake_admin_bot(
+        validator=ConfirmValidator()
     )
-    mock_admin_client.session.request = Mock()
+    mocked_matrix_client.send = mock_send_response(user_response_data)
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -521,14 +482,15 @@ async def test_html_server_notice_to_one_recipient() -> None:
     mocked_matrix_client.send_file_message.assert_awaited_once()
     mocked_matrix_client.send_file_message.reset_mock()
     # no call to fetch the users
-    assert len(mock_admin_client.session.request.call_args_list) == 0
+    check_requests_sent(mocked_matrix_client.client_session)
     # one call to send the notice directly to the user
-    assert len(mocked_matrix_client.send.await_args_list) == 1
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[0][0][1]
-    data = json.loads(mocked_matrix_client.send.await_args_list[0][1]["data"])
+    send_request = find_request(
+        mocked_matrix_client.send, "POST", "/send_server_notice"
+    )
+    data = json.loads(send_request.kwargs["data"])
     assert data["content"]["body"] == text_data
     assert data["content"]["formatted_body"] == html_formatted_data
-    mocked_matrix_client.send.reset_mock()
+    check_requests_sent(mocked_matrix_client.send, "/send_server_notice")
 
     assert len(mocked_matrix_client.send_reaction.await_args_list) == 2
 
@@ -537,15 +499,10 @@ async def test_html_server_notice_to_one_recipient() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_server_notice_with_no_matrix_id() -> None:
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=ConfirmValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+    mocked_matrix_client, _, t = await create_fake_admin_bot(
+        validator=ConfirmValidator()
     )
-    mock_admin_client.session.request = Mock()
+    mocked_matrix_client.send = mock_send_response(user_response_data)
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -583,25 +540,19 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
     )
 
     # no call to any endpoint if user is not a matrix id
-    assert len(mock_admin_client.session.request.call_args_list) == 0
-    assert len(mocked_matrix_client.send.await_args_list) == 0
+    check_requests_sent(mocked_matrix_client.client_session)
+    check_requests_sent(mocked_matrix_client.send)
     assert len(mocked_matrix_client.send_reaction.await_args_list) == 0
-    mocked_matrix_client.send.reset_mock()
 
     t.cancel()
 
 
 @pytest.mark.asyncio
 async def test_server_notice_with_edit() -> None:
-    (
-        mocked_matrix_client,
-        mock_admin_client,
-        t,
-    ) = await create_fake_admin_bot(validator=ConfirmValidator())
-    mocked_matrix_client.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value=user_response_data))
+    mocked_matrix_client, _, t = await create_fake_admin_bot(
+        validator=ConfirmValidator()
     )
-    mock_admin_client.session.request = Mock()
+    mocked_matrix_client.send = mock_send_response(user_response_data)
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -667,40 +618,29 @@ async def test_server_notice_with_edit() -> None:
     mocked_matrix_client.send_file_message.assert_awaited_once()
     mocked_matrix_client.send_file_message.reset_mock()
     # no call to fetch the users
-    assert len(mock_admin_client.session.request.call_args_list) == 0
+    check_requests_sent(mocked_matrix_client.client_session)
     # one call to send the notice directly to the user
-    assert len(mocked_matrix_client.send.await_args_list) == 1
-    assert "/users" not in mocked_matrix_client.send.await_args_list[0][0][1]
-    assert "/send_server_notice" in mocked_matrix_client.send.await_args_list[0][0][1]
-    data = json.loads(mocked_matrix_client.send.await_args_list[0][1]["data"])
+    send_request = find_request(
+        mocked_matrix_client.send, "POST", "/send_server_notice"
+    )
+    assert "/users" not in send_request.args[1]
+    data = json.loads(send_request.kwargs["data"])
     assert data["content"]["body"] == TEXT_DATA
-    mocked_matrix_client.send.reset_mock()
+    check_requests_sent(mocked_matrix_client.send, "/send_server_notice")
 
     t.cancel()
 
 
 @pytest.mark.asyncio
 async def test_to_one_recipient_with_coordinator() -> None:
-    (
-        mocked_matrix_client1,
-        mock_admin_client1,
-        t1,
-    ) = await create_fake_admin_bot("example.org", validator=ConfirmValidator())
-    mocked_matrix_client1.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
+    mocked_matrix_client1, _, t1 = await create_fake_admin_bot(
+        "example.org", validator=ConfirmValidator()
     )
-    mock_admin_client1.session.request = Mock()
-    (
-        mocked_matrix_client2,
-        mock_admin_client2,
-        t2,
-    ) = await create_fake_admin_bot(
+    mocked_matrix_client1.send = mock_send_response()
+    mocked_matrix_client2, _, t2 = await create_fake_admin_bot(
         "example2.org", is_coordinator=False, validator=ConfirmValidator()
     )
-    mocked_matrix_client2.send = AsyncMock(
-        return_value=Mock(ok=True, json=AsyncMock(return_value={}))
-    )
-    mock_admin_client2.session.request = Mock()
+    mocked_matrix_client2.send = mock_send_response()
     mocked_matrix_clients = [mocked_matrix_client1, mocked_matrix_client2]
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
@@ -750,18 +690,16 @@ async def test_to_one_recipient_with_coordinator() -> None:
     mocked_matrix_client2.check_sent_reactions("🚀", "✅")
 
     # no call on coordinator
-    assert len(mocked_matrix_client1.send.await_args_list) == 0
-    assert len(mock_admin_client1.session.request.call_args_list) == 0
+    check_requests_sent(mocked_matrix_client1.send)
+    check_requests_sent(mocked_matrix_client1.client_session)
 
     # send the report a result
     mocked_matrix_client2.send_file_message.assert_awaited_once()
     mocked_matrix_client2.send_file_message.reset_mock()
 
-    # no call to fetch user for the executing bot
-    assert len(mocked_matrix_client2.send.await_args_list) == 1
     # one call to send notice for the executing bot
-    assert len(mock_admin_client2.session.request.call_args_list) == 0
-    assert "/send_server_notice" in mocked_matrix_client2.send.await_args_list[0][0][1]
+    check_requests_sent(mocked_matrix_client2.send, "/send_server_notice")
+    check_requests_sent(mocked_matrix_client2.client_session)
 
     t1.cancel()
     t2.cancel()
