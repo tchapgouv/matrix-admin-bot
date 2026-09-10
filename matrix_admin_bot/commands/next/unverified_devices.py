@@ -29,7 +29,7 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
     ) -> None:
         super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
         self.user_ids: list[str] = []
-        self.from_date: datetime.date | None = None
+        self.created_after: datetime.date | None = None
 
         self.transform_cmd_input_fct: (
             Callable[[type[ICommand], list[str]], Awaitable[list[str]]] | None
@@ -156,7 +156,7 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
 
     async def get_mas_unverified_sessions(
         self, user_id: str, unverified_device_ids: Collection[str]
-    ) -> dict[str, dict[str, Any]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         # Get the user from the MAS with its localpart
         mas_user_id = await self.admin_client.get_mas_user_id(
             self.json_report, [], user_id
@@ -174,14 +174,14 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
             )
         )
 
-        unverified_device_sessions: dict[str, dict[str, Any]] = {}
+        unverified_device_sessions: dict[str, list[dict[str, Any]]] = {}
         for session in all_device_sessions:
-            if not self.is_after_from(session):
+            if not self.is_created_after(session):
                 continue
 
             device_id = session.get("attributes", {}).get("device_id")
             if device_id and device_id in unverified_device_ids:
-                unverified_device_sessions[device_id] = session
+                unverified_device_sessions.setdefault(device_id, []).append(session)
 
         return unverified_device_sessions
 
@@ -246,7 +246,7 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
                     synapse_device["keys"] = all_device_keys[device_id]
 
                 synapse_device["sessions"] = unverified_device_sessions.get(
-                    device_id, {}
+                    device_id, []
                 )
 
                 unverified_devices_details.append(synapse_device)
@@ -255,8 +255,8 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
 
         return len(unverified_device_sessions) > 0
 
-    def is_after_from(self, session: dict[str, Any]) -> bool:
-        if self.from_date is None:
+    def is_created_after(self, session: dict[str, Any]) -> bool:
+        if self.created_after is None:
             return True
         created_at_str = session.get("attributes", {}).get("created_at")
         if not created_at_str:
@@ -264,7 +264,7 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
         created_at = parse_date(created_at_str)
         if not created_at:
             return True
-        return created_at > self.from_date
+        return created_at > self.created_after
 
     @override
     async def simple_execute(self) -> bool:
@@ -278,13 +278,15 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
             await self.send_report()
 
         if unverified_users:
-            text = "\n".join(
-                [
-                    f"The following {len(unverified_users)} users has at least one unverified device:",  # noqa: E501
-                    "",
-                    *[f"- {user_id}" for user_id in unverified_users],
-                ]
-            )
+            nb_unverified_users = len(unverified_users)
+            text = f"{'The following ' if nb_unverified_users < 100 else ''}{nb_unverified_users} users has at least one unverified device.\n"  # noqa: E501
+
+            if nb_unverified_users < 100:
+                text += "\n".join([f"- {user_id}" for user_id in unverified_users])
+
+            # text += "\nDo you want to remove these unverified devices?"
+            # text += "\n\nIf so please reply with 'yes'."
+
             await self.matrix_client.send_markdown_message(
                 self.room.room_id,
                 text,
@@ -297,8 +299,8 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
     @override
     async def should_execute(self) -> bool:
         splitted = self.command_text.split()
-        if len(splitted) > 0 and splitted[0].startswith("from="):
-            self.from_date = parse_date(splitted[0][5:])
+        if len(splitted) > 0 and splitted[0].startswith("created_after="):
+            self.created_after = parse_date(splitted[0][14:])
             self.command_text = " ".join(splitted[1:])
 
         return await super().should_execute()
@@ -308,7 +310,7 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
     def help_message(self) -> str:
         return """
 **Usage**:
-`!unverified_devices [from=2026-01-01T08:00:00] <user1> [user2] ...`
+`!unverified_devices [created_after=2026-01-01T08:00:00] <user1> [user2] ...`
 
 **Purpose**:
 Lists and optionally deletes unverified devices and their sessions
@@ -318,11 +320,12 @@ All devices that have not been verified by the user, including devices
 that has no crypto setup or no device associated, will be listed and
 optionally deleted.
 
-from=<ISO formatted date> (optional): only list devices created after this date.
+created_after=<ISO formatted date> (optional): only list unverified devices
+created after this date.
 
 **Examples**:
 - `!unverified_devices @user:example.com`
-- `!unverified_devices @user1:example.com @user2:example.com`
+- `!unverified_devices created_after=2026-01-01 @user1:example.com @user2:example.com`
 """
 
 
