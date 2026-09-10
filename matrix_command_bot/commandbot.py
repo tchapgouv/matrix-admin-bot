@@ -178,8 +178,8 @@ class CommandBot(MatrixBot):
                     room, message, self.matrix_client, self.extra_config
                 )
                 if self.can_execute(message.sender, command):
-                    self.commands_cache[message.event_id] = command
                     await command.execute()
+                    self.commands_cache[message.event_id] = command
                 else:
                     if self.extra_config.get("is_coordinator", True):
                         await self.matrix_client.send_markdown_message(
