@@ -236,24 +236,24 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
             user_id, unverified_devices.keys()
         )
 
+        if len(unverified_device_sessions) == 0:
+            del self.json_report[user_id]
+            return True
+
         unverified_devices_details = []
-        for device_id, synapse_device in synapse_devices.items():
-            if device_id in unverified_devices:
-                reason = unverified_devices[device_id]
-                synapse_device["reason"] = reason
+        for device_id, sessions in unverified_device_sessions.items():
+            device_details = synapse_devices[device_id]
+            device_details["reason"] = unverified_devices[device_id]
+            device_details["sessions"] = sessions
 
-                if device_id in all_device_keys:
-                    synapse_device["keys"] = all_device_keys[device_id]
+            if device_id in all_device_keys:
+                device_details["keys"] = all_device_keys[device_id]
 
-                synapse_device["sessions"] = unverified_device_sessions.get(
-                    device_id, []
-                )
-
-                unverified_devices_details.append(synapse_device)
+            unverified_devices_details.append(device_details)
 
         self.json_report[user_id]["unverified_devices"] = unverified_devices_details
 
-        return len(unverified_device_sessions) > 0
+        return False
 
     def is_created_after(self, session: dict[str, Any]) -> bool:
         if self.created_after is None:
