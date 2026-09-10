@@ -177,19 +177,13 @@ class AdminClient:
 
         return users
 
-    async def get_user_emails(
-        self, json_report: dict[str, Any], limit: int = 1000
-    ) -> dict[str, str]:
+    async def get_user_emails(self, limit: int = 1000) -> dict[str, str]:
         emails: dict[str, str] = {}
         endpoint = f"/api/admin/v1/user-emails?page[first]={limit}"
         resp = await self.send_to_mas_with_retry("GET", endpoint)
         json_body = await self.decode_client_response(resp)
         if not resp.ok:
             error = "Cannot get all emails from MAS"
-            json_report["details"]["get_user_emails"] = {
-                "error": error,
-                "description": json_body,
-            }
             logger.warning(
                 "%s - %s user emails has been retrieved: %s",
                 error,
@@ -220,10 +214,6 @@ class AdminClient:
                 json_body = await self.decode_client_response(resp)
                 if not resp.ok:
                     error = "Cannot get all user emails from MAS"
-                    json_report["details"]["get_user_emails"] = {
-                        "error": error,
-                        "description": json_body,
-                    }
                     logger.warning(
                         "%s - %s user emails has been retrieved: %s",
                         error,
@@ -241,12 +231,6 @@ class AdminClient:
                 len(emails),
                 nb_user_emails,
             )
-            error = "Cannot get all user emails from MAS"
-            json_report["details"]["get_user_emails"] = {
-                "error": error,
-                "description": f"Not all user emails have been retrieved : "
-                f"{len(emails)}/{nb_user_emails} user emails",
-            }
             return {}
 
         return emails

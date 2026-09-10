@@ -119,7 +119,7 @@ class UserRelatedCommand(InteractiveValidatedCommand):
 
         if all_local_users or domains:
             mas_user_id_to_emails: dict[str, list[str]] = {}
-            mas_user_emails = await self.admin_client.get_user_emails(self.json_report)
+            mas_user_emails = await self.admin_client.get_user_emails()
 
             for email, mas_id in mas_user_emails.items():
                 domain = email.split("@")[1]
