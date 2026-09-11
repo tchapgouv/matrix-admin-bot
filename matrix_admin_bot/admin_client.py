@@ -12,8 +12,6 @@ from matrix_command_bot.util import get_localpart_from_id
 
 logger = structlog.getLogger(__name__)
 
-VERIFY_SSL_CERT = True
-
 
 class AdminClient:
     """
@@ -210,6 +208,77 @@ class AdminClient:
 
         return users
 
+    async def get_user_emails(self, limit: int = 1000) -> dict[str, str]:
+        emails: dict[str, str] = {}
+        endpoint = f"/api/admin/v1/user-emails?page[first]={limit}"
+        resp = await self.send_to_mas_with_retry("GET", endpoint)
+        json_body = await self.decode_client_response(resp)
+        if not resp.ok:
+            error = "Cannot get all emails from MAS"
+            logger.warning(
+                "%s - %s user emails has been retrieved: %s",
+                error,
+                len(emails),
+                f"{resp.status}-{resp.reason}-{json_body}",
+            )
+            return emails
+
+        nb_user_emails = 0
+        if json_body.get("meta") and json_body.get("meta").get("count"):
+            nb_user_emails = json_body["meta"]["count"]
+
+        while True:
+            emails.update(
+                {
+                    user_email["attributes"]["email"]: user_email["attributes"][
+                        "user_id"
+                    ]
+                    for user_email in json_body["data"]
+                }
+            )
+            # Update user count
+            if json_body.get("meta") and json_body.get("meta").get("count"):
+                nb_user_emails = json_body["meta"]["count"]
+            if json_body.get("links") and json_body.get("links").get("next"):
+                endpoint = json_body["links"]["next"]
+                resp = await self.send_to_mas_with_retry("GET", endpoint)
+                json_body = await self.decode_client_response(resp)
+                if not resp.ok:
+                    error = "Cannot get all user emails from MAS"
+                    logger.warning(
+                        "%s - %s user emails has been retrieved: %s",
+                        error,
+                        len(emails),
+                        f"{resp.status}-{resp.reason}-{json_body}",
+                    )
+                    return {}
+            else:
+                break
+
+        # Check if we have retrieve all user emails
+        if nb_user_emails > len(emails):
+            logger.warning(
+                "Not all user emails have been retrieved : %s/%s user emails",
+                len(emails),
+                nb_user_emails,
+            )
+            return {}
+
+        return emails
+
+    async def get_user(self, server_name: str, mas_id: str) -> str | None:
+        endpoint = f"/api/admin/v1/users/{mas_id}"
+        resp = await self.send_to_mas_with_retry(
+            "GET",
+            endpoint=endpoint,
+        )
+        if resp.ok:
+            json_body = await self.decode_client_response(resp)
+            localpart = json_body.get("data", {}).get("attributes", {}).get("username")
+            if localpart:
+                return f"@{localpart}:{server_name}"
+        return None
+
     async def get_devices_from_synapse(
         self, json_report: dict[str, Any], user_id: str
     ) -> None:
@@ -263,17 +332,15 @@ class AdminClient:
                     scopes: list[str] = scope_list.split() if scope_list else []
                     device_id = None
                     for scope in scopes:
-                        if scope.startswith("urn:matrix:client:device:"):
-                            device_id = scope[len("urn:matrix:client:device:") :]
-                        elif scope.startswith(
-                            "urn:matrix:org.matrix.msc2967.client:device:"
-                        ):
-                            device_id = scope[
-                                len("urn:matrix:org.matrix.msc2967.client:device:") :
-                            ]
+                        for scope_prefix in [
+                            "urn:matrix:client:device:",
+                            "urn:matrix:org.matrix.msc2967.client:device:",
+                        ]:
+                            if scope.startswith(scope_prefix):
+                                device_id = scope[len(scope_prefix) :]
+                                break
                     if device_id:
                         session["attributes"]["device_id"] = device_id
-                        break
             all_sessions.extend(sessions)
         return all_sessions
 

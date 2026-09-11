@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Mapping
 from typing import Any, override
 
@@ -29,13 +28,14 @@ from matrix_admin_bot.commands.next.room_details_v2 import RoomDetailsCommandV2
 from matrix_admin_bot.commands.next.room_state_v2 import RoomStateCommandV2
 from matrix_admin_bot.commands.next.server_notice_v2 import ServerNoticeCommandV2
 from matrix_admin_bot.commands.next.unlock_v2 import UnlockCommandV2
+from matrix_admin_bot.commands.next.unverified_devices import (
+    UnverifiedDevicesCommand,
+)
 from matrix_admin_bot.commands.next.user_v2 import UserCommandV2
 from matrix_admin_bot.commands.ping import PingCommand
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
 from matrix_command_bot.validation.validators.totp import TOTPValidator
-
-logging.basicConfig(level=logging.INFO)
 
 
 def get_command_list() -> list[type[ICommand]]:
@@ -55,6 +55,7 @@ def get_command_list() -> list[type[ICommand]]:
         ReplaceEmailCommandV2,
         ReplaceDisplayNameCommandV2,
         UserCommandV2,
+        UnverifiedDevicesCommand,
     ]
 
 
@@ -140,8 +141,6 @@ class AdminBot(CommandBot):
         config: AdminBotConfig,
         **extra_config: Any,  # noqa: ANN401
     ) -> None:
-        logging.basicConfig(level=config.log_level)
-
         if "validator" not in extra_config:
             extra_config["validator"] = TOTPValidator(config.totps)
         bot_lib_config.allowed_room_ids = config.allowed_room_ids
