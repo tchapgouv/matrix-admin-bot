@@ -199,7 +199,8 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
 
         return unverified_device_sessions
 
-    async def list_unverified_devices(self, user_id: str) -> bool:
+    # TODO decrease complexity
+    async def list_unverified_devices(self, user_id: str) -> bool:  # noqa: C901,PLR0911
         if get_server_name(user_id) != self.server_name:
             return True
 
@@ -265,6 +266,11 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
             user_id, unverified_devices.keys()
         )
 
+        if len(unverified_device_sessions) == 0:
+            logger.debug("No sessions found for unverified devices", user_id=user_id)
+            del self.json_report[user_id]
+            return True
+
         unverified_devices_details: list[dict[str, Any]] = []
         for device_id, sessions in unverified_device_sessions.items():
             device_details = synapse_devices[device_id]
@@ -284,7 +290,7 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
             unverified_devices_count=len(unverified_devices_details),
         )
 
-        return len(unverified_device_sessions) > 0
+        return False
 
     def is_created_after(self, session: dict[str, Any]) -> bool:
         if self.created_after is None:
