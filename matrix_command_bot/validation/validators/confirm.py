@@ -1,10 +1,13 @@
 from typing import Final, override
 
+import structlog
 from nio import RoomMessage, RoomMessageText
 
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.util import get_fallback_stripped_body
 from matrix_command_bot.validation import IValidator
+
+logger = structlog.getLogger(__name__)
 
 
 class ConfirmValidator(IValidator):
@@ -38,5 +41,16 @@ class ConfirmValidator(IValidator):
     ) -> bool:
         if isinstance(user_response, RoomMessageText):
             body = get_fallback_stripped_body(user_response)
-            return body.strip().strip(".") in self.CONFIRM_KEYWORDS
+            validated = body.strip().strip(".") in self.CONFIRM_KEYWORDS
+            logger.debug(
+                "Confirming validation result",
+                command=command,
+                sender=user_response.sender,
+                validated=validated,
+            )
+            return validated
+        logger.debug(
+            "Confirming refused: response is not a text message",
+            command=command,
+        )
         return False

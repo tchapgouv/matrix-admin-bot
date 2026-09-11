@@ -1,5 +1,6 @@
 from typing import override
 
+import structlog
 from nio import RoomMessage
 
 from matrix_command_bot.step import (
@@ -8,6 +9,8 @@ from matrix_command_bot.step import (
     ICommandStep,
 )
 from matrix_command_bot.util import set_status_reaction
+
+logger = structlog.getLogger(__name__)
 
 
 class ReactionCommandState:
@@ -32,6 +35,12 @@ class ReactionStep(ICommandStep):
         self,
         reply: RoomMessage | None = None,
     ) -> tuple[bool, CommandAction]:
+        logger.debug(
+            "Updating status reaction",
+            command=self.command,
+            reaction=self.reaction,
+            current_reaction_event_id=self.state.current_reaction_event_id,
+        )
         self.state.current_reaction_event_id = await set_status_reaction(
             self.command, self.reaction, self.state.current_reaction_event_id
         )
@@ -59,5 +68,11 @@ class ResultReactionStep(ReactionStep):
             self.success_reaction
             if self.command.current_result
             else self.failure_reaction
+        )
+        logger.debug(
+            "Setting result reaction",
+            command=self.command,
+            current_result=self.command.current_result,
+            reaction=self.reaction,
         )
         return await super().execute(reply)

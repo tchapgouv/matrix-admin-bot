@@ -2,6 +2,7 @@ from abc import ABC
 from collections.abc import Mapping
 from typing import Any, override
 
+import structlog
 from matrix_bot.client import MatrixClient
 from nio import MatrixRoom, RoomMessage
 
@@ -17,6 +18,8 @@ from matrix_command_bot.step.reaction_steps import (
 )
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.steps import ValidateStep
+
+logger = structlog.getLogger(__name__)
 
 
 class SimpleValidatedCommand(SimpleCommand, ABC):
@@ -35,7 +38,13 @@ class SimpleValidatedCommand(SimpleCommand, ABC):
     async def create_steps(self) -> list[ICommandStep]:
         command = self
 
-        if not await self.should_execute():
+        should_execute = await self.should_execute()
+        logger.debug(
+            "Creating steps for validated command",
+            command=command,
+            should_execute=should_execute,
+        )
+        if not should_execute:
             return [
                 ValidateStep(self, self.state, self.validator, command.confirm_message),
                 ReactionStep(self, self.state, ""),
@@ -56,3 +65,9 @@ class SimpleValidatedCommand(SimpleCommand, ABC):
     async def reply_received(self, reply: RoomMessage) -> None:
         if reply.sender != self.matrix_client.user_id:
             await super().reply_received(reply)
+        else:
+            logger.debug(
+                "Ignoring own reply",
+                command=self,
+                event_id=reply.event_id,
+            )

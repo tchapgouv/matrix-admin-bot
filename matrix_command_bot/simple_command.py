@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, override
 
+import structlog
 from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
 
@@ -12,6 +13,8 @@ from matrix_command_bot.step.reaction_steps import (
     ReactionStep,
     ResultReactionStep,
 )
+
+logger = structlog.getLogger(__name__)
 
 
 class SimpleExecuteStep(ICommandStep):
@@ -29,7 +32,18 @@ class SimpleExecuteStep(ICommandStep):
     async def execute(
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
-        return await self.fct(), CommandAction.CONTINUE
+        logger.debug(
+            "Executing simple command step",
+            command=self.command,
+            has_reply=reply is not None,
+        )
+        result = await self.fct()
+        logger.debug(
+            "Simple command step executed",
+            command=self.command,
+            result=result,
+        )
+        return result, CommandAction.CONTINUE
 
 
 class SimpleCommand(CommandWithSteps, ABC):
@@ -45,7 +59,14 @@ class SimpleCommand(CommandWithSteps, ABC):
 
     @override
     async def create_steps(self) -> list[ICommandStep]:
-        if not await self.should_execute():
+        should_execute = await self.should_execute()
+        logger.debug(
+            "Creating steps for simple command",
+            command=self,
+            should_execute=should_execute,
+        )
+        if not should_execute:
+            logger.debug("Command will not execute, skipping steps", command=self)
             return []
 
         return [
