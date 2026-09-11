@@ -226,6 +226,11 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
             device.get("device_id"): device for device in synapse_devices
         }
 
+        if len(synapse_devices) == 0:
+            logger.debug("No devices found", user_id=user_id)
+            del self.json_report[user_id]
+            return True
+
         try:
             res = await self.get_device_keys(user_id)
         except Exception as e:
