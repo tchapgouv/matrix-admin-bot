@@ -37,8 +37,24 @@ class InteractiveValidatedCommand(SimpleValidatedCommand):
 
         self.json_report: dict[str, Any] = {}
 
+        logger.debug(
+            "Interactive validated command initialized",
+            command=self.__class__.__name__,
+            keyword=self.keyword,
+            room_id=self.room.room_id,
+            event_id=self.message.event_id,
+            sender=self.message.sender,
+            server_name=self.server_name,
+        )
+
     async def execute(self) -> bool:
         if self.command_text == "help":
+            logger.debug(
+                "Command help requested",
+                command=self.__class__.__name__,
+                keyword=self.keyword,
+                room_id=self.room.room_id,
+            )
             await self.send_help()
             return True
 
@@ -47,12 +63,32 @@ class InteractiveValidatedCommand(SimpleValidatedCommand):
     async def send_help(self) -> None:
         """Send the command's help message."""
         if self.extra_config.get("is_coordinator", True):
+            logger.debug(
+                "Sending command help message",
+                command=self.__class__.__name__,
+                keyword=self.keyword,
+                room_id=self.room.room_id,
+            )
             await self.matrix_client.send_markdown_message(
                 self.room.room_id,
                 self.help_message,
             )
+        else:
+            logger.debug(
+                "Not sending command help message, bot is not a coordinator",
+                command=self.__class__.__name__,
+                keyword=self.keyword,
+                room_id=self.room.room_id,
+            )
 
     async def send_report(self) -> None:
+        logger.debug(
+            "Sending command report",
+            command=self.__class__.__name__,
+            keyword=self.keyword,
+            room_id=self.room.room_id,
+            has_report=bool(self.json_report),
+        )
         await send_report(
             json_report=self.json_report,
             report_name=self.keyword,
@@ -90,6 +126,14 @@ class UserRelatedCommand(InteractiveValidatedCommand):
             Callable[[list[str]], Awaitable[list[str]]] | None
         ) = extra_config.get("transform_cmd_input_fct")  # pyright: ignore[reportAttributeAccessIssue]
 
+        logger.debug(
+            "User related command initialized",
+            command=self.__class__.__name__,
+            keyword=keyword,
+            server_name=self.server_name,
+            has_transform_cmd_input_fct=self.transform_cmd_input_fct is not None,
+        )
+
     @override
     async def should_execute(self) -> bool:
         (
@@ -98,6 +142,14 @@ class UserRelatedCommand(InteractiveValidatedCommand):
         ) = await self.admin_client.get_mxids_from_args(
             self.command_text.split(), self.server_name, self.transform_cmd_input_fct
         )
-        return any(
+        should_execute = any(
             is_local_user(user_id, self.server_name) for user_id in self.user_ids
         )
+        logger.debug(
+            "Determined whether user related command should execute",
+            command=self.__class__.__name__,
+            keyword=self.keyword,
+            user_ids=self.user_ids,
+            should_execute=should_execute,
+        )
+        return should_execute
