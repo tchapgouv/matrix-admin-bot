@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Mapping
 from typing import Any, override
 
@@ -33,6 +34,8 @@ from matrix_admin_bot.commands.ping import PingCommand
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
 from matrix_command_bot.validation.validators.totp import TOTPValidator
+
+logging.basicConfig(level=logging.INFO)
 
 
 def get_command_list() -> list[type[ICommand]]:
@@ -110,6 +113,7 @@ class AdminBotConfig(BaseSettings):
     roles: dict[str, RoleModel] = {}
     server_notice_limit: int = 100
     server_notice_nb_workers: int = 1
+    log_level: str = "INFO"
 
     @classmethod
     @override
@@ -136,6 +140,8 @@ class AdminBot(CommandBot):
         config: AdminBotConfig,
         **extra_config: Any,  # noqa: ANN401
     ) -> None:
+        logging.basicConfig(level=config.log_level)
+
         if "validator" not in extra_config:
             extra_config["validator"] = TOTPValidator(config.totps)
         bot_lib_config.allowed_room_ids = config.allowed_room_ids
