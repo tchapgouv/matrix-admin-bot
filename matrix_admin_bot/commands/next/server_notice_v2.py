@@ -9,7 +9,7 @@ from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 
-from matrix_admin_bot.commands.next.admin_client import AdminClient
+from matrix_admin_bot.admin_client import AdminClient
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.simple_command import SimpleExecuteStep
 from matrix_command_bot.step import CommandAction, CommandWithSteps, ICommandStep
