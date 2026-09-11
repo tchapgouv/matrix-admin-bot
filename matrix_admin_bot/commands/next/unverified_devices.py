@@ -12,7 +12,7 @@ from vodozemac import Ed25519PublicKey, Ed25519Signature, SignatureException
 
 from matrix_admin_bot import UserRelatedCommand
 from matrix_command_bot.command import ICommand
-from matrix_command_bot.util import get_server_name, is_local_user
+from matrix_command_bot.util import get_server_name
 
 logger = structlog.getLogger(__name__)
 
@@ -266,19 +266,15 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
         )
 
         unverified_devices_details: list[dict[str, Any]] = []
-        for device_id, synapse_device in synapse_devices.items():
-            if device_id in unverified_devices:
-                reason = unverified_devices[device_id]
-                synapse_device["reason"] = reason
+        for device_id, sessions in unverified_device_sessions.items():
+            device_details = synapse_devices[device_id]
+            device_details["reason"] = unverified_devices[device_id]
+            device_details["sessions"] = sessions
 
-                if device_id in all_device_keys:
-                    synapse_device["keys"] = all_device_keys[device_id]
+            if device_id in all_device_keys:
+                device_details["keys"] = all_device_keys[device_id]
 
-                synapse_device["sessions"] = unverified_device_sessions.get(
-                    device_id, []
-                )
-
-                unverified_devices_details.append(synapse_device)
+            unverified_devices_details.append(device_details)
 
         self.json_report[user_id]["unverified_devices"] = unverified_devices_details
 

@@ -94,6 +94,7 @@ ignore = [
     "TC003",    # Too much noise for really small performance improvements
 
     # TO BE FIXED !!
+    "ERA001",   # Found commented-out code: temporary
     "FIX002",   # Line contains TODO, consider resolving the issue
     "D",        # Missing docstring
 ]
