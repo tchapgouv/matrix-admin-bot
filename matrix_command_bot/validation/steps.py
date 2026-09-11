@@ -1,5 +1,6 @@
 from typing import override
 
+import structlog
 from nio import RoomMessage
 
 from matrix_command_bot.command import ICommand
@@ -7,6 +8,8 @@ from matrix_command_bot.step import CommandAction, ICommandStep
 from matrix_command_bot.step.reaction_steps import ReactionCommandState
 from matrix_command_bot.util import set_status_reaction
 from matrix_command_bot.validation import IValidator
+
+logger = structlog.getLogger(__name__)
 
 
 class ValidateStep(ICommandStep):
@@ -28,10 +31,22 @@ class ValidateStep(ICommandStep):
         self, reply: RoomMessage | None = None
     ) -> tuple[bool, CommandAction]:
         if not self.prompting_done:
+            logger.debug(
+                "Sending validation prompt",
+                command=self.command,
+                validator=self.validator.__class__.__name__,
+            )
             await self.send_prompt()
             self.prompting_done = True
 
         res = await self.validator.validate(reply, self.command)
+        logger.debug(
+            "Validation step executed",
+            command=self.command,
+            validator=self.validator.__class__.__name__,
+            valid=res,
+            has_reply=reply is not None,
+        )
 
         return (
             True,
@@ -46,6 +61,11 @@ class ValidateStep(ICommandStep):
                 if message:
                     confirm_text = f"{message}\n\n" + confirm_text
 
+                logger.debug(
+                    "Sending validation prompt message",
+                    command=self.command,
+                    prompt=confirm_text,
+                )
                 await self.command.matrix_client.send_markdown_message(
                     self.command.room.room_id,
                     confirm_text,
@@ -53,6 +73,11 @@ class ValidateStep(ICommandStep):
                     thread_root=self.command.message.event_id,
                 )
 
+            logger.debug(
+                "Setting validation reaction",
+                command=self.command,
+                reaction=self.validator.reaction,
+            )
             self.state.current_reaction_event_id = await set_status_reaction(
                 self.command,
                 self.validator.reaction,

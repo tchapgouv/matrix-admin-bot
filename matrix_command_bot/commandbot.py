@@ -51,11 +51,24 @@ class CommandBot(MatrixBot):
         self.callbacks.register_on_message_event(self.store_event_in_cache)
         self.callbacks.register_on_message_event(self.launch_handle_event_task)
 
+        logger.debug(
+            "Command bot initialized",
+            commands=[command.__name__ for command in commands],
+            nb_roles=len(roles) if roles else 0,
+            is_coordinator=self.extra_config.get("is_coordinator", True),
+        )
+
     async def store_event_in_cache(
         self,
         _room: MatrixRoom,
         message: RoomMessage,
     ) -> None:
+        logger.debug(
+            "Storing event in cache",
+            event_id=message.event_id,
+            room_id=_room.room_id,
+            sender=message.sender,
+        )
         self.recent_events_cache[message.event_id] = message
 
     def get_replied_event(self, message: RoomMessage) -> RoomMessage | None:
@@ -73,10 +86,14 @@ class CommandBot(MatrixBot):
 
         # let's check if we have a thread root message and if it is a command
         if content.get("m.relates_to", {}).get("rel_type") == "m.thread":
-            command = self.commands_cache.get(
-                content.get("m.relates_to", {}).get("event_id")
-            )
+            thread_root_id = content.get("m.relates_to", {}).get("event_id")
+            command = self.commands_cache.get(thread_root_id)
             if command:
+                logger.debug(
+                    "Found command related to a thread",
+                    command=command,
+                    thread_root_id=thread_root_id,
+                )
                 return command
 
         # no thread here, let's check the reply chain for a command to validate
@@ -86,6 +103,11 @@ class CommandBot(MatrixBot):
             if replied_event:
                 command = self.commands_cache.get(replied_event.event_id)
                 if command:
+                    logger.debug(
+                        "Found command in the reply chain",
+                        command=command,
+                        related_event_id=replied_event.event_id,
+                    )
                     return command
 
         return None
@@ -95,7 +117,14 @@ class CommandBot(MatrixBot):
         if relates_to_payload.get("rel_type", "") == "m.replace":
             replace_event_id = relates_to_payload.get("event_id", None)
             if replace_event_id:
-                return self.recent_events_cache.get(replace_event_id)
+                replaced_event = self.recent_events_cache.get(replace_event_id)
+                logger.debug(
+                    "Replacement target retrieved from cache",
+                    event_id=message.event_id,
+                    replace_event_id=replace_event_id,
+                    found=replaced_event is not None,
+                )
+                return replaced_event
         return None
 
     async def launch_handle_event_task(
@@ -104,6 +133,12 @@ class CommandBot(MatrixBot):
         message: RoomMessage,
     ) -> None:
         # Handle event in a separate task so it doesn't block the event loop
+        logger.debug(
+            "Launching command handling task",
+            event_id=message.event_id,
+            room_id=room.room_id,
+            sender=message.sender,
+        )
         task = asyncio.create_task(
             self.handle_event(room, message), name=f"HandleEvent-{message.event_id}"
         )
@@ -118,7 +153,15 @@ class CommandBot(MatrixBot):
     ) -> None:
         # Let's ignore bot own messages
         if message.sender == self.matrix_client.user_id:
+            logger.debug("Ignoring own message", event_id=message.event_id)
             return
+
+        logger.debug(
+            "Handling event",
+            event_id=message.event_id,
+            room_id=room.room_id,
+            sender=message.sender,
+        )
 
         replaced_event = self.get_replaced_event(message)
         if replaced_event:
@@ -183,6 +226,11 @@ class CommandBot(MatrixBot):
                     # an inconsistent state.
                     await command.execute()
                     self.commands_cache[message.event_id] = command
+                    logger.debug(
+                        "Command executed and cached",
+                        command=command,
+                        event_id=message.event_id,
+                    )
                 else:
                     if self.extra_config.get("is_coordinator", True):
                         await self.matrix_client.send_markdown_message(
@@ -206,16 +254,39 @@ class CommandBot(MatrixBot):
                     e=e,
                     message=message,
                 )
+        else:
+            logger.debug(
+                "No command matched the message",
+                event_id=message.event_id,
+                sender=message.sender,
+            )
 
     def can_execute(self, sender: str, command: ICommand) -> bool:
         if not self.roles:
+            logger.debug(
+                "No roles configured, allowing command execution",
+                sender=sender,
+                command=command,
+            )
             return True
 
         user_roles = self.roles.get(sender, [])
         for role in user_roles:
             if role.all_commands or command.__class__ in role.allowed_commands:
+                logger.debug(
+                    "Command execution allowed by role",
+                    sender=sender,
+                    command=command,
+                    role=role.name,
+                )
                 return True
 
+        logger.debug(
+            "Command execution denied by roles",
+            sender=sender,
+            command=command,
+            roles=[role.name for role in user_roles],
+        )
         return False
 
     def can_interact(self, sender: str, original_command: ICommand) -> bool:
@@ -234,8 +305,21 @@ class CommandBot(MatrixBot):
 
         # Let's check if the original command sender role allows other users to interact
         original_sender_roles = self.roles.get(original_command.message.sender, [])
-        for role in original_sender_roles:  # noqa: SIM110
+        for role in original_sender_roles:
             if role.allow_other_users_interaction:
+                logger.debug(
+                    "Command interaction allowed by original sender role",
+                    sender=sender,
+                    original_sender=original_command.message.sender,
+                    command=original_command,
+                    role=role.name,
+                )
                 return True
 
+        logger.debug(
+            "Command interaction denied",
+            sender=sender,
+            original_sender=original_command.message.sender,
+            command=original_command,
+        )
         return False

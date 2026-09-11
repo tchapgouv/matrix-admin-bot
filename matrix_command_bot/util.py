@@ -5,10 +5,13 @@ import time
 from typing import Any
 
 import aiofiles
+import structlog
 from matrix_bot.bot import MatrixClient
 from nio import RoomMessageText
 
 from matrix_command_bot.command import ICommand
+
+logger = structlog.getLogger(__name__)
 
 
 def get_fallback_stripped_body(reply: RoomMessageText) -> str:
@@ -55,6 +58,12 @@ async def send_report(
     room_id: str,
     replied_event_id: str,
 ) -> None:
+    logger.debug(
+        "Sending JSON report",
+        report_name=report_name,
+        room_id=room_id,
+        replied_event_id=replied_event_id,
+    )
     async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
         await tmpfile.write(json.dumps(json_report, indent=2, sort_keys=True).encode())
         await tmpfile.flush()
@@ -74,14 +83,25 @@ async def set_status_reaction(
     current_reaction_event_id: str | None,
 ) -> str | None:
     if key is None:
+        logger.debug(
+            "Clearing status reaction",
+            command=command,
+            current_reaction_event_id=current_reaction_event_id,
+        )
         return None
 
     if current_reaction_event_id:
+        logger.debug(
+            "Removing previous status reaction",
+            command=command,
+            current_reaction_event_id=current_reaction_event_id,
+        )
         await command.matrix_client.room_redact(
             command.room.room_id, current_reaction_event_id
         )
 
     if key:
+        logger.debug("Setting status reaction", command=command, reaction=key)
         return await command.matrix_client.send_reaction(
             command.room.room_id, command.message, key
         )
