@@ -12,10 +12,8 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
+from matrix_admin_bot.admin_client import AdminClient
 from matrix_admin_bot.commands.next.add_email_v2 import AddEmailCommandV2
-from matrix_admin_bot.commands.next.admin_client import (
-    AdminClient,
-)
 from matrix_admin_bot.commands.next.deactivate_v2 import DeactivateCommandV2
 from matrix_admin_bot.commands.next.lock_v2 import LockCommandV2
 from matrix_admin_bot.commands.next.memberships_v2 import MembershipsCommandV2
