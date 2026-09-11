@@ -1,3 +1,4 @@
+import logging
 from hashlib import sha256
 from typing import Any
 
@@ -139,6 +140,14 @@ class TchapAdminBot(AdminBot):
 
 def main() -> None:
     config = TchapAdminBotConfig()
+
+    logging.basicConfig(level=logging.WARNING)
+    structlog.configure(
+        wrapper_class=structlog.make_filtering_bound_logger(
+            logging.getLevelNamesMapping()[config.log_level.upper()]
+        ),
+    )
+
     bot = TchapAdminBot(config)
     bot.run()
 
