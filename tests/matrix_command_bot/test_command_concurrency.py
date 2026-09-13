@@ -162,7 +162,7 @@ class LongShouldExecuteCommand(KeywordCommand):
 
 @pytest.mark.asyncio
 @timeout(3)
-async def test_reply_received_during_execution() -> None:
+async def test_reply_received_during_should_execute() -> None:
     mocked_client, t = await create_fake_command_bot(
         [LongShouldExecuteCommand], validator=ConfirmValidator()
     )
