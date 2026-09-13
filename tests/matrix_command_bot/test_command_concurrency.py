@@ -136,3 +136,60 @@ async def test_command_with_confirm_concurrency() -> None:
     assert mocked_client.success_executed
 
     t.cancel()
+
+
+class LongShouldExecuteCommand(KeywordCommand):
+    def __init__(
+        self,
+        room: MatrixRoom,
+        message: RoomMessage,
+        matrix_client: MatrixClient,
+        extra_config: Mapping[str, Any],
+    ) -> None:
+        super().__init__(
+            room, message, matrix_client, "long_should_execute", extra_config
+        )
+
+    async def should_execute(self) -> bool:
+        await asyncio.sleep(1)
+        return True
+
+    @override
+    async def simple_execute(self) -> bool:
+        self.matrix_client.success_executed = True
+        return True
+
+
+@pytest.mark.asyncio
+@timeout(3)
+async def test_reply_received_during_execution() -> None:
+    mocked_client, t = await create_fake_command_bot(
+        [LongShouldExecuteCommand], validator=ConfirmValidator()
+    )
+
+    mocked_client.success_executed = False
+
+    room = MatrixRoom("!roomid:example.org", USER1_ID)
+
+    long_cmd_event_id = await mocked_client.fake_synced_text_message(
+        room, USER1_ID, "!long_should_execute", wait_for_commands_execution=False
+    )
+    # Confirm the command right away while it's still in should_execute.
+    await mocked_client.fake_synced_text_message(
+        room,
+        USER1_ID,
+        "yes",
+        extra_content=create_thread_relation(long_cmd_event_id),
+        wait_for_commands_execution=False,
+    )
+    await asyncio.sleep(0.1)
+
+    # The command should not have been executed yet since it's still in should_execute.
+    assert not mocked_client.success_executed
+
+    await asyncio.sleep(1)
+
+    # The command should have been executed now that should_execute has returned.
+    assert mocked_client.success_executed
+
+    t.cancel()

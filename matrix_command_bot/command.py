@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any
@@ -44,3 +45,27 @@ class ICommand(ABC):
             event_id=original_event.event_id,
             sender=original_event.sender,
         )
+
+
+class CommandGuard:
+    """Encapsulate an ICommand, serializing its methods with a global lock."""
+
+    def __init__(self, command: ICommand) -> None:
+        self.command = command
+        self._lock = asyncio.Lock()
+
+    async def execute(self) -> bool:
+        async with self._lock:
+            return await self.command.execute()
+
+    async def reply_received(self, reply: RoomMessage) -> None:
+        async with self._lock:
+            await self.command.reply_received(reply)
+
+    async def replace_received(
+        self,
+        new_content: Mapping[str, Any],
+        original_event: RoomMessage,
+    ) -> None:
+        async with self._lock:
+            await self.command.replace_received(new_content, original_event)

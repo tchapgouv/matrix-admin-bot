@@ -8,7 +8,7 @@ from matrix_bot.bot import MatrixBot
 from matrix_bot.eventparser import EventNotConcerned
 from nio import MatrixRoom, RoomMessage
 
-from matrix_command_bot.command import ICommand
+from matrix_command_bot.command import CommandGuard, ICommand
 
 logger = structlog.getLogger(__name__)
 
@@ -42,8 +42,8 @@ class CommandBot(MatrixBot):
         self.recent_events_cache: cachetools.TTLCache[str, RoomMessage] = (  # pyright: ignore[reportAttributeAccessIssue]
             cachetools.TTLCache(maxsize=5120, ttl=24 * 60 * 60)
         )
-        self.commands_cache: cachetools.TTLCache[str, ICommand] = cachetools.TTLCache(  # pyright: ignore[reportAttributeAccessIssue]
-            maxsize=5120, ttl=24 * 60 * 60
+        self.commands_cache: cachetools.TTLCache[str, CommandGuard] = (  # pyright: ignore[reportAttributeAccessIssue]
+            cachetools.TTLCache(maxsize=5120, ttl=24 * 60 * 60)
         )
 
         self.background_tasks: set[asyncio.Task[Any]] = set()
@@ -79,7 +79,7 @@ class CommandBot(MatrixBot):
             .get("event_id")
         )
 
-    def get_related_command(self, message: RoomMessage) -> ICommand | None:
+    def get_related_command(self, message: RoomMessage) -> CommandGuard | None:
         content = message.source.get("content", {})
         if not content:
             return None
@@ -174,7 +174,7 @@ class CommandBot(MatrixBot):
                     related_command=related_command,
                     replaced_event=replaced_event,
                 )
-                if self.can_interact(message.sender, related_command):
+                if self.can_interact(message.sender, related_command.command):
                     await related_command.replace_received(new_content, replaced_event)
                 else:
                     if self.extra_config.get("is_coordinator", True):
@@ -198,7 +198,7 @@ class CommandBot(MatrixBot):
                     related_command=related_command,
                     reply=message,
                 )
-                if self.can_interact(message.sender, related_command):
+                if self.can_interact(message.sender, related_command.command):
                     await related_command.reply_received(message)
                 else:
                     if self.extra_config.get("is_coordinator", True):
@@ -215,35 +215,18 @@ class CommandBot(MatrixBot):
                     )
                 return
 
+        parsed_command = None
         for command_type in self.commands:
             try:
-                command = command_type(
-                    room, message, self.matrix_client, self.extra_config
+                parsed_command = CommandGuard(
+                    command_type(room, message, self.matrix_client, self.extra_config)
                 )
-                if self.can_execute(message.sender, command):
-                    # We should cache the command after execution to avoid polluting
-                    # the cache with commands that failed and could be in
-                    # an inconsistent state.
-                    await command.execute()
-                    self.commands_cache[message.event_id] = command
-                    logger.debug(
-                        "Command executed and cached",
-                        command=command,
-                        event_id=message.event_id,
-                    )
-                else:
-                    if self.extra_config.get("is_coordinator", True):
-                        await self.matrix_client.send_markdown_message(
-                            room.room_id,
-                            "You are not allowed to execute this command",
-                            reply_to=message.event_id,
-                            thread_root=message.event_id,
-                        )
-                    logger.warning(
-                        "Command not allowed to be executed",
-                        command=command,
-                        message=message,
-                    )
+                self.commands_cache[message.event_id] = parsed_command
+                logger.debug(
+                    "Command parsed and cached",
+                    command=parsed_command,
+                    event_id=message.event_id,
+                )
                 break
             except EventNotConcerned:
                 pass
@@ -252,6 +235,39 @@ class CommandBot(MatrixBot):
                     "Unexpected exception when trying to parse a message as %s",
                     command_type.__name__,
                     e=e,
+                    message=message,
+                )
+
+        if parsed_command:
+            if self.can_execute(message.sender, parsed_command.command):
+                try:
+                    await parsed_command.execute()
+                    logger.debug(
+                        "Command executed",
+                        command=parsed_command,
+                        event_id=message.event_id,
+                    )
+                except Exception as e:  # noqa: BLE001
+                    # Command execution failed with an exception and could be in
+                    # an inconsistent state, remove it from the cache
+                    del self.commands_cache[message.event_id]
+                    logger.warning(
+                        "Unexpected exception when trying to execute a command",
+                        e=e,
+                        command=parsed_command,
+                        message=message,
+                    )
+            else:
+                if self.extra_config.get("is_coordinator", True):
+                    await self.matrix_client.send_markdown_message(
+                        room.room_id,
+                        "You are not allowed to execute this command",
+                        reply_to=message.event_id,
+                        thread_root=message.event_id,
+                    )
+                logger.warning(
+                    "Command not allowed to be executed",
+                    command=parsed_command,
                     message=message,
                 )
         else:
