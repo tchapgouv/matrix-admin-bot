@@ -251,7 +251,7 @@ class AdminClient:
                         len(emails),
                         f"{resp.status}-{resp.reason}-{json_body}",
                     )
-                    return {}
+                    return emails
             else:
                 break
 
@@ -262,7 +262,6 @@ class AdminClient:
                 len(emails),
                 nb_user_emails,
             )
-            return {}
 
         return emails
 
