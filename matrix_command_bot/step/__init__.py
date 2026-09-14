@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from enum import Enum
@@ -50,20 +51,29 @@ class CommandWithSteps(ICommand, ABC):
         super().__init__(room, message, matrix_client, extra_config)
         self.current_step_index: int = 0
         self.current_result = True
-        self.is_step_running = False
+        self.lock = asyncio.Lock()
 
     @abstractmethod
     async def create_steps(self) -> list[ICommandStep]: ...
 
     @override
     async def execute(self) -> bool:
-        self.steps = await self.create_steps()
         logger.debug(
-            "Executing command steps",
+            "Waiting for lock to execute command",
             command=self,
-            nb_steps=len(self.steps),
         )
-        return await self.resume_execute(None)
+        async with self.lock:
+            logger.debug(
+                "Lock acquired, creating steps",
+                command=self,
+            )
+            self.steps = await self.create_steps()
+            logger.debug(
+                "Steps created, launching execution",
+                command=self,
+                nb_steps=len(self.steps),
+            )
+            return await self.resume_execute(None)
 
     async def resume_execute(self, reply: RoomMessage | None) -> bool:
         while self.current_step_index < len(self.steps):
@@ -116,23 +126,24 @@ class CommandWithSteps(ICommand, ABC):
     async def execute_step(
         self, step: ICommandStep, reply: RoomMessage | None
     ) -> tuple[bool, CommandAction]:
-        self.is_step_running = True
-        result = await step.execute(reply)
-        self.is_step_running = False
-        return result
+        logger.debug(
+            "Executing step",
+            command=self,
+            step=step.__class__.__name__,
+        )
+        return await step.execute(reply)
 
     @override
     async def reply_received(self, reply: RoomMessage) -> None:
-        if self.is_step_running:
-            logger.warning(
-                "Step %s is already running",
-                self.steps[self.current_step_index].__class__.__name__,
-            )
-        else:
+        logger.debug(
+            "Waiting for lock to handle reply to the command",
+            command=self,
+            reply=reply,
+        )
+        async with self.lock:
             logger.debug(
-                "Resuming command execution with reply",
+                "Lock acquired, resuming command execution with reply",
                 command=self,
                 reply=reply,
-                step_index=self.current_step_index,
             )
             await self.resume_execute(reply)
