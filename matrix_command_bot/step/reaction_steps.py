@@ -26,7 +26,7 @@ class ReactionStep(ICommandStep):
         reaction: str | None,
     ) -> None:
         super().__init__(command)
-        self.command = command
+        self.command: CommandWithSteps = command
         self.state = state
         self.reaction = reaction
 
