@@ -8,7 +8,7 @@ from matrix_bot.bot import MatrixBot
 from matrix_bot.eventparser import EventNotConcerned
 from nio import MatrixRoom, RoomMessage
 
-from matrix_command_bot.command import CommandGuard, ICommand
+from matrix_command_bot.command import ICommand
 
 logger = structlog.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class CommandBot(MatrixBot):
         self.recent_events_cache: cachetools.TTLCache[str, RoomMessage] = (  # pyright: ignore[reportAttributeAccessIssue]
             cachetools.TTLCache(maxsize=5120, ttl=24 * 60 * 60)
         )
-        self.commands_cache: cachetools.TTLCache[str, CommandGuard] = (  # pyright: ignore[reportAttributeAccessIssue]
+        self.commands_cache: cachetools.TTLCache[str, ICommand] = (  # pyright: ignore[reportAttributeAccessIssue]
             cachetools.TTLCache(maxsize=5120, ttl=24 * 60 * 60)
         )
 
@@ -79,7 +79,7 @@ class CommandBot(MatrixBot):
             .get("event_id")
         )
 
-    def get_related_command(self, message: RoomMessage) -> CommandGuard | None:
+    def get_related_command(self, message: RoomMessage) -> ICommand | None:
         content = message.source.get("content", {})
         if not content:
             return None
@@ -174,7 +174,7 @@ class CommandBot(MatrixBot):
                     related_command=related_command,
                     replaced_event=replaced_event,
                 )
-                if self.can_interact(message.sender, related_command.command):
+                if self.can_interact(message.sender, related_command):
                     await related_command.replace_received(new_content, replaced_event)
                 else:
                     if self.extra_config.get("is_coordinator", True):
@@ -198,7 +198,7 @@ class CommandBot(MatrixBot):
                     related_command=related_command,
                     reply=message,
                 )
-                if self.can_interact(message.sender, related_command.command):
+                if self.can_interact(message.sender, related_command):
                     await related_command.reply_received(message)
                 else:
                     if self.extra_config.get("is_coordinator", True):
@@ -215,16 +215,16 @@ class CommandBot(MatrixBot):
                     )
                 return
 
-        parsed_command = None
+        command = None
         for command_type in self.commands:
             try:
-                parsed_command = CommandGuard(
-                    command_type(room, message, self.matrix_client, self.extra_config)
+                command = command_type(
+                    room, message, self.matrix_client, self.extra_config
                 )
-                self.commands_cache[message.event_id] = parsed_command
+                self.commands_cache[message.event_id] = command
                 logger.debug(
                     "Command parsed and cached",
-                    command=parsed_command,
+                    command=command,
                     event_id=message.event_id,
                 )
                 break
@@ -238,13 +238,13 @@ class CommandBot(MatrixBot):
                     message=message,
                 )
 
-        if parsed_command:
-            if self.can_execute(message.sender, parsed_command.command):
+        if command:
+            if self.can_execute(message.sender, command):
                 try:
-                    await parsed_command.execute()
+                    await command.execute()
                     logger.debug(
                         "Command executed",
-                        command=parsed_command,
+                        command=command,
                         event_id=message.event_id,
                     )
                 except Exception as e:  # noqa: BLE001
@@ -254,7 +254,7 @@ class CommandBot(MatrixBot):
                     logger.warning(
                         "Unexpected exception when trying to execute a command",
                         e=e,
-                        command=parsed_command,
+                        command=command,
                         message=message,
                     )
             else:
@@ -267,7 +267,7 @@ class CommandBot(MatrixBot):
                     )
                 logger.warning(
                     "Command not allowed to be executed",
-                    command=parsed_command,
+                    command=command,
                     message=message,
                 )
         else:
