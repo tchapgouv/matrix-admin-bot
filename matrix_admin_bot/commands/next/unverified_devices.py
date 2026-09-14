@@ -161,8 +161,8 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
 
         return unverified_devices
 
-    async def get_mas_unverified_sessions(
-        self, user_id: str, unverified_device_ids: Collection[str]
+    async def get_devices_sessions(
+        self, user_id: str
     ) -> dict[str, list[dict[str, Any]]]:
         # Get the user from the MAS with its localpart
         mas_user_id = await self.admin_client.get_mas_user_id(
@@ -173,31 +173,22 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
             logger.warning("Could not find MAS user", user_id=user_id)
             return {}
 
-        all_device_sessions = await self.admin_client.get_sessions(
+        all_sessions = await self.admin_client.get_sessions(
             "oauth2", mas_user_id=mas_user_id, user_id=user_id
         )
-        all_device_sessions.extend(
+        all_sessions.extend(
             await self.admin_client.get_sessions(
                 "compat", mas_user_id=mas_user_id, user_id=user_id
             )
         )
 
-        unverified_device_sessions: dict[str, list[dict[str, Any]]] = {}
-        for session in all_device_sessions:
-            if not self.is_created_after(session):
-                continue
-
+        devices_sessions: dict[str, list[dict[str, Any]]] = {}
+        for session in all_sessions:
             device_id = session.get("attributes", {}).get("device_id")
-            if device_id and device_id in unverified_device_ids:
-                unverified_device_sessions.setdefault(device_id, []).append(session)
+            if device_id:
+                devices_sessions.setdefault(device_id, []).append(session)
 
-        logger.debug(
-            "Found unverified device sessions",
-            user_id=user_id,
-            unverified_device_sessions_count=len(unverified_device_sessions),
-        )
-
-        return unverified_device_sessions
+        return devices_sessions
 
     # TODO decrease complexity
     async def list_unverified_devices(self, user_id: str) -> bool:  # noqa: C901,PLR0911
@@ -262,32 +253,49 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
             del self.json_report[user_id]
             return True
 
-        unverified_device_sessions = await self.get_mas_unverified_sessions(
-            user_id, unverified_devices.keys()
-        )
+        devices_sessions = await self.get_devices_sessions(user_id)
 
-        if len(unverified_device_sessions) == 0:
-            logger.debug("No sessions found for unverified devices", user_id=user_id)
+        if not self.has_unverified_devices_created_after(
+            unverified_devices.keys(), devices_sessions
+        ):
             del self.json_report[user_id]
             return True
 
-        unverified_devices_details: list[dict[str, Any]] = []
-        for device_id, sessions in unverified_device_sessions.items():
-            device_details = synapse_devices[device_id]
-            device_details["reason"] = unverified_devices[device_id]
-            device_details["sessions"] = sessions
+        verified_devices = list(synapse_devices.keys() - unverified_devices.keys())
+
+        self.json_report[user_id]["unverified_devices"] = unverified_devices
+        self.json_report[user_id]["verified_devices"] = verified_devices
+
+        devices_details: list[dict[str, Any]] = []
+        for device_id, details in synapse_devices.items():
+            details["sessions"] = devices_sessions.get(device_id, [])
 
             if device_id in all_device_keys:
-                device_details["keys"] = all_device_keys[device_id]
+                details["keys"] = all_device_keys[device_id]
 
-            unverified_devices_details.append(device_details)
+            devices_details.append(details)
 
-        self.json_report[user_id]["unverified_devices"] = unverified_devices_details
+        self.json_report[user_id]["devices_details"] = devices_details
+        last_seen_verified_device_ts = max(
+            (
+                details.get("last_seen_ts", 0) / 1000
+                for device_id, details in synapse_devices.items()
+                if device_id in verified_devices
+            ),
+            default=None,
+        )
+
+        if last_seen_verified_device_ts:
+            self.json_report[user_id]["last_seen_verified_device"] = (
+                datetime.datetime.fromtimestamp(
+                    last_seen_verified_device_ts, tz=datetime.UTC
+                ).isoformat()
+            )
 
         logger.debug(
             "Unverified devices listed",
             user_id=user_id,
-            unverified_devices_count=len(unverified_devices_details),
+            unverified_devices_count=len(unverified_devices),
         )
 
         return False
@@ -302,6 +310,16 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
         if not created_at:
             return True
         return created_at > self.created_after
+
+    def has_unverified_devices_created_after(
+        self, unverified_device_ids: Collection[str], device_sessions: dict[str, Any]
+    ) -> bool:
+        for device_id in unverified_device_ids:
+            sessions = device_sessions.get(device_id, [])
+            for session in sessions:
+                if self.is_created_after(session):
+                    return True
+        return False
 
     @override
     async def simple_execute(self) -> bool:
