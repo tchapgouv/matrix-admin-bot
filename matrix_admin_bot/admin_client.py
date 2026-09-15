@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -578,6 +579,54 @@ class AdminClient:
             return False
         json_report[user_id]["description"] = json_body["data"]
         return True
+
+    # TODO reduce complexity
+    async def get_mxids_from_args(  # noqa: C901
+        self,
+        args: list[str],
+        server_name: str,
+        transform_cmd_input_fct: Callable[[list[str]], Awaitable[list[str]]]
+        | None = None,
+    ) -> tuple[list[str], dict[str, list[str]]]:
+        user_ids: list[str] = []
+        mxid_to_emails: dict[str, list[str]] = {}
+
+        email_args: list[str] = []
+        domains: set[str] = set()
+        all_local_users = False
+        for arg in args:
+            if arg in ["all", server_name]:
+                all_local_users = True
+                break
+
+            if len(arg) > 0 and arg[0] == "@" and ":" in arg:
+                user_ids.append(arg)
+            elif "@" in arg:
+                email_args.append(arg)
+            else:
+                domains.add(arg)
+
+        # TODO use sydent /info to check if a domain is this server responsability
+
+        if all_local_users or domains:
+            mas_user_id_to_emails: dict[str, list[str]] = {}
+            mas_user_emails = await self.get_user_emails()
+
+            for email, mas_id in mas_user_emails.items():
+                domain = email.split("@")[1]
+                if all_local_users or domain in domains:
+                    mas_user_id_to_emails.setdefault(mas_id, []).append(email)
+
+            for mas_user_id, emails in mas_user_id_to_emails.items():
+                user_id = await self.get_user(server_name, mas_user_id)
+                if user_id:
+                    user_ids.append(user_id)
+                    mxid_to_emails[user_id] = emails
+
+        if transform_cmd_input_fct:
+            user_ids.extend(await transform_cmd_input_fct(email_args))
+
+        return user_ids, mxid_to_emails
 
 
 def format_timestamp(ts: int | None) -> str | None:
