@@ -7,7 +7,6 @@ from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
 
 from matrix_admin_bot import UserRelatedCommand
-from matrix_admin_bot.admin_client import AdminClient
 from matrix_command_bot.util import get_server_name, is_local_user
 
 logger = structlog.getLogger(__name__)
@@ -25,7 +24,6 @@ class ReplaceDisplayNameCommandV2(UserRelatedCommand):
     ) -> None:
         super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
         self.transform_cmd_input_fct = None
-        self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
         self.failed_user_ids: list[str] = []
         self.user_id: str | None = None
         self.displayname: str | None = None

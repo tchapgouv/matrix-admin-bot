@@ -5,7 +5,6 @@ from unittest.mock import Mock
 import pytest
 from nio import MatrixRoom
 
-from matrix_admin_bot.commands.next.server_notice_v2 import USER_ALL
 from matrix_command_bot.validation.validators.confirm import ConfirmValidator
 from tests import (
     USER1_ID,
@@ -205,7 +204,7 @@ async def test_server_notice_to_all_recipients() -> None:
     await mocked_matrix_client.fake_synced_text_message(
         room,
         USER1_ID,
-        USER_ALL,
+        "all",
         extra_content=create_thread_relation(command_event_id),
     )
     mocked_matrix_client.check_sent_message("Type your notice")
@@ -274,7 +273,7 @@ async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
     await mocked_matrix_client.fake_synced_text_message(
         room,
         USER1_ID,
-        USER_ALL,
+        "all",
         extra_content=create_thread_relation(command_event_id),
     )
     mocked_matrix_client.check_sent_message("Type your notice")
@@ -344,7 +343,7 @@ async def test_server_notice_to_all_recipients_when_exception() -> None:
     await mocked_matrix_client.fake_synced_text_message(
         room,
         USER1_ID,
-        USER_ALL,
+        "all",
         extra_content=create_thread_relation(command_event_id),
     )
     mocked_matrix_client.check_sent_message("Type your notice")
@@ -401,7 +400,7 @@ async def test_server_notice_to_all_recipients_failed() -> None:
     await mocked_matrix_client.fake_synced_text_message(
         room,
         USER1_ID,
-        USER_ALL,
+        "all",
         extra_content=create_thread_relation(command_event_id),
     )
     mocked_matrix_client.check_sent_message("Type your notice")

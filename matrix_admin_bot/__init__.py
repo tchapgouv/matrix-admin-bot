@@ -6,7 +6,7 @@ from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 
-from matrix_command_bot.command import ICommand
+from matrix_admin_bot.admin_client import AdminClient
 from matrix_command_bot.util import get_server_name, is_local_user, send_report
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 
@@ -23,6 +23,7 @@ class InteractiveValidatedCommand(SimpleValidatedCommand):
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, extra_config)
+        self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
 
         self.keyword = keyword
 
@@ -79,19 +80,24 @@ class UserRelatedCommand(InteractiveValidatedCommand):
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, keyword, extra_config)
+        server_name = get_server_name(self.matrix_client.user_id)
+        assert server_name  # noqa: S101
+        self.server_name: str = server_name
+        self.user_ids: list[str] = []
+        self.mxid_to_emails: dict[str, list[str]] = {}
 
         self.transform_cmd_input_fct: (
-            Callable[[type[ICommand], list[str]], Awaitable[list[str]]] | None
+            Callable[[list[str]], Awaitable[list[str]]] | None
         ) = extra_config.get("transform_cmd_input_fct")  # pyright: ignore[reportAttributeAccessIssue]
 
     @override
     async def should_execute(self) -> bool:
-        self.user_ids = self.command_text.split()
-
-        if self.transform_cmd_input_fct:
-            self.user_ids = await self.transform_cmd_input_fct(
-                self.__class__, self.user_ids
-            )
+        (
+            self.user_ids,
+            self.mxid_to_emails,
+        ) = await self.admin_client.get_mxids_from_args(
+            self.command_text.split(), self.server_name, self.transform_cmd_input_fct
+        )
         return any(
             is_local_user(user_id, self.server_name) for user_id in self.user_ids
         )

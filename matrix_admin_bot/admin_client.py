@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -11,8 +12,6 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from matrix_command_bot.util import get_localpart_from_id
 
 logger = structlog.getLogger(__name__)
-
-VERIFY_SSL_CERT = True
 
 
 class AdminClient:
@@ -209,6 +208,77 @@ class AdminClient:
             return set()
 
         return users
+
+    async def get_user_emails(self, limit: int = 1000) -> dict[str, str]:
+        emails: dict[str, str] = {}
+        endpoint = f"/api/admin/v1/user-emails?page[first]={limit}"
+        resp = await self.send_to_mas_with_retry("GET", endpoint)
+        json_body = await self.decode_client_response(resp)
+        if not resp.ok:
+            error = "Cannot get all emails from MAS"
+            logger.warning(
+                "%s - %s user emails has been retrieved: %s",
+                error,
+                len(emails),
+                f"{resp.status}-{resp.reason}-{json_body}",
+            )
+            return emails
+
+        nb_user_emails = 0
+        if json_body.get("meta") and json_body.get("meta").get("count"):
+            nb_user_emails = json_body["meta"]["count"]
+
+        while True:
+            emails.update(
+                {
+                    user_email["attributes"]["email"]: user_email["attributes"][
+                        "user_id"
+                    ]
+                    for user_email in json_body["data"]
+                }
+            )
+            # Update user count
+            if json_body.get("meta") and json_body.get("meta").get("count"):
+                nb_user_emails = json_body["meta"]["count"]
+            if json_body.get("links") and json_body.get("links").get("next"):
+                endpoint = json_body["links"]["next"]
+                resp = await self.send_to_mas_with_retry("GET", endpoint)
+                json_body = await self.decode_client_response(resp)
+                if not resp.ok:
+                    error = "Cannot get all user emails from MAS"
+                    logger.warning(
+                        "%s - %s user emails has been retrieved: %s",
+                        error,
+                        len(emails),
+                        f"{resp.status}-{resp.reason}-{json_body}",
+                    )
+                    return {}
+            else:
+                break
+
+        # Check if we have retrieve all user emails
+        if nb_user_emails > len(emails):
+            logger.warning(
+                "Not all user emails have been retrieved : %s/%s user emails",
+                len(emails),
+                nb_user_emails,
+            )
+            return {}
+
+        return emails
+
+    async def get_user(self, server_name: str, mas_id: str) -> str | None:
+        endpoint = f"/api/admin/v1/users/{mas_id}"
+        resp = await self.send_to_mas_with_retry(
+            "GET",
+            endpoint=endpoint,
+        )
+        if resp.ok:
+            json_body = await self.decode_client_response(resp)
+            localpart = json_body.get("data", {}).get("attributes", {}).get("username")
+            if localpart:
+                return f"@{localpart}:{server_name}"
+        return None
 
     async def get_devices_from_synapse(
         self, json_report: dict[str, Any], user_id: str
@@ -509,6 +579,54 @@ class AdminClient:
             return False
         json_report[user_id]["description"] = json_body["data"]
         return True
+
+    # TODO reduce complexity
+    async def get_mxids_from_args(  # noqa: C901
+        self,
+        args: list[str],
+        server_name: str,
+        transform_cmd_input_fct: Callable[[list[str]], Awaitable[list[str]]]
+        | None = None,
+    ) -> tuple[list[str], dict[str, list[str]]]:
+        user_ids: list[str] = []
+        mxid_to_emails: dict[str, list[str]] = {}
+
+        email_args: list[str] = []
+        domains: set[str] = set()
+        all_local_users = False
+        for arg in args:
+            if arg in ["all", server_name]:
+                all_local_users = True
+                break
+
+            if len(arg) > 0 and arg[0] == "@" and ":" in arg:
+                user_ids.append(arg)
+            elif "@" in arg:
+                email_args.append(arg)
+            else:
+                domains.add(arg)
+
+        # TODO use sydent /info to check if a domain is this server responsability
+
+        if all_local_users or domains:
+            mas_user_id_to_emails: dict[str, list[str]] = {}
+            mas_user_emails = await self.get_user_emails()
+
+            for email, mas_id in mas_user_emails.items():
+                domain = email.split("@")[1]
+                if all_local_users or domain in domains:
+                    mas_user_id_to_emails.setdefault(mas_id, []).append(email)
+
+            for mas_user_id, emails in mas_user_id_to_emails.items():
+                user_id = await self.get_user(server_name, mas_user_id)
+                if user_id:
+                    user_ids.append(user_id)
+                    mxid_to_emails[user_id] = emails
+
+        if transform_cmd_input_fct:
+            user_ids.extend(await transform_cmd_input_fct(email_args))
+
+        return user_ids, mxid_to_emails
 
 
 def format_timestamp(ts: int | None) -> str | None:
