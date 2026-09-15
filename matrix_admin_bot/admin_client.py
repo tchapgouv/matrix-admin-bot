@@ -510,6 +510,50 @@ class AdminClient:
         json_report[user_id]["description"] = json_body["data"]
         return True
 
+    async def find_upstream_oauth_links(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        mas_user_id: str,
+        user_id: str,
+    ) -> list[dict[str, Any]] | None:
+        params = {
+            "filter[user]": mas_user_id,
+            "page[first]": 100000,
+        }
+        endpoint = "/api/admin/v1/upstream-oauth-links"
+        resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)
+        json_body = await self.decode_client_response(resp)
+        if not resp.ok:
+            if resp.status == 404:
+                return []
+            error = f"Cannot find upstream OAuth links for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return None
+        return json_body.get("data", [])
+
+    async def remove_upstream_oauth_link(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        link_id: str,
+        user_id: str,
+    ) -> bool:
+        endpoint = f"/api/admin/v1/upstream-oauth-links/{link_id}"
+        resp = await self.send_to_mas("DELETE", endpoint=endpoint)
+        if not resp.ok:
+            json_body = await self.decode_client_response(resp)
+            error = f"Cannot remove upstream OAuth link {link_id} for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return False
+        return True
+
 
 def format_timestamp(ts: int | None) -> str | None:
     if ts is None:
