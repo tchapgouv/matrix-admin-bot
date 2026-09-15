@@ -149,6 +149,8 @@ class ShouldExecuteStep(ICommandStep):
             self.command_state.recipients, self.server_name, transform_cmd_input_fct
         )
 
+        logger.debug("Recipients: %s", self.command_state.recipients)
+
         for user_id in self.command_state.recipients:
             if is_local_user(user_id, self.server_name):
                 return True, CommandAction.CONTINUE
