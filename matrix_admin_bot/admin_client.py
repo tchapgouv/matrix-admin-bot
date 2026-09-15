@@ -596,6 +596,9 @@ class AdminClient:
         all_local_users = False
         for arg in args:
             if arg in ["all", server_name]:
+                logger.debug(
+                    "All users on this server will be targeted by this command"
+                )
                 all_local_users = True
                 break
 
@@ -606,6 +609,12 @@ class AdminClient:
             else:
                 domains.add(arg)
 
+        if domains:
+            logger.debug("Domain(s) targeted: %s", domains)
+
+        if user_ids:
+            logger.debug("Direct user(s) targeted: %s", user_ids)
+
         # TODO use sydent /info to check if a domain is this server responsability
 
         if all_local_users or domains:
@@ -615,6 +624,7 @@ class AdminClient:
             for email, mas_id in mas_user_emails.items():
                 domain = email.split("@")[1]
                 if all_local_users or domain in domains:
+                    logger.debug("Found matching email", email=email)
                     mas_user_id_to_emails.setdefault(mas_id, []).append(email)
 
             for mas_user_id, emails in mas_user_id_to_emails.items():
@@ -622,6 +632,10 @@ class AdminClient:
                 if user_id:
                     user_ids.append(user_id)
                     mxid_to_emails[user_id] = emails
+                else:
+                    logger.warning(
+                        "Could not find matrix ID from MAS ID", mas_user_id=mas_user_id
+                    )
 
         if transform_cmd_input_fct:
             user_ids.extend(await transform_cmd_input_fct(email_args))
