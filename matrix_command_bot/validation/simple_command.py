@@ -8,9 +8,8 @@ from nio import MatrixRoom, RoomMessage
 
 from matrix_command_bot.simple_command import (
     SimpleCommand,
-    SimpleExecuteStep,
 )
-from matrix_command_bot.step import ICommandStep
+from matrix_command_bot.step import ExecuteFunctionStep, ICommandStep
 from matrix_command_bot.step.reaction_steps import (
     ReactionCommandState,
     ReactionStep,
@@ -53,7 +52,7 @@ class SimpleValidatedCommand(SimpleCommand, ABC):
         return [
             ValidateStep(self, self.state, self.validator, command.confirm_message),
             ReactionStep(self, self.state, "🚀"),
-            SimpleExecuteStep(self, self.state, self.simple_execute),
+            ExecuteFunctionStep(self, self.simple_execute),
             ResultReactionStep(self, self.state),
         ]
 

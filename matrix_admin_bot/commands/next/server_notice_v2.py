@@ -11,8 +11,12 @@ from nio import MatrixRoom, RoomMessage
 
 from matrix_admin_bot.admin_client import AdminClient
 from matrix_command_bot.command import ICommand
-from matrix_command_bot.simple_command import SimpleExecuteStep
-from matrix_command_bot.step import CommandAction, CommandWithSteps, ICommandStep
+from matrix_command_bot.step import (
+    CommandAction,
+    CommandWithSteps,
+    ExecuteFunctionStep,
+    ICommandStep,
+)
 from matrix_command_bot.step.reaction_steps import (
     ReactionCommandState,
     ReactionStep,
@@ -135,38 +139,6 @@ class ServerNoticeGetNoticeStep(ICommandStep):
         return True, CommandAction.CONTINUE
 
 
-class ShouldExecuteStep(ICommandStep):
-    def __init__(
-        self,
-        command: ICommand,
-        command_state: ServerNoticeState,
-        server_name: str | None,
-    ) -> None:
-        super().__init__(command)
-        self.command_state = command_state
-        self.server_name = server_name
-
-    @override
-    async def execute(
-        self, reply: RoomMessage | None = None
-    ) -> tuple[bool, CommandAction]:
-        if self.command_state.recipients:
-            if (
-                USER_ALL in self.command_state.recipients
-                and len(self.command_state.recipients) == 1
-            ) or (self.server_name in self.command_state.recipients):
-                return True, CommandAction.CONTINUE
-
-            for user_id in self.command_state.recipients:
-                if is_local_user(user_id, self.server_name):
-                    return True, CommandAction.CONTINUE
-
-        await set_status_reaction(
-            self.command, "", self.command_state.current_reaction_event_id
-        )
-        return True, CommandAction.ABORT
-
-
 class ServerNoticeCommandV2(CommandWithSteps):
     KEYWORD = "server_notice"
 
@@ -226,11 +198,25 @@ class ServerNoticeCommandV2(CommandWithSteps):
                     "You can edit it if needed."
                 ),
             ),
-            ShouldExecuteStep(self, self.state, self.server_name),
+            ExecuteFunctionStep(self, self.should_execute, abort_on_failure=True),
             ReactionStep(self, self.state, "🚀"),
-            SimpleExecuteStep(self, self.state, self.simple_execute),
+            ExecuteFunctionStep(self, self.simple_execute),
             ResultReactionStep(self, self.state),
         ]
+
+    async def should_execute(self) -> bool:
+        if self.state.recipients:
+            if (
+                USER_ALL in self.state.recipients and len(self.state.recipients) == 1
+            ) or (self.server_name in self.state.recipients):
+                return True
+
+            for user_id in self.state.recipients:
+                if is_local_user(user_id, self.server_name):
+                    return True
+
+        await set_status_reaction(self, "", self.state.current_reaction_event_id)
+        return False
 
     async def simple_execute(self) -> bool:
         logger.info("Server Notice - %s - started", self.command_id)
