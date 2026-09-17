@@ -45,6 +45,26 @@ class UserCommandV2(UserRelatedCommand):
         if mas_user_id is None:
             return False
 
+        # Get all upstream OAuth links for the user
+        links = await self.admin_client.find_upstream_oauth_links(
+            self.json_report, self.failed_user_ids, mas_user_id, user_id
+        )
+        if links is None:
+            return False
+        self.json_report[user_id]["upstream_oauth_links"] = links
+
+        # Get all user emails
+        params = {"filter[user]": mas_user_id}
+        #find_emails write into "description", add alors "emails" to be more explicit to users
+        #data is duplicated
+        user_emails = await self.admin_client.find_emails(
+            self.json_report, self.failed_user_ids, user_id, params
+        )
+        if user_emails is None:
+            return False
+        self.json_report[user_id]["emails"] = user_emails
+
+        # Get sessions
         self.json_report[user_id][
             "sessions"
         ] = await self.admin_client.get_all_sessions(
@@ -105,8 +125,10 @@ class UserCommandV2(UserRelatedCommand):
 Get sessions and information on users.
 
 **Effects**:
-- Reports all sessions in the JSON report of the command
-- Reports general information in the JSON report of the command
+- Reports all sessions (devices) 
+- Reports general information 
+- Reports upstream OAuth links 
+- Reports user emails
 
 **Examples**:
 - `!user @user:example.com`

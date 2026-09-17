@@ -14,7 +14,9 @@ from tests.matrix_admin_bot.commands.next import (
     COMPAT_SESSIONS_LIST,
     OAUTH2_SESSIONS_LIST,
     PERSONAL_SESSIONS_LIST,
+    UPSTREAM_OAUTH_LINKS_LIST,
     USER,
+    USER_EMAILS_LIST,
     USER_SESSIONS_LIST,
     USER_SYNAPSE,
     mock_response_error,
@@ -38,6 +40,10 @@ async def test_user_v2() -> None:
             return mock_response_with_json(USER_SESSIONS_LIST)
         if method == "GET" and url.endswith("/api/admin/v1/personal-sessions"):
             return mock_response_with_json(PERSONAL_SESSIONS_LIST)
+        if method == "GET" and url.endswith("/api/admin/v1/upstream-oauth-links"):
+            return mock_response_with_json(UPSTREAM_OAUTH_LINKS_LIST)
+        if method == "GET" and url.endswith("/api/admin/v1/user-emails"):
+            return mock_response_with_json(USER_EMAILS_LIST)
         return mock_response_error(403, "Forbidden")
 
     def request_synapse_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
@@ -70,10 +76,14 @@ async def test_user_v2() -> None:
         "/_synapse/admin/v2/users/@user_to_reset:example.org",
     )
     # 1 call to get the mas user id on MAS
+    # 1 call to get upstream OAuth links
+    # 1 call to get user emails
     # 3 calls to get each session type
     check_requests_sent(
         mocked_matrix_client.client_session,
         "/users/by-username",
+        "/upstream-oauth-links",
+        "/user-emails",
         "/compat-sessions",
         "/oauth2-sessions",
         "/user-sessions",
