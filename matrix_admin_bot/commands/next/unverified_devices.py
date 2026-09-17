@@ -409,11 +409,24 @@ class UnverifiedDevicesCommand(CommandWithSteps):
         if self.json_report:
             await self.send_report()
 
-        if self.state.unverified_users:
-            nb_unverified_users = len(self.state.unverified_users)
-            text = f"{'The following ' if nb_unverified_users < 100 else ''}{nb_unverified_users} users has at least one unverified device.\n"  # noqa: E501
+        unverified_users_count = len(self.state.unverified_users)
 
-            if nb_unverified_users < 100:
+        logger.debug(
+            "Unverified devices - listed",
+            unverified_users_count=unverified_users_count,
+            sessions_to_delete_count=sum(
+                len(sessions) for sessions in self.state.sessions_to_delete.values()
+            ),
+        )
+
+        if self.state.unverified_users:
+            if unverified_users_count < 100:
+                text = f"The following {unverified_users_count} users "
+            else:
+                text = f"{unverified_users_count} users "
+            text += "has at least one matching unverified device.\n"
+
+            if unverified_users_count < 100:
                 text += "\n".join(
                     [f"- {user_id}" for user_id in self.state.unverified_users]
                 )
@@ -424,14 +437,6 @@ class UnverifiedDevicesCommand(CommandWithSteps):
                 reply_to=self.message.event_id,
                 thread_root=self.message.event_id,
             )
-
-        logger.debug(
-            "Unverified devices - listed",
-            unverified_users_count=len(self.state.unverified_users),
-            sessions_to_delete_count=sum(
-                len(sessions) for sessions in self.state.sessions_to_delete.values()
-            ),
-        )
 
         return True
 
@@ -527,18 +532,8 @@ class UnverifiedDevicesCommand(CommandWithSteps):
     @property
     def delete_confirm_message(self) -> str | None:
         lines = [
-            "You are about to delete the following unverified sessions:",
+            "Do you want to delete the reported unverified devices?",
             "",
-        ]
-        for user_id, sessions in self.state.sessions_to_delete.items():
-            for session in sessions:
-                device_id = session.get("attributes", {}).get("device_id")
-                lines.append(
-                    f"- {user_id} device `{device_id}` session `{session.get('id')}`"
-                )
-        lines += [
-            "",
-            "⚠⚠ This will log-out these devices!",
         ]
         return "\n".join(lines)
 

@@ -183,10 +183,10 @@ async def test_unverified_devices_delete_after_validation() -> None:
             for args in mocked_matrix_client.send_markdown_message.await_args_list
         ]
         assert any(
-            "at least one unverified device" in message for message in sent_messages
+            "one matching unverified device" in message for message in sent_messages
         )
         # A new validation code has to be provided to delete the sessions
-        assert any("You are about to delete" in message for message in sent_messages)
+        assert any("Do you want to delete" in message for message in sent_messages)
 
         await mocked_matrix_client.fake_synced_text_message(
             room,
@@ -250,11 +250,9 @@ async def test_unverified_devices_no_deletion_when_all_verified() -> None:
             for args in mocked_matrix_client.send_markdown_message.await_args_list
         ]
         assert not any(
-            "at least one unverified device" in message for message in sent_messages
+            "one matching unverified device" in message for message in sent_messages
         )
-        assert not any(
-            "You are about to delete" in message for message in sent_messages
-        )
+        assert not any("Do you want to delete" in message for message in sent_messages)
         assert mocked_matrix_client.client_session.request.await_count == 0
         mocked_matrix_client.check_sent_reactions("✏️", "🚀", "✅")
 
