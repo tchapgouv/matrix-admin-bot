@@ -413,6 +413,23 @@ class AdminClient:
             return False
         return True
 
+    async def delete_session(self, session: dict[str, Any]) -> bool:
+        """Delete a MAS session.
+
+        Personal sessions are revoked, other session types are finished.
+        """
+        endpoint = session.get("links", {}).get("self")
+        if not endpoint:
+            logger.warning(
+                "Cannot delete session without self link",
+                session_id=session.get("id"),
+            )
+            return False
+
+        action = "revoke" if session.get("type") == "personal-session" else "finish"
+        resp = await self.send_to_mas("POST", endpoint=f"{endpoint}/{action}")
+        return resp.ok
+
     async def kill_all_sessions(
         self,
         json_report: dict[str, Any],

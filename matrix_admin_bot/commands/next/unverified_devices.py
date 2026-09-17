@@ -7,17 +7,70 @@ import canonicaljson
 import dateutil
 import structlog
 from matrix_bot.bot import MatrixClient
+from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 from vodozemac import Ed25519PublicKey, Ed25519Signature, SignatureException
 
-from matrix_admin_bot import UserRelatedCommand
-from matrix_command_bot.command import ICommand
-from matrix_command_bot.util import get_server_name
+from matrix_admin_bot.admin_client import AdminClient
+from matrix_command_bot.step import (
+    CommandAction,
+    CommandWithSteps,
+    ExecuteFunctionStep,
+    ICommandStep,
+)
+from matrix_command_bot.step.reaction_steps import (
+    ReactionCommandState,
+    ReactionStep,
+    ResultReactionStep,
+)
+from matrix_command_bot.util import (
+    get_server_name,
+    is_local_user,
+    send_report,
+)
+from matrix_command_bot.validation import IValidator
+from matrix_command_bot.validation.steps import ValidateStep
 
 logger = structlog.getLogger(__name__)
 
 
-class UnverifiedDevicesCommand(UserRelatedCommand):
+class UnverifiedDevicesState(ReactionCommandState):
+    def __init__(self) -> None:
+        super().__init__()
+        self.unverified_users: list[str] = []
+        self.sessions_to_delete: dict[str, list[dict[str, Any]]] = {}
+
+
+class ValidateDeleteStep(ValidateStep):
+    """Ask for a validation code before deleting, unless there is nothing
+    to delete."""
+
+    def __init__(self, command: "UnverifiedDevicesCommand") -> None:
+        super().__init__(
+            command,
+            command.state,
+            command.validator,
+            command.delete_confirm_message,
+        )
+        self.command: UnverifiedDevicesCommand = command
+
+    @override
+    async def execute(
+        self, reply: RoomMessage | None = None
+    ) -> tuple[bool, CommandAction]:
+        if not self.command.state.sessions_to_delete:
+            logger.debug(
+                "No unverified session to delete, skipping validation",
+                command=self.command,
+            )
+            return True, CommandAction.CONTINUE
+
+        # The confirm message can only be computed once the listing is done.
+        self.message = self.command.delete_confirm_message
+        return await super().execute(reply)
+
+
+class UnverifiedDevicesCommand(CommandWithSteps):
     KEYWORD = "unverified_devices"
 
     def __init__(
@@ -27,13 +80,30 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
         matrix_client: MatrixClient,
         extra_config: Mapping[str, Any],
     ) -> None:
-        super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
+        super().__init__(room, message, matrix_client, extra_config)
+        self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
+        self.validator: IValidator = extra_config.get("validator")  # pyright: ignore[reportAttributeAccessIssue]
+        self.transform_cmd_input_fct: (
+            Callable[[list[str]], Awaitable[list[str]]] | None
+        ) = extra_config.get("transform_cmd_input_fct")  # pyright: ignore[reportAttributeAccessIssue]
+
+        self.state = UnverifiedDevicesState()
+
+        event_parser = MessageEventParser(
+            room=room, event=message, matrix_client=matrix_client
+        )
+        event_parser.do_not_accept_own_message()
+        self.command_text = event_parser.command(self.KEYWORD).strip()
+
+        server_name = get_server_name(self.matrix_client.user_id)
+        assert server_name  # noqa: S101
+        self.server_name: str = server_name
+
         self.user_ids: list[str] = []
+        self.mxid_to_emails: dict[str, list[str]] = {}
         self.created_after: datetime.date | None = None
 
-        self.transform_cmd_input_fct: (
-            Callable[[type[ICommand], list[str]], Awaitable[list[str]]] | None
-        ) = extra_config.get("transform_cmd_input_fct")  # pyright: ignore[reportAttributeAccessIssue]
+        self.json_report: dict[str, Any] = {}
 
     async def get_device_keys(
         self, user_id: str
@@ -261,6 +331,13 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
             del self.json_report[user_id]
             return True
 
+        self.state.sessions_to_delete[user_id] = [
+            session
+            for device_id in unverified_devices
+            for session in devices_sessions.get(device_id, [])
+            if self.is_created_after(session)
+        ]
+
         verified_devices = list(synapse_devices.keys() - unverified_devices.keys())
 
         self.json_report[user_id]["unverified_devices"] = unverified_devices
@@ -321,28 +398,25 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
                     return True
         return False
 
-    @override
-    async def simple_execute(self) -> bool:
+    async def list_all_unverified_devices(self) -> bool:
         logger.debug("Unverified devices - started", user_ids=self.user_ids)
 
-        unverified_users: list[str] = []
         for user_id in self.user_ids:
             res = await self.list_unverified_devices(user_id)
             if not res:
-                unverified_users.append(user_id)
+                self.state.unverified_users.append(user_id)
 
         if self.json_report:
             await self.send_report()
 
-        if unverified_users:
-            nb_unverified_users = len(unverified_users)
+        if self.state.unverified_users:
+            nb_unverified_users = len(self.state.unverified_users)
             text = f"{'The following ' if nb_unverified_users < 100 else ''}{nb_unverified_users} users has at least one unverified device.\n"  # noqa: E501
 
             if nb_unverified_users < 100:
-                text += "\n".join([f"- {user_id}" for user_id in unverified_users])
-
-            # text += "\nDo you want to remove these unverified devices?"
-            # text += "\n\nIf so please reply with 'yes'."
+                text += "\n".join(
+                    [f"- {user_id}" for user_id in self.state.unverified_users]
+                )
 
             await self.matrix_client.send_markdown_message(
                 self.room.room_id,
@@ -352,23 +426,123 @@ class UnverifiedDevicesCommand(UserRelatedCommand):
             )
 
         logger.debug(
-            "Unverified devices - completed",
-            unverified_users_count=len(unverified_users),
+            "Unverified devices - listed",
+            unverified_users_count=len(self.state.unverified_users),
+            sessions_to_delete_count=sum(
+                len(sessions) for sessions in self.state.sessions_to_delete.values()
+            ),
         )
 
         return True
 
-    @override
+    async def delete_unverified_sessions(self) -> bool:
+        failed_sessions: list[str] = []
+        for user_id, sessions in self.state.sessions_to_delete.items():
+            for session in sessions:
+                if await self.admin_client.delete_session(session):
+                    logger.debug(
+                        "Unverified session deleted",
+                        user_id=user_id,
+                        session_id=session.get("id"),
+                    )
+                else:
+                    failed_sessions.append(session.get("id", "unknown"))
+                    logger.warning(
+                        "Cannot delete unverified session",
+                        user_id=user_id,
+                        session_id=session.get("id"),
+                    )
+
+        if failed_sessions:
+            text = "\n".join(
+                [
+                    "Couldn't delete the following sessions:",
+                    "",
+                    *[f"- {session_id}" for session_id in failed_sessions],
+                ]
+            )
+            await self.matrix_client.send_markdown_message(
+                self.room.room_id,
+                text,
+                reply_to=self.message.event_id,
+                thread_root=self.message.event_id,
+            )
+
+        return not failed_sessions
+
     async def should_execute(self) -> bool:
         splitted = self.command_text.split()
         if len(splitted) > 0 and splitted[0].startswith("created_after="):
             self.created_after = parse_date(splitted[0][14:])
             self.command_text = " ".join(splitted[1:])
 
-        return await super().should_execute()
+        (
+            self.user_ids,
+            self.mxid_to_emails,
+        ) = await self.admin_client.get_mxids_from_args(
+            self.command_text.split(), self.server_name, self.transform_cmd_input_fct
+        )
+        return any(
+            is_local_user(user_id, self.server_name) for user_id in self.user_ids
+        )
+
+    @override
+    async def create_steps(self) -> list[ICommandStep]:
+        return [
+            ExecuteFunctionStep(self, self.should_execute, abort_on_failure=True),
+            # Validate the command before listing and reporting the devices.
+            ValidateStep(self, self.state, self.validator),
+            ReactionStep(self, self.state, "🚀"),
+            ExecuteFunctionStep(self, self.list_all_unverified_devices),
+            # Validate again before deleting the reported sessions.
+            ValidateDeleteStep(self),
+            ExecuteFunctionStep(self, self.delete_unverified_sessions),
+            ResultReactionStep(self, self.state),
+        ]
+
+    @override
+    async def execute(self) -> bool:
+        if self.command_text == "help":
+            await self.send_help()
+            return True
+
+        return await super().execute()
+
+    async def send_help(self) -> None:
+        if self.extra_config.get("is_coordinator", True):
+            await self.matrix_client.send_markdown_message(
+                self.room.room_id,
+                self.help_message,
+            )
+
+    async def send_report(self) -> None:
+        await send_report(
+            json_report=self.json_report,
+            report_name=self.KEYWORD,
+            matrix_client=self.matrix_client,
+            room_id=self.room.room_id,
+            replied_event_id=self.message.event_id,
+        )
 
     @property
-    @override
+    def delete_confirm_message(self) -> str | None:
+        lines = [
+            "You are about to delete the following unverified sessions:",
+            "",
+        ]
+        for user_id, sessions in self.state.sessions_to_delete.items():
+            for session in sessions:
+                device_id = session.get("attributes", {}).get("device_id")
+                lines.append(
+                    f"- {user_id} device `{device_id}` session `{session.get('id')}`"
+                )
+        lines += [
+            "",
+            "⚠⚠ This will log-out these devices!",
+        ]
+        return "\n".join(lines)
+
+    @property
     def help_message(self) -> str:
         return """
 **Usage**:
@@ -384,6 +558,13 @@ optionally deleted.
 
 created_after=<ISO formatted date> (optional): only list unverified devices
 created after this date.
+
+**Steps**:
+1. The command first asks for a validation code
+2. The command lists the unverified devices and sends a report
+3. If some unverified sessions have been reported, it asks for a
+validation code again
+4. Once validated, the reported unverified sessions are deleted
 
 **Examples**:
 - `!unverified_devices @user:example.com`
