@@ -214,8 +214,8 @@ class ServerNoticeCommandV2(CommandWithSteps):
     async def simple_execute(self) -> bool:
         logger.info("Server Notice - %s - started", self.command_id)
         users = self.state.recipients
-        nb_users = len(users)
-        logger.info("Notice will be sent to %s users", nb_users)
+        users_count = len(users)
+        logger.info("Notice will be sent to %s users", users_count)
         result = True
 
         if not self.state.notice_content:
@@ -245,7 +245,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
                         "Worker %s - Process Server Notice %s/%s : %s",
                         worker_id,
                         processed["count"],
-                        nb_users,
+                        users_count,
                         user_id,
                     )
                     await result_queue.put((user_id, success))
