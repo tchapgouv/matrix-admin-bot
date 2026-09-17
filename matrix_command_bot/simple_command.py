@@ -1,13 +1,16 @@
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Mapping
 from typing import Any, override
 
 import structlog
 from matrix_bot.bot import MatrixClient
 from nio import MatrixRoom, RoomMessage
 
-from matrix_command_bot.command import ICommand
-from matrix_command_bot.step import CommandAction, CommandWithSteps, ICommandStep
+from matrix_command_bot.step import (
+    CommandWithSteps,
+    ExecuteFunctionStep,
+    ICommandStep,
+)
 from matrix_command_bot.step.reaction_steps import (
     ReactionCommandState,
     ReactionStep,
@@ -15,35 +18,6 @@ from matrix_command_bot.step.reaction_steps import (
 )
 
 logger = structlog.getLogger(__name__)
-
-
-class SimpleExecuteStep(ICommandStep):
-    def __init__(
-        self,
-        command: ICommand,
-        state: ReactionCommandState,
-        fct: Callable[[], Awaitable[bool]],
-    ) -> None:
-        super().__init__(command)
-        self.fct = fct
-        self.state = state
-
-    @override
-    async def execute(
-        self, reply: RoomMessage | None = None
-    ) -> tuple[bool, CommandAction]:
-        logger.debug(
-            "Executing simple command step",
-            command=self.command,
-            has_reply=reply is not None,
-        )
-        result = await self.fct()
-        logger.debug(
-            "Simple command step executed",
-            command=self.command,
-            result=result,
-        )
-        return result, CommandAction.CONTINUE
 
 
 class SimpleCommand(CommandWithSteps, ABC):
@@ -71,7 +45,7 @@ class SimpleCommand(CommandWithSteps, ABC):
 
         return [
             ReactionStep(self, self.state, "🚀"),
-            SimpleExecuteStep(self, self.state, self.simple_execute),
+            ExecuteFunctionStep(self, self.simple_execute),
             ResultReactionStep(self, self.state),
         ]
 
