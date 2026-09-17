@@ -257,23 +257,6 @@ class AdminClient:
         all_sessions: list[dict[str, Any]] = []
         for session_type in ["compat", "oauth2", "user", "personal"]:
             sessions = await self.get_sessions(session_type, mas_user_id, user_id)
-            if session_type == "oauth2":
-                for session in sessions:
-                    scope_list = session.get("attributes", {}).get("scope")
-                    scopes: list[str] = scope_list.split() if scope_list else []
-                    device_id = None
-                    for scope in scopes:
-                        if scope.startswith("urn:matrix:client:device:"):
-                            device_id = scope[len("urn:matrix:client:device:") :]
-                        elif scope.startswith(
-                            "urn:matrix:org.matrix.msc2967.client:device:"
-                        ):
-                            device_id = scope[
-                                len("urn:matrix:org.matrix.msc2967.client:device:") :
-                            ]
-                    if device_id:
-                        session["attributes"]["device_id"] = device_id
-                        break
             all_sessions.extend(sessions)
         return all_sessions
 
@@ -291,12 +274,27 @@ class AdminClient:
         endpoint = f"/api/admin/v1/{session_type}-sessions"
         resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)
         json_body = await self.decode_client_response(resp)
-        if resp.ok:
-            count = int(json_body["meta"]["count"])
-            if count > 0:
-                return json_body["data"]
-            return []
-        raise RuntimeError(f"Cannot get {session_type} sessions for {user_id}")
+        if not resp.ok:
+            raise RuntimeError(f"Cannot get {session_type} sessions for {user_id}")
+        sessions = json_body.get("data", [])
+
+        if session_type == "oauth2":
+            for session in sessions:
+                scope_list = session.get("attributes", {}).get("scope")
+                scopes: list[str] = scope_list.split() if scope_list else []
+                device_id = None
+                for scope in scopes:
+                    for scope_prefix in [
+                        "urn:matrix:client:device:",
+                        "urn:matrix:org.matrix.msc2967.client:device:",
+                    ]:
+                        if scope.startswith(scope_prefix):
+                            device_id = scope[len(scope_prefix) :]
+                            break
+                if device_id:
+                    session["attributes"]["device_id"] = device_id
+
+        return sessions
 
     async def get_compat_sessions(
         self,
