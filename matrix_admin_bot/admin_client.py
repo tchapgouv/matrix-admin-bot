@@ -161,9 +161,9 @@ class AdminClient:
             )
             return users
 
-        nb_users = 0
+        users_count = 0
         if json_body.get("meta") and json_body.get("meta").get("count"):
-            nb_users = json_body["meta"]["count"]
+            users_count = json_body["meta"]["count"]
 
         while True:
             users = users | {
@@ -173,7 +173,7 @@ class AdminClient:
             }
             # Update user count
             if json_body.get("meta") and json_body.get("meta").get("count"):
-                nb_users = json_body["meta"]["count"]
+                users_count = json_body["meta"]["count"]
             if json_body.get("links") and json_body.get("links").get("next"):
                 endpoint = json_body["links"]["next"]
                 resp = await self.send_to_mas_with_retry("GET", endpoint)
@@ -195,15 +195,17 @@ class AdminClient:
                 break
 
         # Check if we have retrieve all users
-        if nb_users > len(users):
+        if users_count > len(users):
             logger.warning(
-                "Not all users have been retrieved : %s/%s users", len(users), nb_users
+                "Not all users have been retrieved : %s/%s users",
+                len(users),
+                users_count,
             )
             error = "Cannot get all users from MAS"
             json_report["details"]["get_users"] = {
                 "error": error,
                 "description": f"Not all users have been retrieved : "
-                f"{len(users)}/{nb_users} users",
+                f"{len(users)}/{users_count} users",
             }
             return set()
 
