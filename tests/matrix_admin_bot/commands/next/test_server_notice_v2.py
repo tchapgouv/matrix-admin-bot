@@ -7,7 +7,7 @@ from nio import MatrixRoom
 
 from matrix_admin_bot.commands.next.server_notice_v2 import USER_ALL
 from matrix_command_bot.validation.validators.confirm import ConfirmValidator
-from tests import (
+from tests.helper import (
     USER1_ID,
     USER2_ID,
     USER3_ID,

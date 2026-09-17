@@ -6,7 +6,7 @@ import pytest
 import unpaddedbase64
 from nio import GetOpenIDTokenResponse, MatrixRoom
 
-from tests import (
+from tests.helper import (
     USER1_ID,
     OkValidator,
     check_requests_sent,

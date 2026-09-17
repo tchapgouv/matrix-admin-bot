@@ -1,7 +1,7 @@
 import pytest
 from nio import MatrixRoom
 
-from tests import (
+from tests.helper import (
     USER1_ID,
     create_fake_command_bot,
     create_thread_relation,

@@ -1,7 +1,7 @@
 import pytest
 from nio import MatrixRoom
 
-from tests import (
+from tests.helper import (
     USER1_ID,
     OkValidator,
     check_requests_sent,
