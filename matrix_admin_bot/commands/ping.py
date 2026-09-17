@@ -5,7 +5,6 @@ from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 
-from matrix_admin_bot.commands.next.server_notice_v2 import USER_ALL
 from matrix_command_bot.util import get_server_name, send_report
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 
@@ -38,7 +37,7 @@ class PingCommand(SimpleValidatedCommand):
     async def should_execute(self) -> bool:
         candidates = self.command_text.split()
         for candidate in candidates:
-            if candidate == USER_ALL or (
+            if candidate == "all" or (
                 self.server_name and candidate in self.server_name
             ):
                 return True

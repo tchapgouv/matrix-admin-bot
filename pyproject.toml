@@ -87,6 +87,7 @@ ignore = [
     "TRY002",   # Sometimes simple Exception with custom message is enough
     "TRY003",   # Sometimes simple Exception with custom message is enough
     "EM102",    # We'll survive with a doubled info in the stack trace
+    "ERA001",   # Found commented-out code, it's fine
 
     # TO BE FIXED !!
     "FIX002",   # Line contains TODO, consider resolving the issue

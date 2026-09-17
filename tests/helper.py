@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 from asyncio import Task
 from collections.abc import Awaitable, Callable, Mapping
@@ -7,6 +8,7 @@ from typing import Any, NoReturn, override
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+import structlog
 from matrix_bot.bot import MatrixBot
 from nio import Event, MatrixRoom, RoomMessage, RoomMessageText
 
@@ -269,9 +271,19 @@ async def create_fake_tchap_admin_bot(
     return await mock_client_and_run(bot, server_name)
 
 
+def set_debug_log_level() -> None:
+    logging.basicConfig(level=logging.WARNING)
+    structlog.configure(
+        wrapper_class=structlog.make_filtering_bound_logger(
+            logging.getLevelNamesMapping()["DEBUG"]
+        ),
+    )
+
+
 async def mock_client_and_run(
     bot: MatrixBot, server_name: str = "example.org"
 ) -> tuple[MatrixClientMock, Task[None]]:
+    set_debug_log_level()
     fake_client = MatrixClientMock(server_name)
     bot.matrix_client = fake_client
     bot.callbacks.matrix_client = fake_client
