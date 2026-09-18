@@ -159,9 +159,10 @@ class MatrixClientMock:
             await asyncio.sleep(30)
 
     def check_sent_reactions(self, *expected_reactions: str) -> None:
-        assert len(self.send_reaction.await_args_list) == len(expected_reactions)
+        sent_reactions = [args[0][2] for args in self.send_reaction.await_args_list]
+        assert len(sent_reactions) == len(expected_reactions)
         for i in range(len(expected_reactions)):
-            assert self.send_reaction.await_args_list[i][0][2] == expected_reactions[i]
+            assert sent_reactions[i] == expected_reactions[i]
         self.send_reaction.reset_mock()
 
     def check_redactions(self, expected_redactions: int) -> None:
