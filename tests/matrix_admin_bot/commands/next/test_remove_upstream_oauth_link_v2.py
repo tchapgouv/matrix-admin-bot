@@ -11,7 +11,7 @@ from tests import (
     create_fake_admin_bot,
 )
 from tests.matrix_admin_bot.commands.next import (
-    UPSTREAM_OAUTH_LINKS_EMPTY,
+    UPSTREAM_OAUTH_LINKS_EMPTY,  # type: ignore
     UPSTREAM_OAUTH_LINKS_LIST,
     USER,
     mock_response_error,
@@ -74,7 +74,7 @@ async def test_remove_upstream_oauth_links_when_user_has_no_link() -> None:
         ):
             return mock_response_with_json(USER)
         if method == "GET" and url.endswith("/api/admin/v1/upstream-oauth-links"):
-            return mock_response_with_json(UPSTREAM_OAUTH_LINKS_EMPTY)
+            return mock_response_with_json(UPSTREAM_OAUTH_LINKS_EMPTY)  # type: ignore
         return mock_response_error(403, "Forbidden")
 
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())

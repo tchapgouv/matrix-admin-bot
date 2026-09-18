@@ -67,8 +67,7 @@ class RemoveUpstreamOauthLinkCommandV2(UserRelatedCommand):
                 removed_links.append(link_id)
 
         self.json_report[user_id]["description"] = (
-            f"{len(removed_links)} upstream OAuth link(s) "
-            f"removed for {user_id}"
+            f"{len(removed_links)} upstream OAuth link(s) removed for {user_id}"
         )
         return len(removed_links) == len(links)
 

@@ -519,7 +519,7 @@ class AdminClient:
     ) -> list[dict[str, Any]] | None:
         params = {
             "filter[user]": mas_user_id,
-            "page[first]": 100000,
+            "page[first]": 100,
         }
         endpoint = "/api/admin/v1/upstream-oauth-links"
         resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)

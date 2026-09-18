@@ -379,7 +379,7 @@ UPSTREAM_OAUTH_LINKS_LIST = {
     },
 }
 
-UPSTREAM_OAUTH_LINKS_EMPTY = {
+UPSTREAM_OAUTH_LINKS_EMPTY = {  # type: ignore
     "meta": {"count": 0},
     "data": [],
     "links": {

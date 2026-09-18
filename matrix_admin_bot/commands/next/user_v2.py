@@ -55,8 +55,9 @@ class UserCommandV2(UserRelatedCommand):
 
         # Get all user emails
         params = {"filter[user]": mas_user_id}
-        #find_emails write into "description", add alors "emails" to be more explicit to users
-        #data is duplicated
+        # `find_emails` has a side effect: it creates a "description" field in json_report with the email information.
+        # Since that's not very clear for the operator, another "emails" field is created.
+        # The data is duplicated in the "description" and "emails" fields.
         user_emails = await self.admin_client.find_emails(
             self.json_report, self.failed_user_ids, user_id, params
         )
