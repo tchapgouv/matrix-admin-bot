@@ -20,6 +20,7 @@ Matrix Admin Bot is a command-line bot for Matrix server administration tasks.
 - `!replace_email` - Replace an email for a user
 - `!replace_displayname` - Replace the displayname for a user
 - `!user` - Get sessions and information on users
+- `!remove_upstream_oauth_links` - Remove all upstream OAuth links for a user
 
 ## Configuration
 

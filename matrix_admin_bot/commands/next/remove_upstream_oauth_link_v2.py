@@ -7,13 +7,13 @@ from nio import MatrixRoom, RoomMessage
 
 from matrix_admin_bot import UserRelatedCommand
 from matrix_admin_bot.admin_client import AdminClient
-from matrix_command_bot.util import get_server_name
+from matrix_command_bot.util import get_server_name, is_local_user
 
 logger = structlog.getLogger(__name__)
 
 
-class UserCommandV2(UserRelatedCommand):
-    KEYWORD = "user"
+class RemoveUpstreamOauthLinkCommandV2(UserRelatedCommand):
+    KEYWORD = "remove_upstream_oauth_links"
 
     def __init__(
         self,
@@ -23,20 +23,18 @@ class UserCommandV2(UserRelatedCommand):
         extra_config: Mapping[str, Any],
     ) -> None:
         super().__init__(room, message, matrix_client, self.KEYWORD, extra_config)
+        self.transform_cmd_input_fct = None
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
         self.failed_user_ids: list[str] = []
+        self.user_id: str | None = None
 
-    async def user(self, user_id: str) -> bool:
+    async def remove_upstream_oauth_links(self, user_id: str) -> bool:
         if get_server_name(user_id) != self.server_name:
             return True
 
         # Initialize report for user_id
         self.json_report.setdefault(user_id, {})
-        self.json_report[user_id]["sessions"] = {}
         self.json_report[user_id]["errors"] = []
-
-        # Get devices from the user in Synapse
-        await self.admin_client.get_devices_from_synapse(self.json_report, user_id)
 
         # Get the user from the MAS with its localpart
         mas_user_id = await self.admin_client.get_mas_user_id(
@@ -45,53 +43,57 @@ class UserCommandV2(UserRelatedCommand):
         if mas_user_id is None:
             return False
 
-        # Get all upstream OAuth links for the user
+        # Find all upstream OAuth links for the user
         links = await self.admin_client.find_upstream_oauth_links(
             self.json_report, self.failed_user_ids, mas_user_id, user_id
         )
         if links is None:
             return False
-        self.json_report[user_id]["upstream_oauth_links"] = links
 
-        # Get all user emails
-        params = {"filter[user]": mas_user_id}
-        # `find_emails` has a side effect: it creates a "description" field in
-        # json_report with the email information.
-        # Since that's not very clear for the operator, another "emails" field
-        # is created.
-        # The data is duplicated in the "description" and "emails" fields.
-        user_emails = await self.admin_client.find_emails(
-            self.json_report, self.failed_user_ids, user_id, params
+        if len(links) == 0:
+            self.json_report[user_id]["description"] = (
+                f"No upstream OAuth links found for {user_id}"
+            )
+            return True
+
+        # Remove each upstream OAuth link
+        removed_links: list[str] = []
+        for link in links:
+            link_id = link["id"]
+            result = await self.admin_client.remove_upstream_oauth_link(
+                self.json_report, self.failed_user_ids, link_id, user_id
+            )
+            if result:
+                removed_links.append(link_id)
+
+        self.json_report[user_id]["description"] = (
+            f"{len(removed_links)} upstream OAuth link(s) removed for {user_id}"
         )
-        if user_emails is None:
+        return len(removed_links) == len(links)
+
+    @override
+    async def should_execute(self) -> bool:
+        args = self.command_text.split()
+        if len(args) != 1:
             return False
-        self.json_report[user_id]["emails"] = user_emails
 
-        # Get sessions
-        self.json_report[user_id][
-            "sessions"
-        ] = await self.admin_client.get_all_sessions(
-            mas_user_id=mas_user_id, user_id=user_id
-        )
-
-        # Get user info
-        return await self.admin_client.get_user_from_synapse(
-            self.json_report, self.failed_user_ids, user_id
-        )
+        self.user_id = args[0]
+        return is_local_user(self.user_id, self.server_name)
 
     @override
     async def simple_execute(self) -> bool:
-        for user_id in self.user_ids:
-            await self.user(user_id)
+        if self.user_id is None:
+            return False
+        await self.remove_upstream_oauth_links(self.user_id)
 
         if self.json_report:
             self.json_report["command"] = self.KEYWORD
             await self.send_report()
-
+        logger.info(self.json_report)
         if self.failed_user_ids:
             text = "\n".join(
                 [
-                    "Couldn't get full information of the following users:",
+                    "Couldn't remove upstream OAuth links of the following users:",
                     "",
                     *[f"- {user_id}" for user_id in self.failed_user_ids],
                 ]
@@ -110,10 +112,9 @@ class UserCommandV2(UserRelatedCommand):
     def confirm_message(self) -> str | None:
         return "\n".join(
             [
-                "You are about to get information of the following users:",
+                "You are about to remove all upstream OAuth links:",
                 "",
-                *[f"- {user_id}" for user_id in self.user_ids],
-                "",
+                *[f"- {self.user_id}"],
             ]
         )
 
@@ -122,18 +123,15 @@ class UserCommandV2(UserRelatedCommand):
     def help_message(self) -> str:
         return """
 **Usage**:
-`!user <user1> [user2] ...`
+`!remove_upstream_oauth_links @user1`
 
 **Purpose**:
-Get sessions and information on users.
+Remove all upstream OAuth links for a user.
 
 **Effects**:
-- Reports all sessions (devices)
-- Reports general information
-- Reports upstream OAuth links
-- Reports user emails
+- finds all upstream OAuth links associated with the user
+- deletes each link
 
 **Examples**:
-- `!user @user:example.com`
-- `!user @user1:example.com @user2:example.com`
+- `!remove_upstream_oauth_links @user-domain.tld:example.com`
 """

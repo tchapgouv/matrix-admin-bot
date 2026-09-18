@@ -19,6 +19,9 @@ from matrix_admin_bot.commands.next.lock_v2 import LockCommandV2
 from matrix_admin_bot.commands.next.memberships_v2 import MembershipsCommandV2
 from matrix_admin_bot.commands.next.reactivate_v2 import ReactivateCommandV2
 from matrix_admin_bot.commands.next.remove_email_v2 import RemoveEmailCommandV2
+from matrix_admin_bot.commands.next.remove_upstream_oauth_link_v2 import (
+    RemoveUpstreamOauthLinkCommandV2,
+)
 from matrix_admin_bot.commands.next.replace_displayname_v2 import (
     ReplaceDisplayNameCommandV2,
 )
@@ -51,6 +54,7 @@ def get_command_list() -> list[type[ICommand]]:
         MembershipsCommandV2,
         ReplaceEmailCommandV2,
         ReplaceDisplayNameCommandV2,
+        RemoveUpstreamOauthLinkCommandV2,
         UserCommandV2,
     ]
 

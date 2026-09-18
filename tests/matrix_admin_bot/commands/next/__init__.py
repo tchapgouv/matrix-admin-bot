@@ -341,6 +341,53 @@ PERSONAL_SESSIONS_LIST = {
     },
 }
 
+UPSTREAM_OAUTH_LINKS_LIST = {
+    "meta": {"count": 2},
+    "data": [
+        {
+            "type": "upstream-oauth-link",
+            "id": "01K5R30ZEENQQCR9ZPQY9KYP0A",
+            "attributes": {
+                "created_at": "2025-09-22T06:50:50.190780Z",
+                "provider_id": "01K5EMRC1GTYJF19ZAHM5R9Y9H",
+                "subject": "user_to_reset@domain.tld",
+                "user_id": "01040G2081040G2081040G2081",
+                "human_account_name": "User To Reset",
+            },
+            "links": {
+                "self": "/api/admin/v1/upstream-oauth-links/01K5R30ZEENQQCR9ZPQY9KYP0A"
+            },
+        },
+        {
+            "type": "upstream-oauth-link",
+            "id": "01K5R30ZEENQQCR9ZPQY9KYP0B",
+            "attributes": {
+                "created_at": "2025-09-23T08:30:00.000000Z",
+                "provider_id": "01K5EMRC1GTYJF19ZAHM5R9Y9H",
+                "subject": "user_to_reset@domain2.tld",
+                "user_id": "01040G2081040G2081040G2081",
+                "human_account_name": "User To Reset 2",
+            },
+            "links": {
+                "self": "/api/admin/v1/upstream-oauth-links/01K5R30ZEENQQCR9ZPQY9KYP0B"
+            },
+        },
+    ],
+    "links": {
+        "self": "/api/admin/v1/upstream-oauth-links?filter[user]=01040G2081040G2081040G2081&page[first]=100000",  # noqa: E501
+        "first": "/api/admin/v1/upstream-oauth-links?filter[user]=01040G2081040G2081040G2081&page[first]=100000",  # noqa: E501
+    },
+}
+
+UPSTREAM_OAUTH_LINKS_EMPTY = {  # type: ignore
+    "meta": {"count": 0},
+    "data": [],
+    "links": {
+        "self": "/api/admin/v1/upstream-oauth-links?filter[user]=01040G2081040G2081040G2081&page[first]=100000",  # noqa: E501
+        "first": "/api/admin/v1/upstream-oauth-links?filter[user]=01040G2081040G2081040G2081&page[first]=100000",  # noqa: E501
+    },
+}
+
 USER_SYNAPSE = {
     "name": "@user:example.com",
     "displayname": "User",
