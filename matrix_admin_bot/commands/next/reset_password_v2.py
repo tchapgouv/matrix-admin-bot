@@ -63,9 +63,9 @@ class ResetPasswordCommandV2(UserRelatedCommand):
             return False
 
         # Kill all sessions
-        return await self.admin_client.kill_all_sessions(
-            self.json_report, self.failed_user_ids, mas_user_id, user_id
-        )
+        # return await self.admin_client.kill_all_sessions(
+        #     self.json_report, self.failed_user_ids, mas_user_id, user_id
+        # )
 
     @override
     async def simple_execute(self) -> bool:
