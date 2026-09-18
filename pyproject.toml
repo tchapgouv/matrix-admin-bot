@@ -101,6 +101,9 @@ ignore = [
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned
     "DTZ005",  # `datetime.datetime.now()` called without a `tz` argument
+    "PGH003",  # Use specific rule codes when ignoring type issues
+    "C901",    # Function is too complex
+    "PLR0911", # Too many return statements
 ]
 
 [tool.coverage.run]

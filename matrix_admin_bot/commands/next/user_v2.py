@@ -55,8 +55,10 @@ class UserCommandV2(UserRelatedCommand):
 
         # Get all user emails
         params = {"filter[user]": mas_user_id}
-        # `find_emails` has a side effect: it creates a "description" field in json_report with the email information.
-        # Since that's not very clear for the operator, another "emails" field is created.
+        # `find_emails` has a side effect: it creates a "description" field in
+        # json_report with the email information.
+        # Since that's not very clear for the operator, another "emails" field
+        # is created.
         # The data is duplicated in the "description" and "emails" fields.
         user_emails = await self.admin_client.find_emails(
             self.json_report, self.failed_user_ids, user_id, params
@@ -126,9 +128,9 @@ class UserCommandV2(UserRelatedCommand):
 Get sessions and information on users.
 
 **Effects**:
-- Reports all sessions (devices) 
-- Reports general information 
-- Reports upstream OAuth links 
+- Reports all sessions (devices)
+- Reports general information
+- Reports upstream OAuth links
 - Reports user emails
 
 **Examples**:
