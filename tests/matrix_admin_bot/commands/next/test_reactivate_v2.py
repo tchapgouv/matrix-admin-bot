@@ -40,7 +40,6 @@ async def test_reactivate() -> None:
     # one call to fetch the devices
     check_requests_sent(mocked_matrix_client.send, "/devices")
     # 1 call to get the mas user id on MAS
-    # 4 calls to get each session type
     # 1 call to reactivate user
     # 1 call to check if email is not used
     # 1 call to check if user has no email
