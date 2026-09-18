@@ -477,13 +477,21 @@ class UnverifiedDevicesCommand(CommandWithSteps):
 
     @override
     async def create_steps(self) -> list[ICommandStep]:
+        should_execute = await self.should_execute()
+        if not should_execute:
+            # We still need to do the validation steps so the coordinator
+            # can send the messages to the user.
+            return [
+                ValidateStep(self, self.state, self.validator),
+                ReactionStep(self, self.state, ""),
+                ValidateDeleteStep(self),
+                ReactionStep(self, self.state, ""),
+            ]
+
         return [
-            ExecuteFunctionStep(self, self.should_execute, abort_on_failure=True),
-            # Validate the command before listing and reporting the devices.
             ValidateStep(self, self.state, self.validator),
             ReactionStep(self, self.state, "🚀"),
             ExecuteFunctionStep(self, self.list_all_unverified_devices),
-            # Validate again before deleting the reported sessions.
             ValidateDeleteStep(self),
             ExecuteFunctionStep(self, self.delete_unverified_sessions),
             ResultReactionStep(self, self.state),
