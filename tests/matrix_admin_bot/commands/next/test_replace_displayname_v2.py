@@ -57,8 +57,7 @@ async def test_replace_displayname() -> None:
     )
     check_requests_sent(mocked_matrix_client.client_session, "/users/by-username")
 
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
 
     t.cancel()
 
@@ -101,8 +100,7 @@ async def test_replace_displayname_with_single_quote() -> None:
     )
     check_requests_sent(mocked_matrix_client.client_session, "/users/by-username")
 
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
 
     t.cancel()
 
@@ -128,8 +126,7 @@ async def test_failed_replace_displayname_when_user_not_found() -> None:
         "!replace_displayname @user_to_reset:example.org 'My-Display Name[matrix]'",
     )
 
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
 
     # 1 call to get the mas user id on MAS
     check_requests_sent(mocked_matrix_client.client_session, "/users/by-username")

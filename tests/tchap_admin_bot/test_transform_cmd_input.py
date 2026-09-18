@@ -107,8 +107,7 @@ async def test_mail_address() -> None:
         room, USER1_ID, "!reset_password user_to_reset@example.org"
     )
 
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
 
     # 1 call to fetch the devices on synapse
     check_requests_sent(mocked_matrix_client.send, "/devices")

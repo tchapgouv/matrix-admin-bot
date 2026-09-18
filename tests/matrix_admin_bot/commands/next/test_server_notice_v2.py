@@ -227,8 +227,7 @@ async def test_server_notice_to_all_recipients() -> None:
         extra_content=create_thread_relation(command_event_id),
     )
     # send the report a result
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
     # 2 calls to fetch the users
     check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 2))
     # 4 calls(one per user) to send the notice to all users
@@ -296,8 +295,7 @@ async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
         extra_content=create_thread_relation(command_event_id),
     )
     # send the report a result
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
     # 6 calls to fetch the users
     check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 6))
     # 4 calls(one per user) to send the notice to all users
@@ -366,8 +364,7 @@ async def test_server_notice_to_all_recipients_when_exception() -> None:
         extra_content=create_thread_relation(command_event_id),
     )
     # send the report a result
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
     # 6 calls to fetch the users
     check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 6))
     # 4 calls(one per user) to send the notice to all users
@@ -423,8 +420,7 @@ async def test_server_notice_to_all_recipients_failed() -> None:
         extra_content=create_thread_relation(command_event_id),
     )
     # send the report a result
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
     # 6 calls to fetch the users
     check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 6))
     # no call to send the notice to all users
@@ -479,8 +475,7 @@ async def test_html_server_notice_to_one_recipient() -> None:
     )
 
     # send the report a result
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
     # no call to fetch the users
     check_requests_sent(mocked_matrix_client.client_session)
     # one call to send the notice directly to the user
@@ -599,7 +594,7 @@ async def test_server_notice_with_edit() -> None:
         },
     )
 
-    mocked_matrix_client.send.assert_not_awaited()
+    check_requests_sent(mocked_matrix_client.send)
 
     await mocked_matrix_client.fake_synced_text_message(
         room,
@@ -622,8 +617,7 @@ async def test_server_notice_with_edit() -> None:
     )
 
     # send the report a result
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
     # no call to fetch the users
     check_requests_sent(mocked_matrix_client.client_session)
     # one call to send the notice directly to the user
@@ -693,7 +687,7 @@ async def test_to_one_recipient_with_coordinator() -> None:
     )
 
     mocked_matrix_client1.check_sent_reactions()
-    assert len(mocked_matrix_client1.room_redact.await_args_list) == 1
+    mocked_matrix_client1.check_redactions(1)
     mocked_matrix_client2.check_sent_reactions("🚀", "✅")
 
     # no call on coordinator
@@ -701,8 +695,7 @@ async def test_to_one_recipient_with_coordinator() -> None:
     check_requests_sent(mocked_matrix_client1.client_session)
 
     # send the report a result
-    mocked_matrix_client2.send_file_message.assert_awaited_once()
-    mocked_matrix_client2.send_file_message.reset_mock()
+    mocked_matrix_client2.check_sent_file_message()
 
     # one call to send notice for the executing bot
     check_requests_sent(mocked_matrix_client2.send, "/send_server_notice")

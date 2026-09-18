@@ -37,8 +37,7 @@ async def test_unlock() -> None:
         room, USER1_ID, "!unlock @user_to_reset:example.org"
     )
 
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
 
     # one call to fetch the devices
     check_requests_sent(mocked_matrix_client.send, "/devices")
@@ -88,7 +87,7 @@ async def test_non_local_user_unlock() -> None:
         room, USER1_ID, "!unlock @user_to_reset:example2.org"
     )
 
-    assert len(mocked_matrix_client.send.await_args_list) == 0
+    check_requests_sent(mocked_matrix_client.send)
     mocked_matrix_client.check_sent_reactions()
 
     t.cancel()

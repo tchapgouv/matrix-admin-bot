@@ -180,6 +180,10 @@ class MatrixClientMock:
                     return
         pytest.fail("No matching sent message")
 
+    def check_sent_file_message(self) -> None:
+        assert self.send_file_message.await_count == 1
+        self.send_file_message.reset_mock()
+
 
 async def fake_synced_text_message(
     mocked_clients: list[MatrixClientMock],

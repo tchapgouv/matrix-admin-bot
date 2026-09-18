@@ -85,7 +85,7 @@ async def test_failures() -> None:
         room, USER1_ID, "!test"
     )
 
-    mocked_client.send_text_message.reset_mock()
+    mocked_client.check_sent_message("authentication code")
 
     await mocked_client.fake_synced_text_message(
         room, USER1_ID, "yes", extra_content=create_thread_relation(command_event_id)

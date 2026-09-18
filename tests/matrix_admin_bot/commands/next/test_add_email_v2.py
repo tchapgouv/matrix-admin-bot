@@ -49,8 +49,7 @@ async def test_add_email() -> None:
         room, USER1_ID, "!add_email @user_to_reset:example.org user@domain.tld"
     )
 
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
     mocked_matrix_client.send.reset_mock()
 
     # 1 call to get the mas user id on MAS
@@ -195,7 +194,7 @@ async def test_non_local_user_add_email() -> None:
         room, USER1_ID, "!add_email @user_to_reset:example2.org user@domain.tld"
     )
 
-    assert len(mocked_matrix_client.send.await_args_list) == 0
+    check_requests_sent(mocked_matrix_client.send)
     mocked_matrix_client.check_sent_reactions()
 
     t.cancel()

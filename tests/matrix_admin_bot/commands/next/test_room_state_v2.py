@@ -21,8 +21,7 @@ async def test_room_state() -> None:
         room, USER1_ID, "!room_state !theroomid:example.org"
     )
 
-    mocked_matrix_client.send_file_message.assert_awaited_once()
-    mocked_matrix_client.send_file_message.reset_mock()
+    mocked_matrix_client.check_sent_file_message()
 
     check_requests_sent(
         mocked_matrix_client.send, "/rooms/!theroomid:example.org/state"
