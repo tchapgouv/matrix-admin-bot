@@ -261,7 +261,7 @@ class UnverifiedDevicesCommand(CommandWithSteps):
         return devices_sessions
 
     # TODO decrease complexity
-    async def list_unverified_devices(self, user_id: str) -> bool:  # noqa: C901
+    async def list_unverified_devices(self, user_id: str) -> bool:  # noqa: C901, PLR0912
         if get_server_name(user_id) != self.server_name:
             return True
 
@@ -315,26 +315,27 @@ class UnverifiedDevicesCommand(CommandWithSteps):
 
         devices_sessions = await self.get_devices_sessions(user_id)
 
-        if not self.has_unverified_devices_created_after(
-            unverified_devices.keys(), devices_sessions
-        ):
+        devices_to_delete: set[str] = set()
+        for device_id in unverified_devices:
+            for session in devices_sessions.get(device_id, []):
+                if self.is_created_after(session):
+                    devices_to_delete.add(device_id)
+                    self.state.sessions_to_delete.setdefault(user_id, []).append(
+                        session
+                    )
+
+        if not devices_to_delete:
             logger.debug(
                 "Unverified devices are all older than created_after", user_id=user_id
             )
             del self.json_report[user_id]
             return True
 
-        self.state.sessions_to_delete[user_id] = [
-            session
-            for device_id in unverified_devices
-            for session in devices_sessions.get(device_id, [])
-            if self.is_created_after(session)
-        ]
-
         verified_devices = list(synapse_devices.keys() - unverified_devices.keys())
 
         self.json_report[user_id]["unverified_devices"] = unverified_devices
         self.json_report[user_id]["verified_devices"] = verified_devices
+        self.json_report[user_id]["devices_to_delete"] = list(devices_to_delete)
 
         devices_details: list[dict[str, Any]] = []
         for device_id, details in synapse_devices.items():
@@ -380,16 +381,6 @@ class UnverifiedDevicesCommand(CommandWithSteps):
         if not created_at:
             return True
         return created_at > self.created_after
-
-    def has_unverified_devices_created_after(
-        self, unverified_device_ids: Collection[str], device_sessions: dict[str, Any]
-    ) -> bool:
-        for device_id in unverified_device_ids:
-            sessions = device_sessions.get(device_id, [])
-            for session in sessions:
-                if self.is_created_after(session):
-                    return True
-        return False
 
     async def list_all_unverified_devices(self) -> bool:
         logger.debug("Unverified devices - started", user_ids=self.user_ids)
