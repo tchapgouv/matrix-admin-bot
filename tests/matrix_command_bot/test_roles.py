@@ -7,7 +7,6 @@ from tests.helper import (
     USER2_ID,
     USER3_ID,
     create_fake_command_bot,
-    create_thread_relation,
 )
 from tests.matrix_command_bot.test_simple_command import SimpleTestCommand
 from tests.matrix_command_bot.validation.validators.test_confirm import (
@@ -91,21 +90,15 @@ async def test_normal_role_with_interaction() -> None:
         room, authorized_user_id, "!test"
     )
 
-    await mocked_client.fake_synced_text_message(
-        room,
-        unauthorized_user_id,
-        "yes",
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_client.send_thread_message(
+        room, unauthorized_user_id, "yes", command_event_id
     )
 
     assert not mocked_client.executed
     mocked_client.executed = False
 
-    await mocked_client.fake_synced_text_message(
-        room,
-        authorized_user_id,
-        "yes",
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_client.send_thread_message(
+        room, authorized_user_id, "yes", command_event_id
     )
 
     assert mocked_client.executed
@@ -147,21 +140,15 @@ async def test_other_users_interaction_role() -> None:
         room, bot_id, "!test"
     )
 
-    await mocked_client.fake_synced_text_message(
-        room,
-        unauthorized_user_id,
-        "yes",
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_client.send_thread_message(
+        room, unauthorized_user_id, "yes", command_event_id
     )
 
     assert not mocked_client.executed
     mocked_client.executed = False
 
-    await mocked_client.fake_synced_text_message(
-        room,
-        authorized_user_id,
-        "yes",
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_client.send_thread_message(
+        room, authorized_user_id, "yes", command_event_id
     )
 
     assert mocked_client.executed

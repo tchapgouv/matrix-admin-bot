@@ -14,7 +14,6 @@ from tests.helper import (
     USER1_ID,
     OkValidator,
     create_fake_command_bot,
-    create_thread_relation,
     timeout,
 )
 
@@ -110,22 +109,14 @@ async def test_command_with_confirm_concurrency() -> None:
     long_cmd_event_id = await mocked_client.fake_synced_text_message(
         room, USER1_ID, "!long"
     )
-    await mocked_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "yes",
-        extra_content=create_thread_relation(long_cmd_event_id),
-        wait_for_commands_execution=False,
+    await mocked_client.send_thread_message(
+        room, USER1_ID, "yes", long_cmd_event_id, wait_for_commands_execution=False
     )
     success_cmd_event_id = await mocked_client.fake_synced_text_message(
         room, USER1_ID, "!success", wait_for_commands_execution=False
     )
-    await mocked_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "yes",
-        extra_content=create_thread_relation(success_cmd_event_id),
-        wait_for_commands_execution=False,
+    await mocked_client.send_thread_message(
+        room, USER1_ID, "yes", success_cmd_event_id, wait_for_commands_execution=False
     )
 
     # We can't wait for the command tasks to finish here,
@@ -175,12 +166,8 @@ async def test_reply_received_during_should_execute() -> None:
         room, USER1_ID, "!long_should_execute", wait_for_commands_execution=False
     )
     # Confirm the command right away while it's still in should_execute.
-    await mocked_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "yes",
-        extra_content=create_thread_relation(long_cmd_event_id),
-        wait_for_commands_execution=False,
+    await mocked_client.send_thread_message(
+        room, USER1_ID, "yes", long_cmd_event_id, wait_for_commands_execution=False
     )
     await asyncio.sleep(0.1)
 

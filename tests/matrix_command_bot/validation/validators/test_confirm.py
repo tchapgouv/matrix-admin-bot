@@ -9,9 +9,9 @@ from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 from matrix_command_bot.validation.validators.confirm import ConfirmValidator
 from tests.helper import (
     USER1_ID,
+    USER2_ID,
     create_fake_command_bot,
     create_reply_relation,
-    create_thread_relation,
 )
 
 
@@ -78,25 +78,16 @@ async def test_failures_then_success() -> None:
         room, USER1_ID, "!test"
     )
 
-    await mocked_client.fake_synced_text_message(
-        room, USER1_ID, "no", extra_content=create_thread_relation(command_event_id)
-    )
+    await mocked_client.send_thread_message(room, USER1_ID, "no", command_event_id)
 
     assert not mocked_client.executed
 
     # It should be ignored since it doesn't come from the original command sender
-    await mocked_client.fake_synced_text_message(
-        room,
-        "@user2:example.org",
-        "yes",
-        extra_content=create_thread_relation(command_event_id),
-    )
+    await mocked_client.send_thread_message(room, USER2_ID, "yes", command_event_id)
 
     assert not mocked_client.executed
 
-    await mocked_client.fake_synced_text_message(
-        room, USER1_ID, "yes", extra_content=create_thread_relation(command_event_id)
-    )
+    await mocked_client.send_thread_message(room, USER1_ID, "yes", command_event_id)
 
     assert mocked_client.executed
 

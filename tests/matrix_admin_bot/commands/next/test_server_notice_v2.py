@@ -15,15 +15,21 @@ from tests.helper import (
     check_requests_sent,
     create_fake_admin_bot,
     create_replace_relation,
-    create_thread_relation,
     fake_synced_text_message,
     find_request,
 )
 from tests.matrix_admin_bot.commands.next import (
     USER_EMAILS_LIST_NO_DATA,
+    mock_requests,
     mock_response_error,
     mock_response_with_json,
     mock_send_response,
+)
+
+USERS_FIRST_PAGE = "/api/admin/v1/users?filter[status]=active&page[first]=100"
+USERS_NEXT_PAGE = (
+    "/api/admin/v1/users?filter[status]=active"
+    "&page[after]=030C1G60R30C1G60R30C1G60R3&page[first]=3"
 )
 
 mas_user_response_data_page1 = {
@@ -178,22 +184,18 @@ TEXT_DATA = "Some simple server notice"
 
 @pytest.mark.asyncio
 async def test_server_notice_to_all_recipients() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users?filter[status]=active&page[first]=100"
-        ):
-            return mock_response_with_json(mas_user_response_data_page1)
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users?filter[status]=active&page[after]=030C1G60R30C1G60R30C1G60R3&page[first]=3"
-        ):
-            return mock_response_with_json(mas_user_response_data_page2)
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(
         validator=ConfirmValidator()
     )
     mocked_matrix_client.send = mock_send_response(user_response_data)
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        (
+            "GET",
+            USERS_FIRST_PAGE,
+            mock_response_with_json(mas_user_response_data_page1),
+        ),
+        ("GET", USERS_NEXT_PAGE, mock_response_with_json(mas_user_response_data_page2)),
+    )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -203,29 +205,20 @@ async def test_server_notice_to_all_recipients() -> None:
 
     mocked_matrix_client.check_sent_message("Type your recipients with space separated")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        USER_ALL,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, USER_ALL, command_event_id
     )
     mocked_matrix_client.check_sent_message("Type your notice")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        TEXT_DATA,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, TEXT_DATA, command_event_id
     )
-
     mocked_matrix_client.check_sent_message("Please reply")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "yes",
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, "yes", command_event_id
     )
+
     # send the report a result
     mocked_matrix_client.check_sent_file_message()
     # 2 calls to fetch the users
@@ -242,17 +235,9 @@ async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
 
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         nonlocal counter
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users?filter[status]=active&page[first]=100"
-        ):
+        if method == "GET" and url.endswith(USERS_FIRST_PAGE):
             return mock_response_with_json(mas_user_response_data_page1)
-        if (
-            method == "GET"
-            and url.endswith(
-                "/api/admin/v1/users?filter[status]=active&page[after]=030C1G60R30C1G60R30C1G60R3&page[first]=3"
-            )
-            and counter == 4
-        ):
+        if method == "GET" and url.endswith(USERS_NEXT_PAGE) and counter == 4:
             return mock_response_with_json(mas_user_response_data_page2)
         counter += 1
         return mock_response_error(403, "Forbidden")
@@ -271,29 +256,20 @@ async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
 
     mocked_matrix_client.check_sent_message("Type your recipients with space separated")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        USER_ALL,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, USER_ALL, command_event_id
     )
     mocked_matrix_client.check_sent_message("Type your notice")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        TEXT_DATA,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, TEXT_DATA, command_event_id
     )
-
     mocked_matrix_client.check_sent_message("Please reply")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "yes",
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, "yes", command_event_id
     )
+
     # send the report a result
     mocked_matrix_client.check_sent_file_message()
     # 6 calls to fetch the users
@@ -310,17 +286,9 @@ async def test_server_notice_to_all_recipients_when_exception() -> None:
 
     def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
         nonlocal counter
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users?filter[status]=active&page[first]=100"
-        ):
+        if method == "GET" and url.endswith(USERS_FIRST_PAGE):
             return mock_response_with_json(mas_user_response_data_page1)
-        if (
-            method == "GET"
-            and url.endswith(
-                "/api/admin/v1/users?filter[status]=active&page[after]=030C1G60R30C1G60R30C1G60R3&page[first]=3"
-            )
-            and counter == 4
-        ):
+        if method == "GET" and url.endswith(USERS_NEXT_PAGE) and counter == 4:
             return mock_response_with_json(mas_user_response_data_page2)
         counter += 1
         reason = "Keep having exception until it succeed"
@@ -340,29 +308,20 @@ async def test_server_notice_to_all_recipients_when_exception() -> None:
 
     mocked_matrix_client.check_sent_message("Type your recipients with space separated")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        USER_ALL,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, USER_ALL, command_event_id
     )
     mocked_matrix_client.check_sent_message("Type your notice")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        TEXT_DATA,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, TEXT_DATA, command_event_id
     )
-
     mocked_matrix_client.check_sent_message("Please reply")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "yes",
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, "yes", command_event_id
     )
+
     # send the report a result
     mocked_matrix_client.check_sent_file_message()
     # 6 calls to fetch the users
@@ -375,18 +334,17 @@ async def test_server_notice_to_all_recipients_when_exception() -> None:
 
 @pytest.mark.asyncio
 async def test_server_notice_to_all_recipients_failed() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users?filter[status]=active&page[first]=100"
-        ):
-            return mock_response_with_json(mas_user_response_data_page1)
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(
         validator=ConfirmValidator()
     )
     mocked_matrix_client.send = mock_send_response(user_response_data)
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        (
+            "GET",
+            USERS_FIRST_PAGE,
+            mock_response_with_json(mas_user_response_data_page1),
+        ),
+    )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -396,29 +354,20 @@ async def test_server_notice_to_all_recipients_failed() -> None:
 
     mocked_matrix_client.check_sent_message("Type your recipients with space separated")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        USER_ALL,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, USER_ALL, command_event_id
     )
     mocked_matrix_client.check_sent_message("Type your notice")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        TEXT_DATA,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, TEXT_DATA, command_event_id
     )
-
     mocked_matrix_client.check_sent_message("Please reply")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "yes",
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, "yes", command_event_id
     )
+
     # send the report a result
     mocked_matrix_client.check_sent_file_message()
     # 6 calls to fetch the users
@@ -444,34 +393,28 @@ async def test_html_server_notice_to_one_recipient() -> None:
 
     mocked_matrix_client.check_sent_message("Type your recipients with space separated")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        USER2_ID,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, USER2_ID, command_event_id
     )
     mocked_matrix_client.check_sent_message("Type your notice")
 
     text_data = "Some **formatted** server notice"
     html_formatted_data = "Some <strong>formatted</strong> server notice"
-    await mocked_matrix_client.fake_synced_text_message(
+    await mocked_matrix_client.send_thread_message(
         room,
         USER1_ID,
         text_data,
-        "org.matrix.custom.html",
-        html_formatted_data,
-        extra_content=create_thread_relation(command_event_id),
+        command_event_id,
+        format_="org.matrix.custom.html",
+        formatted_body=html_formatted_data,
     )
 
     mocked_matrix_client.check_sent_message("Please reply")
 
     mocked_matrix_client.check_sent_reactions("✏️")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "yes",
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, "yes", command_event_id
     )
 
     # send the report a result
@@ -494,18 +437,17 @@ async def test_html_server_notice_to_one_recipient() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_server_notice_with_no_matrix_id() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/user-emails?page[first]=1000"
-        ):
-            return mock_response_with_json(USER_EMAILS_LIST_NO_DATA)
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(
         validator=ConfirmValidator()
     )
     mocked_matrix_client.send = mock_send_response(user_response_data)
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        (
+            "GET",
+            "/api/admin/v1/user-emails?page[first]=1000",
+            mock_response_with_json(USER_EMAILS_LIST_NO_DATA),
+        ),
+    )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -515,31 +457,20 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
 
     mocked_matrix_client.check_sent_message("Type your recipients with space separated")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "user_not_a_matrix_id",
-        extra_content=create_thread_relation(msg_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, "user_not_a_matrix_id", msg_event_id
     )
     mocked_matrix_client.check_sent_message("Type your notice")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        TEXT_DATA,
-        extra_content=create_thread_relation(msg_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, TEXT_DATA, msg_event_id
     )
 
     mocked_matrix_client.check_sent_message("Please reply")
 
     mocked_matrix_client.check_sent_reactions("✏️")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "yes",
-        extra_content=create_thread_relation(msg_event_id),
-    )
+    await mocked_matrix_client.send_thread_message(room, USER1_ID, "yes", msg_event_id)
 
     # no call to any endpoint if user is not a matrix id
     check_requests_sent(mocked_matrix_client.client_session)
@@ -564,19 +495,13 @@ async def test_server_notice_with_edit() -> None:
 
     mocked_matrix_client.check_sent_message("Type your recipients with space separated")
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        USER2_ID,
-        extra_content=create_thread_relation(msg_event_id),
+    await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, USER2_ID, msg_event_id
     )
     mocked_matrix_client.check_sent_message("Type your notice")
 
-    original_event_id = await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "Wrong message",
-        extra_content=create_thread_relation(msg_event_id),
+    original_event_id = await mocked_matrix_client.send_thread_message(
+        room, USER1_ID, "Wrong message", msg_event_id
     )
 
     mocked_matrix_client.check_sent_message("Please reply")
@@ -609,12 +534,7 @@ async def test_server_notice_with_edit() -> None:
         },
     )
 
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "yes",
-        extra_content=create_thread_relation(msg_event_id),
-    )
+    await mocked_matrix_client.send_thread_message(room, USER1_ID, "yes", msg_event_id)
 
     # send the report a result
     mocked_matrix_client.check_sent_file_message()
@@ -660,7 +580,7 @@ async def test_to_one_recipient_with_coordinator() -> None:
         room,
         USER1_ID,
         "@user:example2.org",
-        extra_content=create_thread_relation(command_event_id),
+        thread_root_id=command_event_id,
     )
     mocked_matrix_client1.check_sent_message("Type your notice")
     mocked_matrix_client2.check_no_sent_message()
@@ -670,7 +590,7 @@ async def test_to_one_recipient_with_coordinator() -> None:
         room,
         USER1_ID,
         TEXT_DATA,
-        extra_content=create_thread_relation(command_event_id),
+        thread_root_id=command_event_id,
     )
 
     mocked_matrix_client1.check_sent_message("Please reply")
@@ -683,7 +603,7 @@ async def test_to_one_recipient_with_coordinator() -> None:
         room,
         USER1_ID,
         "yes",
-        extra_content=create_thread_relation(command_event_id),
+        thread_root_id=command_event_id,
     )
 
     mocked_matrix_client1.check_sent_reactions()

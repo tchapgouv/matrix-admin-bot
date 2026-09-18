@@ -15,7 +15,6 @@ from tests.helper import (
     USER2_ID,
     USER3_ID,
     create_fake_command_bot,
-    create_thread_relation,
 )
 
 TOTP_SEED = "P7ZBD5ZLMACOOTX4"
@@ -65,9 +64,7 @@ async def test_success() -> None:
     mocked_client.check_sent_message("authentication code")
 
     code = pyotp.TOTP(TOTP_SEED).now()
-    await mocked_client.fake_synced_text_message(
-        room, USER1_ID, code, extra_content=create_thread_relation(command_event_id)
-    )
+    await mocked_client.send_thread_message(room, USER1_ID, code, command_event_id)
 
     assert mocked_client.executed
 
@@ -87,15 +84,11 @@ async def test_failures() -> None:
 
     mocked_client.check_sent_message("authentication code")
 
-    await mocked_client.fake_synced_text_message(
-        room, USER1_ID, "yes", extra_content=create_thread_relation(command_event_id)
-    )
+    await mocked_client.send_thread_message(room, USER1_ID, "yes", command_event_id)
 
     mocked_client.check_sent_message("parse")
 
-    await mocked_client.fake_synced_text_message(
-        room, USER1_ID, "000000", extra_content=create_thread_relation(command_event_id)
-    )
+    await mocked_client.send_thread_message(room, USER1_ID, "000000", command_event_id)
 
     mocked_client.check_sent_message("Wrong authentication code")
 
@@ -116,23 +109,17 @@ async def test_totp_window() -> None:
     )
 
     code = pyotp.TOTP(TOTP_SEED).at(datetime.datetime.now(), counter_offset=-2)
-    await mocked_client.fake_synced_text_message(
-        room, USER1_ID, code, extra_content=create_thread_relation(command_event_id)
-    )
+    await mocked_client.send_thread_message(room, USER1_ID, code, command_event_id)
 
     assert not mocked_client.executed
 
     code = pyotp.TOTP(TOTP_SEED).at(datetime.datetime.now(), counter_offset=2)
-    await mocked_client.fake_synced_text_message(
-        room, USER1_ID, code, extra_content=create_thread_relation(command_event_id)
-    )
+    await mocked_client.send_thread_message(room, USER1_ID, code, command_event_id)
 
     assert not mocked_client.executed
 
     code = pyotp.TOTP(TOTP_SEED).at(datetime.datetime.now(), counter_offset=1)
-    await mocked_client.fake_synced_text_message(
-        room, USER1_ID, code, extra_content=create_thread_relation(command_event_id)
-    )
+    await mocked_client.send_thread_message(room, USER1_ID, code, command_event_id)
 
     assert mocked_client.executed
 
@@ -175,22 +162,16 @@ async def test_with_allow_other_users_interaction_role() -> None:
     )
 
     code = pyotp.TOTP(TOTP_SEED).now()
-    await mocked_client.fake_synced_text_message(
-        room,
-        unauthorized_user_id,
-        code,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_client.send_thread_message(
+        room, unauthorized_user_id, code, command_event_id
     )
 
     assert not mocked_client.executed
     mocked_client.executed = False
 
     code = pyotp.TOTP(TOTP_SEED).now()
-    await mocked_client.fake_synced_text_message(
-        room,
-        authorized_user_id,
-        code,
-        extra_content=create_thread_relation(command_event_id),
+    await mocked_client.send_thread_message(
+        room, authorized_user_id, code, command_event_id
     )
 
     assert mocked_client.executed

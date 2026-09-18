@@ -4,7 +4,6 @@ from nio import MatrixRoom
 from tests.helper import (
     USER1_ID,
     create_fake_command_bot,
-    create_thread_relation,
     fake_synced_text_message,
 )
 from tests.matrix_command_bot.validation.validators.test_confirm import (
@@ -48,7 +47,7 @@ async def test_with_single_coordinator() -> None:
         room,
         USER1_ID,
         "yes",
-        extra_content=create_thread_relation(command_event_id),
+        thread_root_id=command_event_id,
     )
 
     assert mocked_client1.executed
@@ -94,7 +93,7 @@ async def test_with_non_executing_coordinator() -> None:
         room,
         USER1_ID,
         "yes",
-        extra_content=create_thread_relation(command_event_id),
+        thread_root_id=command_event_id,
     )
 
     assert not mocked_client1.executed

@@ -1,6 +1,3 @@
-from typing import Any
-from unittest.mock import Mock
-
 import pytest
 from nio import MatrixRoom
 
@@ -13,91 +10,45 @@ from tests.helper import (
 )
 from tests.matrix_admin_bot.commands.next import (
     USER,
+    mock_requests,
     mock_response_error,
     mock_response_with_json,
     mock_send_response,
 )
 
+SYNAPSE_USER_ENDPOINT = "/_synapse/admin/v2/users/@user_to_reset:example.org"
+
 
 @pytest.mark.asyncio
-async def test_replace_displayname() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users/by-username/user_to_reset"
-        ):
-            return mock_response_with_json(USER)
-        return mock_response_error(403, "Forbidden")
-
+@pytest.mark.parametrize(
+    "displayname_arg",
+    ["My-Display Name[matrix]", "'My-Display Name[matrix]'"],
+)
+async def test_replace_displayname(displayname_arg: str) -> None:
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = mock_send_response()
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        ("GET", "/api/admin/v1/users/by-username", mock_response_with_json(USER)),
+    )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
     await mocked_matrix_client.fake_synced_text_message(
         room,
         USER1_ID,
-        "!replace_displayname @user_to_reset:example.org My-Display Name[matrix]",
+        f"!replace_displayname @user_to_reset:example.org {displayname_arg}",
     )
 
     # 1 call to get the mas user id on MAS
     # 1 call to change displayname on Synapse
     displayname_request = find_request(
-        mocked_matrix_client.send,
-        "PUT",
-        "/_synapse/admin/v2/users/@user_to_reset:example.org",
+        mocked_matrix_client.send, "PUT", SYNAPSE_USER_ENDPOINT
     )
     assert (
         displayname_request.kwargs["data"]
         == '{"displayname": "My-Display Name[matrix]"}'
     )
-    check_requests_sent(
-        mocked_matrix_client.send,
-        "/_synapse/admin/v2/users/@user_to_reset:example.org",
-    )
-    check_requests_sent(mocked_matrix_client.client_session, "/users/by-username")
-
-    mocked_matrix_client.check_sent_file_message()
-
-    t.cancel()
-
-
-@pytest.mark.asyncio
-async def test_replace_displayname_with_single_quote() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users/by-username/user_to_reset"
-        ):
-            return mock_response_with_json(USER)
-        return mock_response_error(403, "Forbidden")
-
-    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = mock_send_response()
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
-
-    room = MatrixRoom("!roomid:example.org", USER1_ID)
-
-    await mocked_matrix_client.fake_synced_text_message(
-        room,
-        USER1_ID,
-        "!replace_displayname @user_to_reset:example.org 'My-Display Name[matrix]'",
-    )
-
-    # 1 call to get the mas user id on MAS
-    # 1 call to change displayname on Synapse
-    displayname_request = find_request(
-        mocked_matrix_client.send,
-        "PUT",
-        "/_synapse/admin/v2/users/@user_to_reset:example.org",
-    )
-    assert (
-        displayname_request.kwargs["data"]
-        == '{"displayname": "My-Display Name[matrix]"}'
-    )
-    check_requests_sent(
-        mocked_matrix_client.send,
-        "/_synapse/admin/v2/users/@user_to_reset:example.org",
-    )
+    check_requests_sent(mocked_matrix_client.send, SYNAPSE_USER_ENDPOINT)
     check_requests_sent(mocked_matrix_client.client_session, "/users/by-username")
 
     mocked_matrix_client.check_sent_file_message()
@@ -107,16 +58,15 @@ async def test_replace_displayname_with_single_quote() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_replace_displayname_when_user_not_found() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users/by-username/user_to_reset"
-        ):
-            return mock_response_error(404, "Not found")
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = mock_send_response()
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        (
+            "GET",
+            "/api/admin/v1/users/by-username",
+            mock_response_error(404, "Not found"),
+        ),
+    )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 

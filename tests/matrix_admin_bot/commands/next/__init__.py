@@ -1,5 +1,15 @@
+from collections.abc import Callable, Mapping
 from typing import Any
 from unittest.mock import AsyncMock, Mock
+
+from nio import MatrixRoom
+
+from tests.helper import (
+    USER1_ID,
+    OkValidator,
+    check_requests_sent,
+    create_fake_admin_bot,
+)
 
 USER_EMAIL = {
     "data": {
@@ -453,3 +463,74 @@ def mock_response_with_json(json: dict[str, Any]) -> Mock:
 def mock_send_response(json: dict[str, Any] | None = None) -> AsyncMock:
     """Build a ``MatrixClient.send`` mock returning a successful response."""
     return AsyncMock(return_value=mock_response_with_json({} if json is None else json))
+
+
+RequestMatcher = str | Callable[[str, Mapping[str, Any]], bool]
+
+
+def with_params(
+    endpoint: str, *required_params: str
+) -> Callable[[str, Mapping[str, Any]], bool]:
+    """Match ``endpoint`` together with the presence of query ``params`` keys.
+
+    Useful to disambiguate requests hitting the same endpoint with different
+    ``params``.
+    """
+
+    def matches(url: str, params: Mapping[str, Any]) -> bool:
+        return endpoint in url and all(param in params for param in required_params)
+
+    return matches
+
+
+def mock_requests(
+    *routes: tuple[str, RequestMatcher, Mock],
+    default: Mock | None = None,
+) -> Callable[..., Mock]:
+    """Build a request side effect routing to the given mocked responses.
+
+    Each route is ``(http_method, endpoint, response)``. ``endpoint`` is matched
+    as a substring of the requested URL, or as a predicate built with
+    :func:`with_params`. The first matching route wins, so declare the most
+    specific routes first. Requests matching no route get ``default``, which
+    falls back to a 403 Forbidden response.
+    """
+    fallback = default if default is not None else mock_response_error(403, "Forbidden")
+
+    def side_effect(method: str, url: str, **kwargs: Any) -> Mock:
+        params: Mapping[str, Any] = kwargs.get("params") or {}
+        for route_method, endpoint, response in routes:
+            if method != route_method:
+                continue
+            if isinstance(endpoint, str):
+                if endpoint in url:
+                    return response
+            elif endpoint(url, params):
+                return response
+        return fallback
+
+    return side_effect
+
+
+def mock_send_routes(
+    *routes: tuple[str, RequestMatcher, Mock],
+    default: Mock | None = None,
+) -> AsyncMock:
+    """``MatrixClient.send`` mock routing requests to the given responses."""
+    return AsyncMock(side_effect=mock_requests(*routes, default=default))
+
+
+async def assert_non_local_user_rejected(command: str) -> None:
+    """Run ``command`` targeting a remote user and assert the bot stays idle."""
+    client, _, task = await create_fake_admin_bot(validator=OkValidator())
+    client.send = mock_send_response()
+
+    await client.fake_synced_text_message(
+        MatrixRoom("!roomid:example.org", USER1_ID), USER1_ID, command
+    )
+
+    check_requests_sent(client.send)
+    check_requests_sent(client.client_session)
+    client.check_sent_reactions()
+
+    task.cancel()

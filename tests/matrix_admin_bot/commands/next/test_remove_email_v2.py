@@ -1,6 +1,3 @@
-from typing import Any
-from unittest.mock import Mock
-
 import pytest
 from nio import MatrixRoom
 
@@ -14,7 +11,8 @@ from tests.matrix_admin_bot.commands.next import (
     USER,
     USER_EMAILS_LIST,
     USER_EMAILS_LIST_NO_DATA,
-    mock_response_error,
+    assert_non_local_user_rejected,
+    mock_requests,
     mock_response_with_json,
     mock_send_response,
 )
@@ -22,22 +20,18 @@ from tests.matrix_admin_bot.commands.next import (
 
 @pytest.mark.asyncio
 async def test_remove_email() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users/by-username/user_to_reset"
-        ):
-            return mock_response_with_json(USER)
-        if method == "GET" and url.endswith("/api/admin/v1/user-emails"):
-            return mock_response_with_json(USER_EMAILS_LIST)
-        if method == "DELETE" and url.endswith(
-            "/api/admin/v1/user-emails/01K5R30ZEENQQCR9ZPQY9KYP09"
-        ):
-            return mock_response_with_json({})
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = mock_send_response()
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        ("GET", "/api/admin/v1/users/by-username", mock_response_with_json(USER)),
+        ("GET", "/api/admin/v1/user-emails", mock_response_with_json(USER_EMAILS_LIST)),
+        (
+            "DELETE",
+            "/user-emails/01K5R30ZEENQQCR9ZPQY9KYP09",
+            mock_response_with_json({}),
+        ),
+    )
+
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
     await mocked_matrix_client.fake_synced_text_message(
@@ -45,7 +39,6 @@ async def test_remove_email() -> None:
     )
 
     mocked_matrix_client.check_sent_file_message()
-    mocked_matrix_client.send.reset_mock()
 
     # 1 call to get the mas user id on MAS
     # 1 call to find if user has an email
@@ -62,23 +55,22 @@ async def test_remove_email() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_remove_email_when_user_has_no_email() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users/by-username/user_to_reset"
-        ):
-            return mock_response_with_json(USER)
-        if method == "GET" and url.endswith("/api/admin/v1/user-emails"):
-            # Our user has no email
-            return mock_response_with_json(USER_EMAILS_LIST_NO_DATA)
-        if method == "DELETE" and url.endswith(
-            "/api/admin/v1/user-emails/01K5R30ZEENQQCR9ZPQY9KYP09"
-        ):
-            return mock_response_with_json({})
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = mock_send_response()
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        ("GET", "/api/admin/v1/users/by-username", mock_response_with_json(USER)),
+        # Our user has no email
+        (
+            "GET",
+            "/api/admin/v1/user-emails",
+            mock_response_with_json(USER_EMAILS_LIST_NO_DATA),
+        ),
+        (
+            "DELETE",
+            "/user-emails/01K5R30ZEENQQCR9ZPQY9KYP09",
+            mock_response_with_json({}),
+        ),
+    )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -95,12 +87,9 @@ async def test_failed_remove_email_when_user_has_no_email() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_remove_email_when_api_in_error() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = mock_send_response()
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests()
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -117,16 +106,4 @@ async def test_failed_remove_email_when_api_in_error() -> None:
 
 @pytest.mark.asyncio
 async def test_non_local_user_remove_email() -> None:
-    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = mock_send_response()
-
-    room = MatrixRoom("!roomid:example.org", USER1_ID)
-
-    await mocked_matrix_client.fake_synced_text_message(
-        room, USER1_ID, "!remove_email @user_to_reset:example2.org"
-    )
-
-    check_requests_sent(mocked_matrix_client.send)
-    mocked_matrix_client.check_sent_reactions()
-
-    t.cancel()
+    await assert_non_local_user_rejected("!remove_email @user_to_reset:example2.org")

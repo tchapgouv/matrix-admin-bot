@@ -1,6 +1,3 @@
-from typing import Any
-from unittest.mock import Mock
-
 import pytest
 from nio import MatrixRoom
 
@@ -13,6 +10,8 @@ from tests.helper import (
 from tests.matrix_admin_bot.commands.next import (
     USER,
     USER_EMAIL,
+    assert_non_local_user_rejected,
+    mock_requests,
     mock_response_error,
     mock_response_with_json,
     mock_send_response,
@@ -21,24 +20,14 @@ from tests.matrix_admin_bot.commands.next import (
 
 @pytest.mark.asyncio
 async def test_reactivate() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users/by-username/user_to_reset"
-        ):
-            return mock_response_with_json(USER)
-        if method == "GET" and url.endswith("/api/admin/v1/user-emails"):
-            return mock_response_error(404, "Not Found")
-        if method == "POST" and url.endswith("/api/admin/v1/user-emails"):
-            return mock_response_with_json(USER_EMAIL)
-        if method == "POST" and url.endswith(
-            "/api/admin/v1/users/01040G2081040G2081040G2081/reactivate"
-        ):
-            return mock_response_with_json(USER)
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = mock_send_response()
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        ("GET", "/api/admin/v1/users/by-username", mock_response_with_json(USER)),
+        ("GET", "/api/admin/v1/user-emails", mock_response_error(404, "Not Found")),
+        ("POST", "/api/admin/v1/user-emails", mock_response_with_json(USER_EMAIL)),
+        ("POST", "/reactivate", mock_response_with_json(USER)),
+    )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -70,16 +59,15 @@ async def test_reactivate() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_reactivate() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users/by-username/user_to_reset"
-        ):
-            return mock_response_error(404, "Not found")
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = mock_send_response()
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        (
+            "GET",
+            "/api/admin/v1/users/by-username",
+            mock_response_error(404, "Not found"),
+        ),
+    )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -104,24 +92,14 @@ async def test_failed_reactivate_invalid_input() -> None:
     )
 
     check_requests_sent(mocked_matrix_client.send)
-    mocked_matrix_client.check_sent_reactions()
     check_requests_sent(mocked_matrix_client.client_session)
+    mocked_matrix_client.check_sent_reactions()
 
     t.cancel()
 
 
 @pytest.mark.asyncio
 async def test_non_local_user_reactivate() -> None:
-    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = mock_send_response()
-
-    room = MatrixRoom("!roomid:example.org", USER1_ID)
-
-    await mocked_matrix_client.fake_synced_text_message(
-        room, USER1_ID, "!reactivate @user_to_reset:example2.org user@domain.tld"
+    await assert_non_local_user_rejected(
+        "!reactivate @user_to_reset:example2.org user@domain.tld"
     )
-
-    check_requests_sent(mocked_matrix_client.send)
-    mocked_matrix_client.check_sent_reactions()
-
-    t.cancel()

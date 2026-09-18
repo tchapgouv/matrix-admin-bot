@@ -1,6 +1,3 @@
-from typing import Any
-from unittest.mock import Mock
-
 import pytest
 from nio import MatrixRoom
 
@@ -12,6 +9,8 @@ from tests.helper import (
 )
 from tests.matrix_admin_bot.commands.next import (
     USER,
+    assert_non_local_user_rejected,
+    mock_requests,
     mock_response_error,
     mock_response_with_json,
     mock_send_response,
@@ -20,16 +19,11 @@ from tests.matrix_admin_bot.commands.next import (
 
 @pytest.mark.asyncio
 async def test_lock() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users/by-username/user_to_reset"
-        ):
-            return mock_response_with_json(USER)
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = mock_send_response()
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        ("GET", "/api/admin/v1/users/by-username", mock_response_with_json(USER)),
+    )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -42,7 +36,6 @@ async def test_lock() -> None:
     # one call to fetch the devices
     check_requests_sent(mocked_matrix_client.send, "/devices")
     # 1 call to get the mas user id on MAS
-    # 4 calls to get each session type
     # 1 call to lock user
     check_requests_sent(
         mocked_matrix_client.client_session,
@@ -55,16 +48,15 @@ async def test_lock() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_lock() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users/by-username/user_to_reset"
-        ):
-            return mock_response_error(404, "Not found")
-        return mock_response_error(403, "Forbidden")
-
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
     mocked_matrix_client.send = mock_send_response()
-    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+    mocked_matrix_client.client_session.request.side_effect = mock_requests(
+        (
+            "GET",
+            "/api/admin/v1/users/by-username",
+            mock_response_error(404, "Not found"),
+        ),
+    )
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
@@ -79,16 +71,4 @@ async def test_failed_lock() -> None:
 
 @pytest.mark.asyncio
 async def test_non_local_user_lock() -> None:
-    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = mock_send_response()
-
-    room = MatrixRoom("!roomid:example.org", USER1_ID)
-
-    await mocked_matrix_client.fake_synced_text_message(
-        room, USER1_ID, "!lock @user_to_reset:example2.org"
-    )
-
-    check_requests_sent(mocked_matrix_client.send)
-    mocked_matrix_client.check_sent_reactions()
-
-    t.cancel()
+    await assert_non_local_user_rejected("!lock @user_to_reset:example2.org")

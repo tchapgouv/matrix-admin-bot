@@ -151,6 +151,28 @@ class MatrixClientMock:
         )
         return event_id
 
+    async def send_thread_message(
+        self,
+        room: MatrixRoom,
+        sender: str,
+        text: str,
+        thread_root_id: str,
+        *,
+        format_: str | None = None,
+        formatted_body: str | None = None,
+        wait_for_commands_execution: bool = True,
+    ) -> str:
+        """Send a message as a reply in the thread rooted at ``thread_root_id``."""
+        return await self.fake_synced_text_message(
+            room,
+            sender,
+            text,
+            format_,
+            formatted_body,
+            extra_content=create_thread_relation(thread_root_id),
+            wait_for_commands_execution=wait_for_commands_execution,
+        )
+
     async def sync_forever(self, *_args: Any, **_kwargs: Any) -> NoReturn:
         self.sync_forever_called = True
         while True:
@@ -192,7 +214,14 @@ async def fake_synced_text_message(
     text: str,
     *,
     extra_content: Mapping[str, Any] | None = None,
+    thread_root_id: str | None = None,
 ) -> str:
+    """Deliver the same message to several bots, as if the server had synced it."""
+    if thread_root_id is not None:
+        extra_content = {
+            **create_thread_relation(thread_root_id),
+            **(extra_content or {}),
+        }
     event_id = generate_event_id()
     for mocked_client in mocked_clients:
         await mocked_client.fake_synced_text_message(
