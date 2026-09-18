@@ -7,7 +7,7 @@ from nio import MatrixRoom, RoomMessage
 
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 from matrix_command_bot.validation.validators.confirm import ConfirmValidator
-from tests import (
+from tests.helper import (
     USER1_ID,
     create_fake_command_bot,
     create_reply_relation,

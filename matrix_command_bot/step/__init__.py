@@ -1,6 +1,6 @@
 import asyncio
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from enum import Enum
 from typing import Any, override
 
@@ -38,6 +38,38 @@ class ICommandStep:
             command=self.command,
         )
         return True, CommandAction.CONTINUE
+
+
+class ExecuteFunctionStep(ICommandStep):
+    def __init__(
+        self,
+        command: ICommand,
+        fct: Callable[[], Awaitable[bool]],
+        *,
+        abort_on_failure: bool = False,
+    ) -> None:
+        super().__init__(command)
+        self.fct = fct
+        self.abort_on_failure = abort_on_failure
+
+    @override
+    async def execute(
+        self, reply: RoomMessage | None = None
+    ) -> tuple[bool, CommandAction]:
+        logger.debug(
+            "Executing function step",
+            command=self.command,
+            function=self.fct,
+        )
+        result = await self.fct()
+        logger.debug(
+            "Function step executed",
+            command=self.command,
+            result=result,
+        )
+        if self.abort_on_failure and not result:
+            return False, CommandAction.ABORT
+        return result, CommandAction.CONTINUE
 
 
 class CommandWithSteps(ICommand, ABC):

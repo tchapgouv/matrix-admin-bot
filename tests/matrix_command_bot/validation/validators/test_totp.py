@@ -10,7 +10,7 @@ from nio import MatrixRoom, RoomMessage
 from matrix_command_bot.commandbot import Role
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
 from matrix_command_bot.validation.validators.totp import TOTPValidator
-from tests import (
+from tests.helper import (
     USER1_ID,
     USER2_ID,
     USER3_ID,

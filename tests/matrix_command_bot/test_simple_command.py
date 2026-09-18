@@ -7,7 +7,7 @@ from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 
 from matrix_command_bot.simple_command import SimpleCommand
-from tests import USER1_ID, create_fake_command_bot
+from tests.helper import USER1_ID, create_fake_command_bot
 
 
 class SimpleTestCommand(SimpleCommand):

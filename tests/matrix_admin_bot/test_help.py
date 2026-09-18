@@ -2,7 +2,7 @@ import pytest
 from nio import MatrixRoom
 
 from matrix_admin_bot.adminbot import get_command_list
-from tests import USER1_ID, create_fake_admin_bot
+from tests.helper import USER1_ID, create_fake_admin_bot
 
 
 @pytest.mark.asyncio

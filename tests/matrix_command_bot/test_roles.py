@@ -2,7 +2,7 @@ import pytest
 from nio import MatrixRoom
 
 from matrix_command_bot.commandbot import Role
-from tests import (
+from tests.helper import (
     USER1_ID,
     USER2_ID,
     USER3_ID,
