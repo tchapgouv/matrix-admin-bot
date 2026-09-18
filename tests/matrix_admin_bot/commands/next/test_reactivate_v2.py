@@ -11,12 +11,8 @@ from tests.helper import (
     create_fake_admin_bot,
 )
 from tests.matrix_admin_bot.commands.next import (
-    COMPAT_SESSIONS_LIST,
-    OAUTH2_SESSIONS_LIST,
-    PERSONAL_SESSIONS_LIST,
     USER,
     USER_EMAIL,
-    USER_SESSIONS_LIST,
     mock_response_error,
     mock_response_with_json,
     mock_send_response,
@@ -30,14 +26,6 @@ async def test_reactivate() -> None:
             "/api/admin/v1/users/by-username/user_to_reset"
         ):
             return mock_response_with_json(USER)
-        if method == "GET" and url.endswith("/api/admin/v1/compat-sessions"):
-            return mock_response_with_json(COMPAT_SESSIONS_LIST)
-        if method == "GET" and url.endswith("/api/admin/v1/oauth2-sessions"):
-            return mock_response_with_json(OAUTH2_SESSIONS_LIST)
-        if method == "GET" and url.endswith("/api/admin/v1/user-sessions"):
-            return mock_response_with_json(USER_SESSIONS_LIST)
-        if method == "GET" and url.endswith("/api/admin/v1/personal-sessions"):
-            return mock_response_with_json(PERSONAL_SESSIONS_LIST)
         if method == "GET" and url.endswith("/api/admin/v1/user-emails"):
             return mock_response_error(404, "Not Found")
         if method == "POST" and url.endswith("/api/admin/v1/user-emails"):
@@ -72,10 +60,6 @@ async def test_reactivate() -> None:
     check_requests_sent(
         mocked_matrix_client.client_session,
         "/users/by-username",
-        "/compat-sessions",
-        "/oauth2-sessions",
-        "/user-sessions",
-        "/personal-sessions",
         "/user-emails",
         "/user-emails",
         "/reactivate",

@@ -47,12 +47,6 @@ class ReactivateCommandV2(UserRelatedCommand):
         if mas_user_id is None:
             return False
 
-        self.json_report[user_id][
-            "sessions"
-        ] = await self.admin_client.get_all_sessions(
-            mas_user_id=mas_user_id, user_id=user_id
-        )
-
         # Check if email is used
         params = {
             "filter[email]": email,

@@ -42,12 +42,6 @@ class LockCommandV2(UserRelatedCommand):
         if mas_user_id is None:
             return False
 
-        self.json_report[user_id][
-            "sessions"
-        ] = await self.admin_client.get_all_sessions(
-            mas_user_id=mas_user_id, user_id=user_id
-        )
-
         # Lock the user
         return await self.admin_client.lock(
             self.json_report, self.failed_user_ids, mas_user_id, user_id
