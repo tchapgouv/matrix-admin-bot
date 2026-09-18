@@ -20,6 +20,7 @@ from tests.helper import (
     find_request,
 )
 from tests.matrix_admin_bot.commands.next import (
+    USER_EMAILS_LIST_NO_DATA,
     mock_response_error,
     mock_response_with_json,
     mock_send_response,
@@ -499,10 +500,18 @@ async def test_html_server_notice_to_one_recipient() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_server_notice_with_no_matrix_id() -> None:
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
+        if method == "GET" and url.endswith(
+            "/api/admin/v1/user-emails?page[first]=1000"
+        ):
+            return mock_response_with_json(USER_EMAILS_LIST_NO_DATA)
+        return mock_response_error(403, "Forbidden")
+
     mocked_matrix_client, _, t = await create_fake_admin_bot(
         validator=ConfirmValidator()
     )
     mocked_matrix_client.send = mock_send_response(user_response_data)
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
 
     room = MatrixRoom("!roomid:example.org", USER1_ID)
 
