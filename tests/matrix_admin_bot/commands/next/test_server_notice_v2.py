@@ -178,9 +178,11 @@ TEXT_DATA = "Some simple server notice"
 
 @pytest.mark.asyncio
 async def test_server_notice_to_all_recipients() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users?filter[status]=active&page[first]=100"
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:
+        if (
+            method == "GET"
+            and url.endswith("/api/admin/v1/users")
+            and (kwargs.get("params") or {}).get("filter[status]") == "active"
         ):
             return mock_response_with_json(mas_user_response_data_page1)
         if method == "GET" and url.endswith(
@@ -241,10 +243,12 @@ async def test_server_notice_to_all_recipients() -> None:
 async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
     counter = 0
 
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:
         nonlocal counter
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users?filter[status]=active&page[first]=100"
+        if (
+            method == "GET"
+            and url.endswith("/api/admin/v1/users")
+            and (kwargs.get("params") or {}).get("filter[status]") == "active"
         ):
             return mock_response_with_json(mas_user_response_data_page1)
         if (
@@ -310,10 +314,12 @@ async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
 async def test_server_notice_to_all_recipients_when_exception() -> None:
     counter = 0
 
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:
         nonlocal counter
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users?filter[status]=active&page[first]=100"
+        if (
+            method == "GET"
+            and url.endswith("/api/admin/v1/users")
+            and (kwargs.get("params") or {}).get("filter[status]") == "active"
         ):
             return mock_response_with_json(mas_user_response_data_page1)
         if (
@@ -378,9 +384,11 @@ async def test_server_notice_to_all_recipients_when_exception() -> None:
 
 @pytest.mark.asyncio
 async def test_server_notice_to_all_recipients_failed() -> None:
-    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
-        if method == "GET" and url.endswith(
-            "/api/admin/v1/users?filter[status]=active&page[first]=100"
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:
+        if (
+            method == "GET"
+            and url.endswith("/api/admin/v1/users")
+            and (kwargs.get("params") or {}).get("filter[status]") == "active"
         ):
             return mock_response_with_json(mas_user_response_data_page1)
         return mock_response_error(403, "Forbidden")

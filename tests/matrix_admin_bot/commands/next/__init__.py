@@ -69,7 +69,7 @@ USER = {
 }
 
 COMPAT_SESSIONS_LIST = {
-    "meta": {"count": 42},
+    "meta": {"count": 3},
     "data": [
         {
             "type": "compat-session",
@@ -136,13 +136,11 @@ COMPAT_SESSIONS_LIST = {
         "self": "/api/admin/v1/compat-sessions?page[first]=3",
         "first": "/api/admin/v1/compat-sessions?page[first]=3",
         "last": "/api/admin/v1/compat-sessions?page[last]=3",
-        "next": "/api/admin/v1/compat-sessions?page[after]=030C1G60R30C1G60R30C1G60R3"
-        "&page[first]=3",
     },
 }
 
 OAUTH2_SESSIONS_LIST = {
-    "meta": {"count": 42},
+    "meta": {"count": 3},
     "data": [
         {
             "type": "oauth2-session",
@@ -209,13 +207,11 @@ OAUTH2_SESSIONS_LIST = {
         "self": "/api/admin/v1/oauth2-sessions?page[first]=3",
         "first": "/api/admin/v1/oauth2-sessions?page[first]=3",
         "last": "/api/admin/v1/oauth2-sessions?page[last]=3",
-        "next": "/api/admin/v1/oauth2-sessions?page[after]=030C1G60R30C1G60R30C1G60R3"
-        "&page[first]=3",
     },
 }
 
 USER_SESSIONS_LIST = {
-    "meta": {"count": 42},
+    "meta": {"count": 3},
     "data": [
         {
             "type": "user-session",
@@ -264,8 +260,6 @@ USER_SESSIONS_LIST = {
         "self": "/api/admin/v1/user-sessions?page[first]=3",
         "first": "/api/admin/v1/user-sessions?page[first]=3",
         "last": "/api/admin/v1/user-sessions?page[last]=3",
-        "next": "/api/admin/v1/user-sessions?page[after]=030C1G60R30C1G60R30C1G60R3"
-        "&page[first]=3",
     },
 }
 
@@ -337,7 +331,6 @@ PERSONAL_SESSIONS_LIST = {
         "self": "/api/admin/v1/personal-sessions?page[first]=3",
         "first": "/api/admin/v1/personal-sessions?page[first]=3",
         "last": "/api/admin/v1/personal-sessions?page[last]=3",
-        "next": "/api/admin/v1/personal-sessions?page[after]=01FSHN9AG0CJ6AC5HQ9X6H4RP6&page[first]=3",  # noqa: E501
     },
 }
 

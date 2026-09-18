@@ -15,6 +15,16 @@ logger = structlog.getLogger(__name__)
 VERIFY_SSL_CERT = True
 
 
+class MasAdminApiError(Exception):
+    """Error returned by the MAS Admin API."""
+
+    def __init__(self, status: int, reason: str | None, description: Any) -> None:  # noqa: ANN401
+        self.status = status
+        self.reason = reason
+        self.description = description
+        super().__init__(f"MAS Admin API error {status} {reason}: {description}")
+
+
 class AdminClient:
     """
     Admin Client
@@ -70,11 +80,15 @@ class AdminClient:
         )
 
     async def send_to_mas_with_retry(
-        self, method: str, endpoint: str, max_retry: int = 5
+        self,
+        method: str,
+        endpoint: str,
+        max_retry: int = 5,
+        **kwargs: Any,  # noqa: ANN401
     ) -> ClientResponse:
         for retry_nb in range(max_retry):
             try:
-                resp = await self.send_to_mas(method, endpoint=endpoint)
+                resp = await self.send_to_mas(method, endpoint=endpoint, **kwargs)
                 if resp.ok:
                     return resp
             except Exception as e:
@@ -100,6 +114,55 @@ class AdminClient:
         if resp.headers.get("Content-Type", "").startswith("application/json") is True:
             return await resp.json()
         return await resp.text()
+
+    async def get_paginated_data(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+        *,
+        page_size: int = 1000,
+        with_retry: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Retrieve every item of a paginated MAS Admin API collection.
+
+        The MAS Admin API paginates its collections with a cursor exposed in
+        ``links.next``. This follows those links until the collection is
+        exhausted and returns the concatenated ``data`` items.
+
+        ``page_size`` sets the page size requested through ``page[first]``.
+        It only applies to the first request: the ``next`` links returned by
+        MAS already carry the full query string.
+
+        Raises ``MasAdminApiError`` if any of the requests fails.
+        """
+        query = dict(params or {})
+        query.setdefault("page[first]", page_size)
+
+        items: list[dict[str, Any]] = []
+        next_endpoint: str | None = endpoint
+        next_params: dict[str, Any] | None = query
+
+        while next_endpoint:
+            if with_retry:
+                resp = await self.send_to_mas_with_retry(
+                    "GET", next_endpoint, params=next_params
+                )
+            else:
+                resp = await self.send_to_mas("GET", next_endpoint, params=next_params)
+            json_body = await self.decode_client_response(resp)
+            if not resp.ok:
+                raise MasAdminApiError(resp.status, resp.reason, json_body)
+
+            items.extend(json_body.get("data", []))
+            # ``links.next`` already contains the query string, so the original
+            # params must not be re-applied on the next request.
+            links: dict[str, Any] = json_body.get("links") or {}
+            next_endpoint = links.get("next")
+            if not isinstance(next_endpoint, str):
+                next_endpoint = None
+            next_params = None
+
+        return items
 
     async def is_email_valid(
         self, server_name: str | None, email: str | None
@@ -139,76 +202,31 @@ class AdminClient:
         return json_body["data"]["id"]
 
     async def get_users(
-        self, server_name: str | None, json_report: dict[str, Any], limit: int = 100
+        self, server_name: str | None, json_report: dict[str, Any]
     ) -> set[str]:
         if server_name is None:
             return set()
 
-        users: set[str] = set()
-        endpoint = f"/api/admin/v1/users?filter[status]=active&page[first]={limit}"
-        resp = await self.send_to_mas_with_retry("GET", endpoint)
-        json_body = await self.decode_client_response(resp)
-        if not resp.ok:
+        endpoint = "/api/admin/v1/users"
+        params = {"filter[status]": "active"}
+        try:
+            users_data = await self.get_paginated_data(
+                endpoint, params, with_retry=True
+            )
+        except MasAdminApiError as e:
             error = "Cannot get all users from MAS"
             json_report["details"]["get_users"] = {
                 "error": error,
-                "description": json_body,
+                "description": e.description,
             }
-            logger.warning(
-                "%s - %s users has been retrieved: %s",
-                error,
-                len(users),
-                f"{resp.status}-{resp.reason}-{json_body}",
-            )
-            return users
-
-        nb_users = 0
-        if json_body.get("meta") and json_body.get("meta").get("count"):
-            nb_users = json_body["meta"]["count"]
-
-        while True:
-            users = users | {
-                f"@{user['attributes']['username']}:{server_name}"
-                for user in json_body["data"]
-                if user["type"] == "user"
-            }
-            # Update user count
-            if json_body.get("meta") and json_body.get("meta").get("count"):
-                nb_users = json_body["meta"]["count"]
-            if json_body.get("links") and json_body.get("links").get("next"):
-                endpoint = json_body["links"]["next"]
-                resp = await self.send_to_mas_with_retry("GET", endpoint)
-                json_body = await self.decode_client_response(resp)
-                if not resp.ok:
-                    error = "Cannot get all users from MAS"
-                    json_report["details"]["get_users"] = {
-                        "error": error,
-                        "description": json_body,
-                    }
-                    logger.warning(
-                        "%s - %s users has been retrieved: %s",
-                        error,
-                        len(users),
-                        f"{resp.status}-{resp.reason}-{json_body}",
-                    )
-                    return set()
-            else:
-                break
-
-        # Check if we have retrieve all users
-        if nb_users > len(users):
-            logger.warning(
-                "Not all users have been retrieved : %s/%s users", len(users), nb_users
-            )
-            error = "Cannot get all users from MAS"
-            json_report["details"]["get_users"] = {
-                "error": error,
-                "description": f"Not all users have been retrieved : "
-                f"{len(users)}/{nb_users} users",
-            }
+            logger.warning("%s: %s", error, f"{e.status}-{e.reason}-{e.description}")
             return set()
 
-        return users
+        return {
+            f"@{user['attributes']['username']}:{server_name}"
+            for user in users_data
+            if user["type"] == "user"
+        }
 
     async def get_devices_from_synapse(
         self, json_report: dict[str, Any], user_id: str
@@ -269,14 +287,14 @@ class AdminClient:
         params = {
             "filter[user]": mas_user_id,
             "filter[status]": "active",
-            "page[first]": 100000,
         }
         endpoint = f"/api/admin/v1/{session_type}-sessions"
-        resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = await self.decode_client_response(resp)
-        if not resp.ok:
-            raise RuntimeError(f"Cannot get {session_type} sessions for {user_id}")
-        sessions = json_body.get("data", [])
+        try:
+            sessions = await self.get_paginated_data(endpoint, params)
+        except MasAdminApiError as e:
+            raise RuntimeError(
+                f"Cannot get {session_type} sessions for {user_id}"
+            ) from e
 
         if session_type == "oauth2":
             for session in sessions:
@@ -453,19 +471,19 @@ class AdminClient:
         params: dict[str, Any],
     ) -> list[dict[str, Any]] | None:
         endpoint = "/api/admin/v1/user-emails"
-        resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = await self.decode_client_response(resp)
-        if not resp.ok:
-            if resp.status == 404:
+        try:
+            emails = await self.get_paginated_data(endpoint, params)
+        except MasAdminApiError as e:
+            if e.status == 404:
                 return []
             error = f"Cannot find emails with {params} for {user_id}"
             json_report[user_id]["errors"].append(
-                {"error": error, "description": json_body}
+                {"error": error, "description": e.description}
             )
             failed_user_ids.append(user_id)
             return None
-        json_report[user_id]["description"] = json_body["data"]
-        return json_body["data"]
+        json_report[user_id]["description"] = emails
+        return emails
 
     async def remove_email(
         self,
@@ -515,23 +533,19 @@ class AdminClient:
         mas_user_id: str,
         user_id: str,
     ) -> list[dict[str, Any]] | None:
-        params = {
-            "filter[user]": mas_user_id,
-            "page[first]": 100,
-        }
+        params = {"filter[user]": mas_user_id}
         endpoint = "/api/admin/v1/upstream-oauth-links"
-        resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)
-        json_body = await self.decode_client_response(resp)
-        if not resp.ok:
-            if resp.status == 404:
+        try:
+            return await self.get_paginated_data(endpoint, params)
+        except MasAdminApiError as e:
+            if e.status == 404:
                 return []
             error = f"Cannot find upstream OAuth links for {user_id}"
             json_report[user_id]["errors"].append(
-                {"error": error, "description": json_body}
+                {"error": error, "description": e.description}
             )
             failed_user_ids.append(user_id)
             return None
-        return json_body.get("data", [])
 
     async def remove_upstream_oauth_link(
         self,

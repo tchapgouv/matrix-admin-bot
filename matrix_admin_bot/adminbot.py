@@ -112,7 +112,6 @@ class AdminBotConfig(BaseSettings):
     totps: dict[str, str] = {}
     is_coordinator: bool = True
     roles: dict[str, RoleModel] = {}
-    server_notice_limit: int = 100
     server_notice_nb_workers: int = 1
     log_level: str = "INFO"
 
@@ -144,8 +143,6 @@ class AdminBot(CommandBot):
         if "validator" not in extra_config:
             extra_config["validator"] = TOTPValidator(config.totps)
         bot_lib_config.allowed_room_ids = config.allowed_room_ids
-        if "server_notice_limit" not in extra_config:
-            extra_config["server_notice_limit"] = config.server_notice_limit
         if "server_notice_nb_workers" not in extra_config:
             extra_config["server_notice_nb_workers"] = config.server_notice_nb_workers
 

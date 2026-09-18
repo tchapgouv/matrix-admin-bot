@@ -152,7 +152,6 @@ class ServerNoticeCommandV2(CommandWithSteps):
         super().__init__(room, message, matrix_client, extra_config)
         self.validator: IValidator = extra_config.get("validator")  # pyright: ignore[reportAttributeAccessIssue]
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
-        self.limit: int = extra_config.get("server_notice_limit", 100)  # pyright: ignore[reportAttributeAccessIssue]
         self.nb_workers: int = extra_config.get("server_notice_nb_workers", 1)  # pyright: ignore[reportAttributeAccessIssue]
 
         self.state = ServerNoticeState()
@@ -220,7 +219,7 @@ class ServerNoticeCommandV2(CommandWithSteps):
 
     async def simple_execute(self) -> bool:
         logger.info("Server Notice - %s - started", self.command_id)
-        users = await self.get_users(self.json_report, self.limit)
+        users = await self.get_users(self.json_report)
         nb_users = len(users)
         users = list(users)
         logger.info("Notice will be sent to %s users", nb_users)
@@ -282,17 +281,13 @@ class ServerNoticeCommandV2(CommandWithSteps):
             )
         return result
 
-    async def get_users(
-        self, json_report: dict[str, Any], limit: int = 100
-    ) -> set[str]:
+    async def get_users(self, json_report: dict[str, Any]) -> set[str]:
         users: set[str] = set()
         if self.state.recipients and (
             (USER_ALL in self.state.recipients and len(self.state.recipients) == 1)
             or (self.server_name in self.state.recipients)
         ):
-            users = await self.admin_client.get_users(
-                self.server_name, json_report, limit
-            )
+            users = await self.admin_client.get_users(self.server_name, json_report)
         elif self.state.recipients:
             for user_id in self.state.recipients:
                 if is_local_user(user_id, self.server_name):
