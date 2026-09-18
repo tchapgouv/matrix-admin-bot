@@ -89,6 +89,6 @@ async def test_non_local_user_unlock() -> None:
     )
 
     assert len(mocked_matrix_client.send.await_args_list) == 0
-    assert len(mocked_matrix_client.send_reaction.await_args_list) == 0
+    mocked_matrix_client.check_sent_reactions()
 
     t.cancel()

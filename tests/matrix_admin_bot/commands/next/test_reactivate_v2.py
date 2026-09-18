@@ -105,7 +105,7 @@ async def test_failed_reactivate_invalid_input() -> None:
     )
 
     assert len(mocked_matrix_client.send.await_args_list) == 0
-    assert len(mocked_matrix_client.send_reaction.await_args_list) == 0
+    mocked_matrix_client.check_sent_reactions()
     check_requests_sent(mocked_matrix_client.client_session)
 
     t.cancel()
@@ -123,6 +123,6 @@ async def test_non_local_user_reactivate() -> None:
     )
 
     assert len(mocked_matrix_client.send.await_args_list) == 0
-    assert len(mocked_matrix_client.send_reaction.await_args_list) == 0
+    mocked_matrix_client.check_sent_reactions()
 
     t.cancel()

@@ -116,7 +116,7 @@ async def test_non_local_user_reset_password_v2() -> None:
     )
 
     assert len(mocked_matrix_client.send.await_args_list) == 0
-    assert len(mocked_matrix_client.send_reaction.await_args_list) == 0
+    mocked_matrix_client.check_sent_reactions()
     check_requests_sent(mocked_matrix_client.client_session)
 
     t.cancel()

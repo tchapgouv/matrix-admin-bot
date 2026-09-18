@@ -469,8 +469,7 @@ async def test_html_server_notice_to_one_recipient() -> None:
 
     mocked_matrix_client.check_sent_message("Please reply")
 
-    assert len(mocked_matrix_client.send_reaction.await_args_list) == 1
-    mocked_matrix_client.send_reaction.reset_mock()
+    mocked_matrix_client.check_sent_reactions("✏️")
 
     await mocked_matrix_client.fake_synced_text_message(
         room,
@@ -493,7 +492,7 @@ async def test_html_server_notice_to_one_recipient() -> None:
     assert data["content"]["formatted_body"] == html_formatted_data
     check_requests_sent(mocked_matrix_client.send, "/send_server_notice")
 
-    assert len(mocked_matrix_client.send_reaction.await_args_list) == 2
+    mocked_matrix_client.check_sent_reactions("🚀", "✅")
 
     t.cancel()
 
@@ -538,8 +537,7 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
 
     mocked_matrix_client.check_sent_message("Please reply")
 
-    assert len(mocked_matrix_client.send_reaction.await_args_list) == 1
-    mocked_matrix_client.send_reaction.reset_mock()
+    mocked_matrix_client.check_sent_reactions("✏️")
 
     await mocked_matrix_client.fake_synced_text_message(
         room,
@@ -551,7 +549,7 @@ async def test_failed_server_notice_with_no_matrix_id() -> None:
     # no call to any endpoint if user is not a matrix id
     check_requests_sent(mocked_matrix_client.client_session)
     check_requests_sent(mocked_matrix_client.send)
-    assert len(mocked_matrix_client.send_reaction.await_args_list) == 0
+    mocked_matrix_client.check_sent_reactions()
 
     t.cancel()
 
@@ -684,7 +682,7 @@ async def test_to_one_recipient_with_coordinator() -> None:
     mocked_matrix_client1.check_sent_message("Please reply")
 
     mocked_matrix_client1.check_sent_reactions("✏️")
-    assert len(mocked_matrix_client2.send_reaction.await_args_list) == 0
+    mocked_matrix_client2.check_sent_reactions()
 
     await fake_synced_text_message(
         mocked_matrix_clients,
