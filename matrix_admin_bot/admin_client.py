@@ -266,8 +266,9 @@ class AdminClient:
         mas_user_id: str,
         user_id: str,
     ) -> list[dict[str, Any]]:
+        user_filter_key = "actor_user" if session_type == "personal" else "user"
         params = {
-            "filter[user]": mas_user_id,
+            f"filter[{user_filter_key}]": mas_user_id,
             "filter[status]": "active",
             "page[first]": 100000,
         }
