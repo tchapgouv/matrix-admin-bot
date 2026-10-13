@@ -64,17 +64,26 @@ async def send_report(
         room_id=room_id,
         replied_event_id=replied_event_id,
     )
-    async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
-        await tmpfile.write(json.dumps(json_report, indent=2, sort_keys=True).encode())
-        await tmpfile.flush()
-        await matrix_client.send_file_message(
-            room_id,
-            str(tmpfile.name),
-            mime_type="application/json",
-            filename=f"{time.strftime('%Y_%m_%d-%H_%M')}-{report_name}.json",
+    json_str = json.dumps(json_report, indent=2, sort_keys=True)
+    if len(json_str) < 30000:
+        await matrix_client.send_html_message(
+            room_id=room_id,
+            message=f"<pre><code>{json_str}</code></pre>\n",
             reply_to=replied_event_id,
             thread_root=replied_event_id,
         )
+    else:
+        async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
+            await tmpfile.write(json_str.encode())
+            await tmpfile.flush()
+            await matrix_client.send_file_message(
+                room_id,
+                str(tmpfile.name),
+                mime_type="application/json",
+                filename=f"{time.strftime('%Y_%m_%d-%H_%M')}-{report_name}.json",
+                reply_to=replied_event_id,
+                thread_root=replied_event_id,
+            )
 
 
 async def set_status_reaction(
