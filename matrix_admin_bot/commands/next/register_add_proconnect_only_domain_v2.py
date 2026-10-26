@@ -81,7 +81,7 @@ class RegisterAddProconnectOnlyDomainCommandV2(RegisterProconnectOnlyDomainComma
     def help_message(self) -> str:
         return f"""
 **Usage**:
-`!{self.KEYWORD} <domain_regexp>`
+`!{self.KEYWORD} <domain_regexp> [homeserver]`
 
 **Purpose**:
 Add a domain to the `{POLICY_DATA_KEY}` list of the MAS policy data.
@@ -90,12 +90,16 @@ the "continue with email" button is hidden on the register page.
 
 **Parameters**:
 - `<domain_regexp>`: a regexp matched (full match, lowercased) against
-  the email domain. Escape the dots: `ac-versailles\\.fr`. The homeserver
-  in charge of the domain is guessed from the identity server: only the
-  bot of this homeserver executes the command, on its own MAS. Complex
-  regexps (alternations, wildcards) cannot be mapped to a homeserver and
-  are not supported.
+  the email domain. Escape the dots: `ac-versailles\\.fr`. Use `.*` to
+  force all the domains of the homeserver.
+- `[homeserver]`: optional homeserver server name. By default the
+  homeserver in charge of the email domain is guessed from the identity
+  server and only the bot of this homeserver executes the command, on
+  its own MAS. When given, this homeserver is targeted explicitly,
+  without querying the identity server: required for regexps the
+  identity server cannot classify, such as `.*`.
 
 **Examples**:
 - `!{self.KEYWORD} ac-versailles\\.fr`
+- `!{self.KEYWORD} .* agent.ministere.tchap.gouv.fr`
 """

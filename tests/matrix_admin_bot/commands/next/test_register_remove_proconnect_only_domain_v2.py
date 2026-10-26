@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from nio import MatrixRoom
@@ -21,6 +21,8 @@ from tests.matrix_admin_bot.commands.next import (
     mock_response_with_json,
 )
 
+SERVER = "example.org"
+CATCH_ALL = ".*"
 DOMAIN = "ac-versailles\\.fr"
 EXISTING_DOMAIN = "existing-domain\\.fr"
 OTHER_KEY = "some_other_policy_key"
@@ -112,6 +114,39 @@ async def test_register_remove_proconnect_only_domain_last_domain() -> None:
     )
 
     # Removing the last domain results in an empty list
+    post_call = find_request(
+        mocked_matrix_client.client_session, "POST", "/api/admin/v1/policy-data"
+    )
+    assert post_call.kwargs["json"] == {"data": {POLICY_DATA_KEY: []}}
+
+    mocked_matrix_client.check_sent_message("has been **removed**")
+
+    t.cancel()
+
+
+@pytest.mark.asyncio
+async def test_register_remove_proconnect_only_domain_explicit_homeserver() -> None:
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
+        if method == "GET" and url.endswith("/api/admin/v1/policy-data/latest"):
+            return mock_policy_data_response({POLICY_DATA_KEY: [CATCH_ALL]})
+        if method == "POST" and url.endswith("/api/admin/v1/policy-data"):
+            return mock_response_with_json({"data": {}})
+        return mock_response_error(403, "Forbidden")
+
+    mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
+    mocked_matrix_client.send = AsyncMock()
+    mocked_matrix_client.client_session.request.side_effect = request_side_effect
+
+    room = MatrixRoom("!roomid:example.org", USER1_ID)
+
+    # A catch-all regexp cannot be classified by the identity server: the
+    # homeserver is given explicitly
+    await mocked_matrix_client.fake_synced_text_message(
+        room, USER1_ID, f"!register_remove_proconnect_only_domain {CATCH_ALL} {SERVER}"
+    )
+
+    # The identity server has not been queried
+    assert mocked_matrix_client.send.await_count == 0
     post_call = find_request(
         mocked_matrix_client.client_session, "POST", "/api/admin/v1/policy-data"
     )

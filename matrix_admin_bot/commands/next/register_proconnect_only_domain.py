@@ -60,10 +60,11 @@ class RegisterProconnectOnlyDomainCommand(InteractiveValidatedCommand):
     """Base class to add or remove a ProConnect-only domain in the MAS
     policy data.
 
-    The homeserver in charge of the email domain is guessed from the
-    identity server (as `is_email_valid` does): only the bot of this
-    homeserver executes the command, on its own MAS. The other bots
-    sharing the admin room stay silent.
+    Only the bot of the target homeserver executes the command, on its
+    own MAS. The target homeserver is either given explicitly as command parameter
+    (required for wildcard regexps such as `.*`, which the identity
+    server cannot classify), or guessed from the identity server (as
+    `is_email_valid` does).
     """
 
     def __init__(
@@ -77,6 +78,7 @@ class RegisterProconnectOnlyDomainCommand(InteractiveValidatedCommand):
         super().__init__(room, message, matrix_client, keyword, extra_config)
         self.admin_client: AdminClient = extra_config.get("admin_client")  # pyright: ignore[reportAttributeAccessIssue]
         self.domain: str | None = None
+        self.homeserver: str | None = None
 
     @abstractmethod
     def update_domains(self, domain: str, domains: list[str]) -> list[str] | None:
@@ -97,13 +99,16 @@ class RegisterProconnectOnlyDomainCommand(InteractiveValidatedCommand):
             return True
 
         args = self.command_text.split()
-        if len(args) != 1:
+        if len(args) not in (1, 2):
             await send_command_error(
-                self, f"Invalid syntax. Usage: `!{self.keyword} <domain_regexp>`"
+                self,
+                f"Invalid syntax. Usage: `!{self.keyword} <domain_regexp>"
+                " [homeserver]`",
             )
             return True
 
         domain = args[0]
+        homeserver = args[1] if len(args) == 2 else None
         try:
             re.compile(domain)
         except re.error:
@@ -118,20 +123,23 @@ class RegisterProconnectOnlyDomainCommand(InteractiveValidatedCommand):
             return True
 
         self.domain = domain
+        self.homeserver = homeserver
 
         return await super().execute()
 
     @override
     async def should_execute(self) -> bool:
-        # Guess from the identity server which homeserver is in charge of
-        # this email domain: execute only if it is this bot's homeserver
+        # Only the bot of the target homeserver executes the command
         # (same multi-bot filtering as `is_local_user` in
         # UserRelatedCommand). The other bots sharing the admin room stay
-        # silent.
+        # silent. The homeserver is either given explicitly as command
+        # parameter, or guessed from the identity server.
         if self.domain is None:
             return False
-        homeserver = await self.admin_client.get_homeserver(probe_email(self.domain))
-        return homeserver is not None and homeserver == self.server_name
+        if self.homeserver is not None:
+            return self.homeserver == self.server_name
+        guessed = await self.admin_client.get_homeserver(probe_email(self.domain))
+        return guessed is not None and guessed == self.server_name
 
     @override
     async def simple_execute(self) -> bool:

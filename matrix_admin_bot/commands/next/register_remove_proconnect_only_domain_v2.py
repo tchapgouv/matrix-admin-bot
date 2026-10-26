@@ -80,7 +80,7 @@ class RegisterRemoveProconnectOnlyDomainCommandV2(RegisterProconnectOnlyDomainCo
     def help_message(self) -> str:
         return f"""
 **Usage**:
-`!{self.KEYWORD} <domain_regexp>`
+`!{self.KEYWORD} <domain_regexp> [homeserver]`
 
 **Purpose**:
 Remove a domain from the `{POLICY_DATA_KEY}` list of the MAS policy data.
@@ -90,11 +90,13 @@ When the list is empty, all the users can register with their email.
 
 **Parameters**:
 - `<domain_regexp>`: the regexp exactly as it appears in the current
-  domain list (see the current domains in the last command report). The
-  homeserver in charge of the domain is guessed from the identity
-  server: only the bot of this homeserver executes the command, on its
-  own MAS.
+  domain list (see the current domains in the last command report).
+- `[homeserver]`: optional homeserver server name. By default the
+  homeserver in charge of the email domain is guessed from the identity
+  server; when given, this homeserver is targeted explicitly, without
+  querying the identity server.
 
 **Examples**:
 - `!{self.KEYWORD} ac-versailles\\.fr`
+- `!{self.KEYWORD} .* agent.ministere.tchap.gouv.fr`
 """

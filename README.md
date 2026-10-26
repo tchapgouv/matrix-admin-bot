@@ -21,8 +21,8 @@ Matrix Admin Bot is a command-line bot for Matrix server administration tasks.
 - `!replace_displayname` - Replace the displayname for a user
 - `!user` - Get sessions and information on users
 - `!remove_upstream_oauth_links` - Remove all upstream OAuth links for a user
-- `!register_add_proconnect_only_domain` - Add a domain to the ProConnect-only list (`register_proconnect_only_domains`) of the MAS policy data. The homeserver in charge of the email domain is guessed from the identity server: only the bot of this homeserver executes the command, on its own MAS
-- `!register_remove_proconnect_only_domain` - Remove a domain from the ProConnect-only list of the MAS policy data. The homeserver in charge of the email domain is guessed from the identity server
+- `!register_add_proconnect_only_domain` - Add a domain to the ProConnect-only list (`register_proconnect_only_domains`) of the MAS policy data. The homeserver in charge of the email domain is guessed from the identity server, or given explicitly as an optional parameter (e.g. `!register_add_proconnect_only_domain .* example.org` to force all the domains of a homeserver)
+- `!register_remove_proconnect_only_domain` - Remove a domain from the ProConnect-only list of the MAS policy data. The homeserver in charge of the email domain is guessed from the identity server, or given explicitly as an optional parameter
 - `!register_list_proconnect_only_domains` - List the ProConnect-only domains of all the servers: every bot sharing the admin room reports the domains of its own homeserver
 
 ## Configuration
