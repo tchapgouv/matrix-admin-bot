@@ -72,7 +72,7 @@ async def test_user_v2() -> None:
         room, USER1_ID, "!user @user_to_reset:example.org"
     )
 
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
 
     # 1 call to fetch the devices on synapse
     # 1 call to get user data

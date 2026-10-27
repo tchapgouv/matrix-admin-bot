@@ -30,6 +30,17 @@ def generate_event_id(*_args: Any, **_kwargs: Any) -> str:
     return f"$eventid{event_id_counter}"
 
 
+def get_sent_message_text(call: Any) -> str:
+    """Extract the message body from a send_*_message() mock call.
+
+    The message is usually the second positional argument, but callers
+    may also pass it as a keyword argument.
+    """
+    if len(call.args) > 1:
+        return call.args[1]
+    return call.kwargs["message"]
+
+
 class SendMock(AsyncMock):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -108,7 +119,7 @@ class MatrixClientMock:
                 await self.fake_synced_text_message(
                     room,
                     sender=self.user_id,
-                    text=args[0][1],
+                    text=get_sent_message_text(args),
                 )
 
         if wait_for_commands_execution:
@@ -196,15 +207,23 @@ class MatrixClientMock:
     def check_sent_message(self, contains: str) -> None:
         for send_mock in self.send_text_message_mocks:
             if send_mock.await_count > 0:
-                msg = send_mock.await_args_list[0][0][1]
+                msg = get_sent_message_text(send_mock.await_args_list[0])
                 if contains in msg:
                     send_mock.reset_mock()
                     return
         pytest.fail("No matching sent message")
 
-    def check_sent_file_message(self) -> None:
-        assert self.send_file_message.await_count == 1
-        self.send_file_message.reset_mock()
+    def check_sent_report(self) -> None:
+        """Check that a JSON report was sent.
+
+        Reports smaller than 30000 chars are sent as an HTML message,
+        bigger ones as a JSON file.
+        """
+        assert self.send_html_message.await_count == 1
+        msg = get_sent_message_text(self.send_html_message.await_args_list[0])
+        assert msg.startswith("<pre><code>{")
+        assert msg.endswith("}</code></pre>\n")
+        self.send_html_message.reset_mock()
 
 
 async def fake_synced_text_message(

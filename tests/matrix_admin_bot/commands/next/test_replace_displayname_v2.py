@@ -51,7 +51,7 @@ async def test_replace_displayname(displayname_arg: str) -> None:
     check_requests_sent(mocked_matrix_client.send, SYNAPSE_USER_ENDPOINT)
     check_requests_sent(mocked_matrix_client.client_session, "/users/by-username")
 
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
 
     t.cancel()
 
@@ -76,7 +76,7 @@ async def test_failed_replace_displayname_when_user_not_found() -> None:
         "!replace_displayname @user_to_reset:example.org 'My-Display Name[matrix]'",
     )
 
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
 
     # 1 call to get the mas user id on MAS
     check_requests_sent(mocked_matrix_client.client_session, "/users/by-username")
