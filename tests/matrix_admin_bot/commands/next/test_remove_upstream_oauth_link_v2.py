@@ -47,7 +47,7 @@ async def test_remove_upstream_oauth_links() -> None:
         room, USER1_ID, "!remove_upstream_oauth_links @user_to_reset:example.org"
     )
 
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
 
     # 1 call to get the mas user id on MAS
     # 1 call to find upstream OAuth links
@@ -82,7 +82,7 @@ async def test_remove_upstream_oauth_links_when_user_has_no_link() -> None:
         room, USER1_ID, "!remove_upstream_oauth_links @user_to_reset:example.org"
     )
 
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
 
     # 1 call to get the mas user id on MAS
     # 1 call to find upstream OAuth links (no DELETE calls)

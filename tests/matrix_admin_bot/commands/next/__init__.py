@@ -534,3 +534,33 @@ async def assert_non_local_user_rejected(command: str) -> None:
     client.check_sent_reactions()
 
     task.cancel()
+
+
+def mock_policy_data_response(data: dict[str, Any]) -> Mock:
+    """Build a JSON:API response for GET /api/admin/v1/policy-data/latest."""
+    return mock_response_with_json(
+        {
+            "data": {
+                "type": "policy-data",
+                "id": "01J5Z8S3RV33Z3CF7QZ6ZHQ6P2",
+                "attributes": {
+                    "created_at": "1970-01-01T00:00:00Z",
+                    "data": data,
+                },
+            }
+        }
+    )
+
+
+def mock_get_homeserver(hs: str | None) -> AsyncMock:
+    """Build a ``MatrixClient.send`` mock answering the identity server
+    ``/info`` lookups with the given homeserver (None: unknown 3PID)."""
+
+    def request_side_effect(method: str, url: str, **kwargs: Any) -> Mock:  # noqa: ARG001
+        if url.startswith("/_matrix/identity/api/v1/info"):
+            if hs is None:
+                return mock_response_error(404, "Not Found")
+            return mock_response_with_json({"hs": hs})
+        return mock_response_with_json({})
+
+    return AsyncMock(side_effect=request_side_effect)
