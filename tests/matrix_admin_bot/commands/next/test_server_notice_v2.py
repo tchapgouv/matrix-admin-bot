@@ -220,7 +220,7 @@ async def test_server_notice_to_all_recipients() -> None:
     )
 
     # send the report a result
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
     # 2 calls to fetch the users
     check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 2))
     # 4 calls(one per user) to send the notice to all users
@@ -271,7 +271,7 @@ async def test_server_notice_to_all_recipients_when_invalid_request() -> None:
     )
 
     # send the report a result
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
     # 6 calls to fetch the users
     check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 6))
     # 4 calls(one per user) to send the notice to all users
@@ -323,7 +323,7 @@ async def test_server_notice_to_all_recipients_when_exception() -> None:
     )
 
     # send the report a result
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
     # 6 calls to fetch the users
     check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 6))
     # 4 calls(one per user) to send the notice to all users
@@ -369,7 +369,7 @@ async def test_server_notice_to_all_recipients_failed() -> None:
     )
 
     # send the report a result
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
     # 6 calls to fetch the users
     check_requests_sent(mocked_matrix_client.client_session, *(["/users"] * 6))
     # no call to send the notice to all users
@@ -418,7 +418,7 @@ async def test_html_server_notice_to_one_recipient() -> None:
     )
 
     # send the report a result
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
     # no call to fetch the users
     check_requests_sent(mocked_matrix_client.client_session)
     # one call to send the notice directly to the user
@@ -537,7 +537,7 @@ async def test_server_notice_with_edit() -> None:
     await mocked_matrix_client.send_thread_message(room, USER1_ID, "yes", msg_event_id)
 
     # send the report a result
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
     # no call to fetch the users
     check_requests_sent(mocked_matrix_client.client_session)
     # one call to send the notice directly to the user
@@ -615,7 +615,7 @@ async def test_to_one_recipient_with_coordinator() -> None:
     check_requests_sent(mocked_matrix_client1.client_session)
 
     # send the report a result
-    mocked_matrix_client2.check_sent_file_message()
+    mocked_matrix_client2.check_sent_report()
 
     # one call to send notice for the executing bot
     check_requests_sent(mocked_matrix_client2.send, "/send_server_notice")

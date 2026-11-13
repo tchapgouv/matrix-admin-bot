@@ -67,8 +67,8 @@ async def send_report(
     json_str = json.dumps(json_report, indent=2, sort_keys=True)
     if len(json_str) < 30000:
         await matrix_client.send_html_message(
-            room_id=room_id,
-            message=f"<pre><code>{json_str}</code></pre>\n",
+            room_id,
+            f"<pre><code>{json_str}</code></pre>\n",
             reply_to=replied_event_id,
             thread_root=replied_event_id,
         )

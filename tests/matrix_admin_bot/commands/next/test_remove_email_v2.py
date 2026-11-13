@@ -38,7 +38,7 @@ async def test_remove_email() -> None:
         room, USER1_ID, "!remove_email @user_to_reset:example.org"
     )
 
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
 
     # 1 call to get the mas user id on MAS
     # 1 call to find if user has an email
