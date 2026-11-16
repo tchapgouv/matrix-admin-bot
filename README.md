@@ -21,6 +21,9 @@ Matrix Admin Bot is a command-line bot for Matrix server administration tasks.
 - `!replace_displayname` - Replace the displayname for a user
 - `!user` - Get sessions and information on users
 - `!remove_upstream_oauth_links` - Remove all upstream OAuth links for a user
+- `!policy_add` - Add a value to a list of the MAS policy data, on a given homeserver (e.g. `!policy_add registration.allowed_usernames ^agent- example.org`). The policy key is a dotted path; only the bot of the target homeserver executes the command. Values that would break the policy regex engine are rejected
+- `!policy_remove` - Remove a value from a list of the MAS policy data, on a given homeserver (e.g. `!policy_remove registration.allowed_usernames ^agent- example.org`)
+- `!policy_get` - Get the value of any key of the MAS policy data: every bot sharing the admin room reports the value of its own homeserver
 
 ## Configuration
 

@@ -35,7 +35,7 @@ async def test_reactivate() -> None:
         room, USER1_ID, "!reactivate @user_to_reset:example.org user@domain.tld"
     )
 
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
 
     # one call to fetch the devices
     check_requests_sent(mocked_matrix_client.send, "/devices")

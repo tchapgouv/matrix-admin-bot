@@ -31,7 +31,7 @@ async def test_unlock() -> None:
         room, USER1_ID, "!unlock @user_to_reset:example.org"
     )
 
-    mocked_matrix_client.check_sent_file_message()
+    mocked_matrix_client.check_sent_report()
 
     # one call to fetch the devices
     check_requests_sent(mocked_matrix_client.send, "/devices")

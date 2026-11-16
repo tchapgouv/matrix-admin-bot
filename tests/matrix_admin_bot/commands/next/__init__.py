@@ -534,3 +534,19 @@ async def assert_non_local_user_rejected(command: str) -> None:
     client.check_sent_reactions()
 
     task.cancel()
+
+
+def mock_policy_data_response(data: dict[str, Any]) -> Mock:
+    """Build a JSON:API response for GET /api/admin/v1/policy-data/latest."""
+    return mock_response_with_json(
+        {
+            "data": {
+                "type": "policy-data",
+                "id": "01J5Z8S3RV33Z3CF7QZ6ZHQ6P2",
+                "attributes": {
+                    "created_at": "1970-01-01T00:00:00Z",
+                    "data": data,
+                },
+            }
+        }
+    )

@@ -553,6 +553,46 @@ class AdminClient:
             return False
         return True
 
+    async def get_latest_policy_data(self) -> dict[str, Any] | None:
+        """Get the latest policy data from MAS.
+
+        Returns None when no policy data has ever been set.
+        """
+        endpoint = "/api/admin/v1/policy-data/latest"
+        resp = await self.send_to_mas("GET", endpoint=endpoint)
+        if resp.status == 404:
+            return None
+        json_body = await self.decode_client_response(resp)
+        if not resp.ok:
+            error = "Cannot get the latest policy data from MAS"
+            logger.warning(
+                error,
+                status=resp.status,
+                reason=resp.reason,
+                body=json_body,
+            )
+            raise RuntimeError(error)
+        return json_body["data"]["attributes"]["data"]
+
+    async def set_policy_data(self, data: dict[str, Any]) -> bool:
+        """Set the policy data on MAS.
+
+        This replaces the whole policy data: read the current data first
+        with `get_latest_policy_data` to preserve the other keys.
+        """
+        endpoint = "/api/admin/v1/policy-data"
+        resp = await self.send_to_mas("POST", endpoint=endpoint, json={"data": data})
+        if not resp.ok:
+            json_body = await self.decode_client_response(resp)
+            logger.warning(
+                "Cannot set the policy data on MAS",
+                status=resp.status,
+                reason=resp.reason,
+                body=json_body,
+            )
+            return False
+        return True
+
 
 def format_timestamp(ts: int | None) -> str | None:
     if ts is None:
