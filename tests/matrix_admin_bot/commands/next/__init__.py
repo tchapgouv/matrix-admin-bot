@@ -398,6 +398,63 @@ UPSTREAM_OAUTH_LINKS_EMPTY = {  # type: ignore
     },
 }
 
+UPSTREAM_OAUTH_SESSIONS_LIST = {
+    "meta": {"count": 2},
+    "data": [
+        {
+            "type": "upstream-oauth-session",
+            "id": "01K5R30ZEENQQCR9ZPQY9KYP0C",
+            "attributes": {
+                "created_at": "2025-09-24T10:00:00.000000Z",
+                "provider_id": "01K5EMRC1GTYJF19ZAHM5R9Y9H",
+                "link_id": "01K5R30ZEENQQCR9ZPQY9KYP0A",
+                "completed_at": "2025-09-24T10:00:00.000000Z",
+                "consumed_at": "2025-09-24T10:00:00.000000Z",
+                "unlinked_at": None,
+                "id_token_claims": {
+                    "sub": "user_to_reset@domain.tld",
+                    "email": "user_to_reset@domain.tld",
+                    "email_verified": True,
+                    "given_name": "User Old",
+                },
+                "userinfo": None,
+                "extra_callback_parameters": None,
+            },
+            "links": {
+                "self": "/api/admin/v1/upstream-oauth-sessions/01K5R30ZEENQQCR9ZPQY9KYP0C"  # noqa: E501
+            },
+        },
+        {
+            "type": "upstream-oauth-session",
+            "id": "01K5R30ZEENQQCR9ZPQY9KYP0D",
+            "attributes": {
+                "created_at": "2025-09-25T10:00:00.000000Z",
+                "provider_id": "01K5EMRC1GTYJF19ZAHM5R9Y9H",
+                "link_id": "01K5R30ZEENQQCR9ZPQY9KYP0A",
+                "completed_at": "2025-09-25T10:00:00.000000Z",
+                "consumed_at": "2025-09-25T10:00:00.000000Z",
+                "unlinked_at": None,
+                "id_token_claims": {
+                    "sub": "user_to_reset@domain.tld",
+                    "email": "user_to_reset@domain.tld",
+                    "email_verified": True,
+                    "given_name": "User New",
+                },
+                "userinfo": None,
+                "extra_callback_parameters": None,
+            },
+            "links": {
+                "self": "/api/admin/v1/upstream-oauth-sessions/01K5R30ZEENQQCR9ZPQY9KYP0D"  # noqa: E501
+            },
+        },
+    ],
+    "links": {
+        "self": "/api/admin/v1/upstream-oauth-sessions?filter[provider]=01K5EMRC1GTYJF19ZAHM5R9Y9H&page[last]=100",  # noqa: E501
+        "first": "/api/admin/v1/upstream-oauth-sessions?filter[provider]=01K5EMRC1GTYJF19ZAHM5R9Y9H&page[first]=10",  # noqa: E501
+        "last": "/api/admin/v1/upstream-oauth-sessions?filter[provider]=01K5EMRC1GTYJF19ZAHM5R9Y9H&page[last]=10",  # noqa: E501
+    },
+}
+
 USER_SYNAPSE = {
     "name": "@user:example.com",
     "displayname": "User",
