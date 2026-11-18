@@ -13,6 +13,7 @@ from pydantic_settings import (
 )
 
 from matrix_admin_bot.admin_client import AdminClient
+from matrix_admin_bot.commands.next.account_validity_v2 import AccountValidityCommandV2
 from matrix_admin_bot.commands.next.add_email_v2 import AddEmailCommandV2
 from matrix_admin_bot.commands.next.deactivate_v2 import DeactivateCommandV2
 from matrix_admin_bot.commands.next.lock_v2 import LockCommandV2
@@ -62,6 +63,7 @@ def get_command_list() -> list[type[ICommand]]:
         PolicyAddCommandV2,
         PolicyRemoveCommandV2,
         PolicyGetCommandV2,
+        AccountValidityCommandV2,
     ]
 
 
