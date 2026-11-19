@@ -46,7 +46,7 @@ class AccountValidityCommandV2(UserRelatedCommand):
             try:
                 resp = await self.admin_client.send_to_synapse(
                     "POST",
-                    "/_synapse/admin/v1/account_validity/validity",
+                    "/_synapse/client/email_account_validity/admin",
                     data=json.dumps(
                         {
                             "user_id": user_id,
@@ -91,7 +91,7 @@ class AccountValidityCommandV2(UserRelatedCommand):
             )
         else:
             error_message = (
-                "No response from /_synapse/admin/v1/account_validity/validity"
+                "No response from /_synapse/client/email_account_validity/admin"
             )
             logger.info("Account Validity failed for %s: %s", user_id, error_message)
             self.json_report["summary"]["failed"] = (

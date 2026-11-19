@@ -25,7 +25,10 @@ async def test_account_validity() -> None:
 
     #  one call to set the account validity
     assert len(mocked_matrix_client.send.await_args_list) == 1
-    assert "/account_validity/" in mocked_matrix_client.send.await_args_list[0][0][1]
+    assert (
+        "/email_account_validity/admin"
+        in mocked_matrix_client.send.await_args_list[0][0][1]
+    )
 
     assert len(mocked_matrix_client.send_reaction.await_args_list) == 2
     mocked_matrix_client.send.reset_mock()
@@ -53,7 +56,7 @@ async def test_failed_account_validity_with_error_500() -> None:
     # no call to fetch the users, and one call to send the notice directly to the user
     assert len(mocked_matrix_client.send.await_args_list) == 3
     assert (
-        "/account_validity/validity"
+        "/email_account_validity/admin"
         in mocked_matrix_client.send.await_args_list[0][0][1]
     )
     mocked_matrix_client.send.reset_mock()
