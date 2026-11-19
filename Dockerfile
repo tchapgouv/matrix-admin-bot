@@ -1,4 +1,4 @@
-ARG PYTHON_VERSION=3.13
+ARG PYTHON_VERSION=3.14
 
 # Use a Python image with uv pre-installed
 FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-trixie AS builder
