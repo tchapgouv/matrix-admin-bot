@@ -51,6 +51,13 @@ class UserCommandV2(UserRelatedCommand):
         )
         if links is None:
             return False
+
+        # Attach the claims of the last upstream ID token to each link
+        for link in links:
+            claims = await self.admin_client.find_last_upstream_id_token_claims(
+                self.json_report, self.failed_user_ids, link, user_id
+            )
+            link["last_upstream_id_token_claims"] = claims
         self.json_report[user_id]["upstream_oauth_links"] = links
 
         # Get all user emails
@@ -130,7 +137,8 @@ Get sessions and information on users.
 **Effects**:
 - Reports all sessions (devices)
 - Reports general information
-- Reports upstream OAuth links
+- Reports upstream OAuth links, with the claims of the last upstream ID
+  token of each link
 - Reports user emails
 
 **Examples**:

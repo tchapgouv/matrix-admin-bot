@@ -534,6 +534,43 @@ class AdminClient:
             return None
         return json_body.get("data", [])
 
+    async def find_last_upstream_id_token_claims(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        link: dict[str, Any],
+        user_id: str,
+    ) -> dict[str, Any] | None:
+        """Find the claims of the last ID token of the link's OAuth sessions."""
+        params = {
+            "filter[provider]": link["attributes"]["provider_id"],
+            "filter[sub-claim]": link["attributes"]["subject"],
+            "page[last]": 100,
+        }
+        endpoint = "/api/admin/v1/upstream-oauth-sessions"
+        resp = await self.send_to_mas("GET", endpoint=endpoint, params=params)
+        json_body = await self.decode_client_response(resp)
+        if not resp.ok:
+            if resp.status == 404:
+                return None
+            error = f"Cannot find upstream OAuth sessions for {user_id}"
+            json_report[user_id]["errors"].append(
+                {"error": error, "description": json_body}
+            )
+            failed_user_ids.append(user_id)
+            return None
+        # The sessions are ordered by their ULID, which encodes the creation
+        # time: the last ID token is the one of the most recent session with
+        # ID token claims.
+        last_claims: dict[str, Any] | None = None
+        last_session_id = ""
+        for session in json_body.get("data", []):
+            claims = session.get("attributes", {}).get("id_token_claims")
+            if claims is not None and session.get("id", "") > last_session_id:
+                last_session_id = session["id"]
+                last_claims = claims
+        return last_claims
+
     async def remove_upstream_oauth_link(
         self,
         json_report: dict[str, Any],
