@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
-
-from nio import RoomMessage
+from typing import TYPE_CHECKING
 
 from matrix_command_bot.command import ICommand
+
+if TYPE_CHECKING:
+    from nio import RoomMessage
 
 
 class IValidator(ABC):

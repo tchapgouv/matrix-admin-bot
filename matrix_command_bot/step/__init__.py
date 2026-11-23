@@ -1,14 +1,17 @@
 import asyncio
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable, Mapping
 from enum import Enum
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import structlog
-from matrix_bot.client import MatrixClient
-from nio import MatrixRoom, RoomMessage
 
 from matrix_command_bot.command import ICommand
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable, Mapping
+
+    from matrix_bot.client import MatrixClient
+    from nio import MatrixRoom, RoomMessage
 
 
 class CommandAction(Enum):

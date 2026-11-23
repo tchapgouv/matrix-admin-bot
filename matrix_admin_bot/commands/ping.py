@@ -1,13 +1,16 @@
-from collections.abc import Mapping
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
-from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
-from nio import MatrixRoom, RoomMessage
 
 from matrix_admin_bot.commands.next.server_notice_v2 import USER_ALL
 from matrix_command_bot.util import get_server_name, send_report
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from matrix_bot.bot import MatrixClient
+    from nio import MatrixRoom, RoomMessage
 
 
 class PingCommand(SimpleValidatedCommand):

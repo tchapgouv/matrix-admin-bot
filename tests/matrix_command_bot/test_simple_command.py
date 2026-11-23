@@ -1,13 +1,16 @@
-from collections.abc import Mapping
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import pytest
-from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 
 from matrix_command_bot.simple_command import SimpleCommand
 from tests.helper import USER1_ID, create_fake_command_bot
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from matrix_bot.client import MatrixClient
 
 
 class SimpleTestCommand(SimpleCommand):

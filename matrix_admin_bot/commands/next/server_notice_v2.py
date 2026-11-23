@@ -1,13 +1,9 @@
 import asyncio
 import json
-from collections.abc import Awaitable, Callable, Mapping
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import structlog
-from aiohttp import ClientResponse
-from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
-from nio import MatrixRoom, RoomMessage
 
 from matrix_admin_bot.admin_client import AdminClient
 from matrix_command_bot.command import ICommand
@@ -31,6 +27,14 @@ from matrix_command_bot.util import (
 )
 from matrix_command_bot.validation import IValidator
 from matrix_command_bot.validation.steps import ValidateStep
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable, Mapping
+
+    from aiohttp import ClientResponse
+    from matrix_bot.bot import MatrixClient
+    from nio import MatrixRoom, RoomMessage
+
 
 USER_ALL = "all"
 

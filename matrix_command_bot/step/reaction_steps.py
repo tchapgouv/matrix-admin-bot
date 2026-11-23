@@ -1,7 +1,6 @@
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import structlog
-from nio import RoomMessage
 
 from matrix_command_bot.step import (
     CommandAction,
@@ -9,6 +8,9 @@ from matrix_command_bot.step import (
     ICommandStep,
 )
 from matrix_command_bot.util import set_status_reaction
+
+if TYPE_CHECKING:
+    from nio import RoomMessage
 
 logger = structlog.getLogger(__name__)
 

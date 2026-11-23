@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import structlog
-from matrix_bot.bot import MatrixClient
-from nio import MatrixRoom, RoomMessage
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from matrix_bot.bot import MatrixClient
+    from nio import MatrixRoom, RoomMessage
 
 from matrix_command_bot.step import (
     CommandWithSteps,

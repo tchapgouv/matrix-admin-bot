@@ -1,7 +1,9 @@
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import structlog
-from nio import RoomMessage
+
+if TYPE_CHECKING:
+    from nio import RoomMessage
 
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.step import CommandAction, ICommandStep

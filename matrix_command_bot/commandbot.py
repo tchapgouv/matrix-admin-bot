@@ -1,12 +1,14 @@
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cachetools
 import structlog
 from matrix_bot.bot import MatrixBot
 from matrix_bot.eventparser import EventNotConcerned
-from nio import MatrixRoom, RoomMessage
+
+if TYPE_CHECKING:
+    from nio import MatrixRoom, RoomMessage
 
 from matrix_command_bot.command import ICommand
 

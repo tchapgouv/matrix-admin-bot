@@ -2,12 +2,14 @@ import json
 import secrets
 import string
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import aiofiles
 import structlog
-from matrix_bot.bot import MatrixClient
-from nio import RoomMessageText
+
+if TYPE_CHECKING:
+    from matrix_bot.bot import MatrixClient
+    from nio import RoomMessageText
 
 from matrix_command_bot.command import ICommand
 

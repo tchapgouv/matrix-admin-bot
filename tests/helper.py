@@ -1,13 +1,17 @@
 import asyncio
 import time
 from asyncio import Task
-from collections.abc import Awaitable, Callable, Mapping
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable, Mapping
+
+    from matrix_bot.bot import MatrixBot
 from functools import wraps
 from typing import Any, NoReturn, override
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from matrix_bot.bot import MatrixBot
 from nio import Event, MatrixRoom, RoomMessage, RoomMessageText
 
 from matrix_admin_bot.admin_client import AdminClient

@@ -1,4 +1,4 @@
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import pytest
 from matrix_bot.client import MatrixClient
@@ -13,6 +13,9 @@ from tests.helper import (
     create_fake_command_bot,
     create_reply_relation,
 )
+
+if TYPE_CHECKING:
+    from matrix_bot.client import MatrixClient
 
 
 class ConfirmValidatedCommand(SimpleValidatedCommand):
