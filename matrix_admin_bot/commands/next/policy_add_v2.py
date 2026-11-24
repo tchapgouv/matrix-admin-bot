@@ -1,9 +1,5 @@
 import json
-from collections.abc import Mapping
-from typing import Any, override
-
-from matrix_bot.bot import MatrixClient
-from nio import MatrixRoom, RoomMessage
+from typing import TYPE_CHECKING, Any, override
 
 from matrix_admin_bot.commands.next.base.policy_data import (
     JSONValue,
@@ -12,6 +8,12 @@ from matrix_admin_bot.commands.next.base.policy_data import (
     parse_policy_key,
     unsupported_regex_error,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from matrix_bot.bot import MatrixClient
+    from nio import MatrixRoom, RoomMessage
 
 
 class PolicyAddCommandV2(PolicyDataCommand):

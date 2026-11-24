@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
-from matrix_bot.bot import MatrixClient
-from nio import MatrixRoom, RoomMessage
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from matrix_bot.bot import MatrixClient
+    from nio import MatrixRoom, RoomMessage
 
 logger = structlog.getLogger(__name__)
 

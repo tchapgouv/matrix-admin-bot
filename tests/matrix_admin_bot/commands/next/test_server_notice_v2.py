@@ -1,6 +1,5 @@
 import json
-from typing import Any
-from unittest.mock import Mock
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from nio import MatrixRoom
@@ -25,6 +24,9 @@ from tests.matrix_admin_bot.commands.next import (
     mock_response_with_json,
     mock_send_response,
 )
+
+if TYPE_CHECKING:
+    from unittest.mock import Mock
 
 USERS_FIRST_PAGE = "/api/admin/v1/users?filter[status]=active&page[first]=100"
 USERS_NEXT_PAGE = (

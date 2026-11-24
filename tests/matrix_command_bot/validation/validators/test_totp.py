@@ -1,9 +1,8 @@
 import datetime
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import pyotp
 import pytest
-from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 
@@ -16,6 +15,10 @@ from tests.helper import (
     USER3_ID,
     create_fake_command_bot,
 )
+
+if TYPE_CHECKING:
+    from matrix_bot.client import MatrixClient
+
 
 TOTP_SEED = "P7ZBD5ZLMACOOTX4"
 

@@ -1,9 +1,7 @@
-from collections.abc import Mapping
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
-from matrix_bot.bot import MatrixClient, bot_lib_config
+from matrix_bot.bot import bot_lib_config
 from matrix_bot.eventparser import MessageEventParser
-from nio import MatrixRoom, RoomMessage
 from pydantic import BaseModel
 from pydantic_settings import (
     BaseSettings,
@@ -40,6 +38,12 @@ from matrix_admin_bot.commands.ping import PingCommand
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.commandbot import CommandBot, Role
 from matrix_command_bot.validation.validators.totp import TOTPValidator
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from matrix_bot.bot import MatrixClient
+    from nio import MatrixRoom, RoomMessage
 
 
 def get_command_list() -> list[type[ICommand]]:

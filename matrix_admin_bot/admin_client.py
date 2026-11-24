@@ -1,14 +1,16 @@
 import asyncio
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
 
 import structlog
 from aiohttp import ClientResponse
-from matrix_bot.client import MatrixClient
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from matrix_command_bot.util import get_localpart_from_id
+
+if TYPE_CHECKING:
+    from matrix_bot.bot import MatrixClient
 
 logger = structlog.getLogger(__name__)
 

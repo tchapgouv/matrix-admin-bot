@@ -1,14 +1,17 @@
-from collections.abc import Awaitable, Callable, Mapping
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import structlog
-from matrix_bot.client import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
-from nio import MatrixRoom, RoomMessage
 
 from matrix_command_bot.command import ICommand
 from matrix_command_bot.util import get_server_name, is_local_user, send_report
 from matrix_command_bot.validation.simple_command import SimpleValidatedCommand
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable, Mapping
+
+    from matrix_bot.bot import MatrixClient
+    from nio import MatrixRoom, RoomMessage
 
 logger = structlog.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from typing import TYPE_CHECKING
 
 import pytest
 from nio import MatrixRoom
@@ -20,6 +20,9 @@ from tests.matrix_admin_bot.commands.next import (
     mock_send_routes,
     with_params,
 )
+
+if TYPE_CHECKING:
+    from unittest.mock import AsyncMock
 
 IDENTITY_EMAIL_ENDPOINT = (
     "/_matrix/identity/api/v1/info?medium=email&address=user@domain.tld"

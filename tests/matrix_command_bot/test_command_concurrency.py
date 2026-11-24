@@ -1,10 +1,8 @@
 import asyncio
-from collections.abc import Mapping
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import pytest
 import structlog
-from matrix_bot.bot import MatrixClient
 from matrix_bot.eventparser import MessageEventParser
 from nio import MatrixRoom, RoomMessage
 
@@ -18,6 +16,11 @@ from tests.helper import (
 )
 
 logger = structlog.get_logger(__name__)
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from matrix_bot.bot import MatrixClient
 
 
 class KeywordCommand(SimpleValidatedCommand):

@@ -1,8 +1,10 @@
-from typing import Any
-from unittest.mock import Mock
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from nio import MatrixRoom
+
+if TYPE_CHECKING:
+    from unittest.mock import Mock
 
 from tests.helper import (
     USER1_ID,
