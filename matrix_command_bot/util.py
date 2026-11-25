@@ -59,6 +59,8 @@ async def send_report(
     matrix_client: MatrixClient,
     room_id: str,
     replied_event_id: str,
+    *,
+    force_file_report: bool = False,
 ) -> None:
     logger.debug(
         "Sending JSON report",
@@ -67,7 +69,7 @@ async def send_report(
         replied_event_id=replied_event_id,
     )
     json_str = json.dumps(json_report, indent=2, sort_keys=True)
-    if len(json_str) < 30000:
+    if not force_file_report and len(json_str) < 30000:
         await matrix_client.send_html_message(
             room_id,
             f"<pre><code>{json_str}</code></pre>\n",
