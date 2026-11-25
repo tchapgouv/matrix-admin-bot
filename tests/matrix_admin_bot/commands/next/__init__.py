@@ -487,6 +487,7 @@ USER_SYNAPSE = {
     "external_ids": [
         {"auth_provider": "<provider1>", "external_id": "<user_id_provider_1>"},
         {"auth_provider": "<provider2>", "external_id": "<user_id_provider_2>"},
+        {"auth_provider": "<provider3>", "external_id": "user_to_reset@domain2.tld"},
     ],
     "user_type": "null",
     "locked": "false",
