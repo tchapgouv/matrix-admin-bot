@@ -61,6 +61,8 @@ class PingCommand(SimpleValidatedCommand):
             matrix_client=self.matrix_client,
             room_id=self.room.room_id,
             replied_event_id=self.message.event_id,
+            # Send for file for !ping as we want to test mediarepo/avscanner
+            force_file_report=True,
         )
 
     @property

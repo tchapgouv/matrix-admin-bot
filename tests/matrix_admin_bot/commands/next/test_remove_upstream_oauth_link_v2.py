@@ -11,17 +11,25 @@ from tests.matrix_admin_bot.commands.next import (
     UPSTREAM_OAUTH_LINKS_EMPTY,  # type: ignore
     UPSTREAM_OAUTH_LINKS_LIST,
     USER,
+    USER_SYNAPSE,
     assert_non_local_user_rejected,
     mock_requests,
     mock_response_with_json,
     mock_send_response,
+    mock_send_routes,
 )
 
 
 @pytest.mark.asyncio
 async def test_remove_upstream_oauth_links() -> None:
     mocked_matrix_client, _, t = await create_fake_admin_bot(validator=OkValidator())
-    mocked_matrix_client.send = mock_send_response()
+    mocked_matrix_client.send = mock_send_routes(
+        (
+            "GET",
+            "/_synapse/admin/v2/users/@user_to_reset:example.org",
+            mock_response_with_json(USER_SYNAPSE),
+        ),
+    )
     mocked_matrix_client.client_session.request.side_effect = mock_requests(
         ("GET", "/api/admin/v1/users/by-username", mock_response_with_json(USER)),
         (
@@ -48,6 +56,13 @@ async def test_remove_upstream_oauth_links() -> None:
     )
 
     mocked_matrix_client.check_sent_report()
+    # 1 call to get user data
+    # 1 call to update user data
+    check_requests_sent(
+        mocked_matrix_client.send,
+        "/_synapse/admin/v2/users/@user_to_reset:example.org",
+        "/_synapse/admin/v2/users/@user_to_reset:example.org",
+    )
 
     # 1 call to get the mas user id on MAS
     # 1 call to find upstream OAuth links

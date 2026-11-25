@@ -1,3 +1,4 @@
+import json
 from typing import TYPE_CHECKING, Any, override
 
 import structlog
@@ -68,6 +69,28 @@ class RemoveUpstreamOauthLinkCommandV2(UserRelatedCommand):
             )
             if result:
                 removed_links.append(link_id)
+
+        # Remove external id on synapse for this user
+        user_exists = await self.admin_client.get_user_from_synapse(
+            self.json_report, self.failed_user_ids, user_id
+        )
+        if user_exists:
+            mas_subjects = {link["attributes"]["subject"] for link in links}
+
+            external_ids = [
+                external_id
+                for external_id in self.json_report[user_id]["user"]["external_ids"]
+                if external_id["external_id"] not in mas_subjects
+            ]
+            # Only update if there is any remove to perform
+            if len(self.json_report[user_id]["user"]["external_ids"]) != len(
+                external_ids
+            ):
+                data = json.dumps({"external_ids": external_ids})
+                await self.admin_client.update_user_from_synapse(
+                    self.json_report, self.failed_user_ids, user_id, data
+                )
+                self.json_report[user_id]["user"]["external_ids"] = external_ids
 
         self.json_report[user_id]["description"] = (
             f"{len(removed_links)} upstream OAuth link(s) removed for {user_id}"

@@ -251,6 +251,29 @@ class AdminClient:
         failed_user_ids.append(user_id)
         return False
 
+    async def update_user_from_synapse(
+        self,
+        json_report: dict[str, Any],
+        failed_user_ids: list[str],
+        user_id: str,
+        data: str,
+    ) -> bool:
+        endpoint = f"/_synapse/admin/v2/users/{user_id}"
+        resp = await self.send_to_synapse(
+            "PUT",
+            endpoint=endpoint,
+            data=data,
+        )
+        if resp.ok:
+            return True
+        json_body = await resp.json()
+        error = f"Cannot update user information from localpart {user_id}"
+        json_report[user_id]["errors"].append(
+            {"error": error, "description": json_body}
+        )
+        failed_user_ids.append(user_id)
+        return False
+
     async def get_all_sessions(
         self,
         mas_user_id: str,
