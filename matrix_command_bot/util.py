@@ -69,14 +69,27 @@ async def send_report(
         replied_event_id=replied_event_id,
     )
     json_str = json.dumps(json_report, indent=2, sort_keys=True)
-    if not force_file_report and len(json_str) < 30000:
-        await matrix_client.send_html_message(
+    if not force_file_report and len(json_str) < 20000:
+        logger.debug(
+            "Send report text",
+            len_json_str=len(json_str),
+            message=f"<pre><code>{json_str}</code></pre>\n",
+        )
+        response = await matrix_client.send_html_message(
             room_id,
             f"<pre><code>{json_str}</code></pre>\n",
             reply_to=replied_event_id,
             thread_root=replied_event_id,
         )
+        if response is None:
+            logger.error(
+                "Report was not sent - tips: Check in synapse for log 'event too large'"
+            )
     else:
+        logger.debug(
+            "Send report file",
+            len_json_str=len(json_str),
+        )
         async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json") as tmpfile:
             await tmpfile.write(json_str.encode())
             await tmpfile.flush()
